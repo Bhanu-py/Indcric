@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from cric_users.models import Match, Team, Player, Attendance, Payment
 from django.utils import timezone
 from django.contrib import messages
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
@@ -29,6 +29,24 @@ class UsersHtmxTableView(SingleTableMixin, FilterView):
             template_name = 'cric_manage/user_table_htmx.html'
         return template_name
         
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Ensure all users have wallet records
+        from cric_users.models import Wallet
+        from decimal import Decimal
+        
+        for user in queryset:
+            Wallet.objects.get_or_create(
+                user=user,
+                defaults={
+                    'amount': Decimal('0.00'),
+                    'status': 'active'
+                }
+            )
+            
+        return queryset
+        
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['filter'] = self.filterset  # Add the filter to the context
@@ -39,17 +57,43 @@ class UsersHtmxTableView(SingleTableMixin, FilterView):
 def create_match_view(request, username=None):
     if request.method == 'POST':
         name = request.POST['name']
-        date_str = request.POST['date']
-        time_str = request.POST['time']
-        duration = int(request.POST['duration'])
-        location = request.POST['location']
-        cost = float(request.POST['cost'])
-        team1_players = request.POST.getlist('team1_players')
-        team2_players = request.POST.getlist('team2_players')
-
-        #make the ids string to list of ints
-        team1_players = [int(i) for i in team1_players[0].split(',')]
-        team2_players = [int(i) for i in team2_players[0].split(',')]
+        date_str = request.POST.get('date')
+        time_str = request.POST.get('time')
+        duration = request.POST.get('duration', 3)
+        location = request.POST.get('location', '')
+        cost = request.POST.get('cost', 0)
+        
+        # Safely get team players
+        team1_players_str = request.POST.get('team1_players', '')
+        team2_players_str = request.POST.get('team2_players', '')
+        
+        # Check if we have valid player data before proceeding
+        if not team1_players_str or not team2_players_str:
+            messages.error(request, "Please select players for both teams.")
+            return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})
+        
+        # Safely convert player IDs to integers
+        try:
+            team1_players = [int(i) for i in team1_players_str.split(',') if i.strip()]
+            team2_players = [int(i) for i in team2_players_str.split(',') if i.strip()]
+        except ValueError:
+            messages.error(request, "Invalid player selection. Please try again.")
+            return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})
+        
+        # Validate we have at least one player in each team
+        if not team1_players or not team2_players:
+            messages.error(request, "Each team must have at least one player.")
+            return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})
+            
+        try:
+            duration = int(duration) 
+        except (ValueError, TypeError):
+            duration = 3  # default value
+            
+        try:
+            cost = float(cost)
+        except (ValueError, TypeError):
+            cost = 0.0  # default value
         
         date = None  # Initialize date and time to None
         time = None
@@ -59,16 +103,15 @@ def create_match_view(request, username=None):
                 date = timezone.datetime.strptime(date_str, '%Y-%m-%d').date()
             except ValueError:
                 messages.error(request, "Invalid date format. Please use YYYY-MM-DD.")
-                return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})  # Re-render the form with an error message
+                return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})
 
         if time_str:
             try:
                 time = timezone.datetime.strptime(time_str, '%H:%M').time()
             except ValueError:
                 messages.error(request, "Invalid time format. Please use HH:MM.")
-                return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})  # Re-render the form with an error message
+                return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})
         
-
         team1_captain = None
         team2_captain = None
 
@@ -92,14 +135,12 @@ def create_match_view(request, username=None):
         team2 = Team.objects.create(match=match, name='Team 2', captain=team2_captain)
 
         # Create players for Team 1
-        team1_player_ids = [uid for uid in team1_players if uid]  # Filter out empty strings
-        for user_id in team1_player_ids:
+        for user_id in team1_players:
             user = User.objects.get(pk=user_id)
             Player.objects.create(team=team1, user=user, role=user.role)
 
         # Create players for Team 2
-        team2_player_ids =  [uid for uid in team2_players if uid]
-        for user_id in team2_player_ids:
+        for user_id in team2_players:
             user = User.objects.get(pk=user_id)
             Player.objects.create(team=team2, user=user, role=user.role)
 
@@ -318,16 +359,36 @@ def edit_user_view(request, user_id):
             is_staff = request.POST.get('is_staff') == 'True'
             wallet_amount = request.POST.get('wallet_amount')
             
+            # Get rating values
+            batting_rating = request.POST.get('batting_rating')
+            bowling_rating = request.POST.get('bowling_rating')
+            fielding_rating = request.POST.get('fielding_rating')
+            
+            # Process data and update the user
             try:
                 wallet_amount = Decimal(wallet_amount) if wallet_amount else Decimal('0.00')
-            except:
+                
+                # Convert ratings to Decimal with valid bounds (0-5)
+                batting_rating = min(max(Decimal(batting_rating if batting_rating else '2.5'), Decimal('0')), Decimal('5'))
+                bowling_rating = min(max(Decimal(bowling_rating if bowling_rating else '2.5'), Decimal('0')), Decimal('5'))
+                fielding_rating = min(max(Decimal(fielding_rating if fielding_rating else '2.5'), Decimal('0')), Decimal('5'))
+            except (ValueError, TypeError, InvalidOperation):
                 wallet_amount = Decimal('0.00')
+                batting_rating = Decimal('2.5')
+                bowling_rating = Decimal('2.5')
+                fielding_rating = Decimal('2.5')
                 
             # Update user data
             user.username = username
             user.email = email
             user.role = role
             user.is_staff = is_staff
+            
+            # Update ratings
+            user.batting_rating = batting_rating
+            user.bowling_rating = bowling_rating
+            user.fielding_rating = fielding_rating
+            
             user.save()
             
             # Update or create Wallet record
@@ -336,13 +397,19 @@ def edit_user_view(request, user_id):
                 wallet.save()
             else:
                 user.wallet_set.create(amount=wallet_amount)
-                
-            return render(request, 'cric_manage/edit_user_form.html', {
-                'user': user,
-                'wallet_amount': wallet_amount,
-                'message': 'User updated successfully!',
-                'success': True
-            })
+            
+            # If the request is HTMX, send the message in context
+            if request.headers.get('HX-Request'):
+                return render(request, 'cric_manage/edit_user_form.html', {
+                    'user': user,
+                    'wallet_amount': wallet_amount,
+                    'message': 'User updated successfully!',
+                    'success': True
+                })
+            
+            # For non-HTMX requests, redirect back to users list
+            messages.success(request, 'User updated successfully!')
+            return redirect('manage-users')
         
         # GET request - show the form
         return render(request, 'cric_manage/edit_user_form.html', {

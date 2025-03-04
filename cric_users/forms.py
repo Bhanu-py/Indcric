@@ -6,16 +6,15 @@ User = get_user_model()
 class ProfileForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'email', 'role']
-        # Add any additional fields that exist on your User model
+        fields = ['first_name', 'last_name', 'role', 'batting_rating', 'bowling_rating', 'fielding_rating']
         widgets = {
-            'first_name': forms.TextInput(attrs={'class': 'form-control rounded-lg w-full'}),
-            'last_name': forms.TextInput(attrs={'class': 'form-control rounded-lg w-full'}),
-            'email': forms.EmailInput(attrs={'class': 'form-control rounded-lg w-full'}),
-            'role': forms.Select(attrs={'class': 'form-control rounded-lg w-full'}, 
-                                choices=[('batsman', 'Batsman'), 
-                                         ('bowler', 'Bowler'), 
-                                         ('allrounder', 'All-rounder')])
+            'first_name': forms.TextInput(attrs={'class': 'w-full p-2 border rounded'}),
+            'last_name': forms.TextInput(attrs={'class': 'w-full p-2 border rounded'}),
+            'role': forms.Select(attrs={'class': 'w-full p-2 border rounded'}, 
+                              choices=[('batsman', 'Batsman'), ('bowler', 'Bowler'), ('allrounder', 'All-Rounder')]),
+            'batting_rating': forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'min': '0', 'max': '5', 'step': '0.1'}),
+            'bowling_rating': forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'min': '0', 'max': '5', 'step': '0.1'}),
+            'fielding_rating': forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'min': '0', 'max': '5', 'step': '0.1'}),
         }
 
 class EmailForm(forms.ModelForm):
@@ -23,7 +22,7 @@ class EmailForm(forms.ModelForm):
         model = User
         fields = ['email']
         widgets = {
-            'email': forms.EmailInput(attrs={'class': 'form-control rounded-lg w-full'})
+            'email': forms.EmailInput(attrs={'class': 'w-full p-2 border rounded'})
         }
 
 class UsernameForm(forms.ModelForm):
@@ -31,5 +30,5 @@ class UsernameForm(forms.ModelForm):
         model = User
         fields = ['username']
         widgets = {
-            'username': forms.TextInput(attrs={'class': 'form-control rounded-lg w-full'})
+            'username': forms.TextInput(attrs={'class': 'w-full p-2 border rounded'})
         }
