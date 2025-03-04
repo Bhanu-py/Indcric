@@ -39,17 +39,43 @@ class UsersHtmxTableView(SingleTableMixin, FilterView):
 def create_match_view(request, username=None):
     if request.method == 'POST':
         name = request.POST['name']
-        date_str = request.POST['date']
-        time_str = request.POST['time']
-        duration = int(request.POST['duration'])
-        location = request.POST['location']
-        cost = float(request.POST['cost'])
-        team1_players = request.POST.getlist('team1_players')
-        team2_players = request.POST.getlist('team2_players')
-
-        #make the ids string to list of ints
-        team1_players = [int(i) for i in team1_players[0].split(',')]
-        team2_players = [int(i) for i in team2_players[0].split(',')]
+        date_str = request.POST.get('date')
+        time_str = request.POST.get('time')
+        duration = request.POST.get('duration', 3)
+        location = request.POST.get('location', '')
+        cost = request.POST.get('cost', 0)
+        
+        # Safely get team players
+        team1_players_str = request.POST.get('team1_players', '')
+        team2_players_str = request.POST.get('team2_players', '')
+        
+        # Check if we have valid player data before proceeding
+        if not team1_players_str or not team2_players_str:
+            messages.error(request, "Please select players for both teams.")
+            return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})
+        
+        # Safely convert player IDs to integers
+        try:
+            team1_players = [int(i) for i in team1_players_str.split(',') if i.strip()]
+            team2_players = [int(i) for i in team2_players_str.split(',') if i.strip()]
+        except ValueError:
+            messages.error(request, "Invalid player selection. Please try again.")
+            return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})
+        
+        # Validate we have at least one player in each team
+        if not team1_players or not team2_players:
+            messages.error(request, "Each team must have at least one player.")
+            return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})
+            
+        try:
+            duration = int(duration) 
+        except (ValueError, TypeError):
+            duration = 3  # default value
+            
+        try:
+            cost = float(cost)
+        except (ValueError, TypeError):
+            cost = 0.0  # default value
         
         date = None  # Initialize date and time to None
         time = None
@@ -59,16 +85,15 @@ def create_match_view(request, username=None):
                 date = timezone.datetime.strptime(date_str, '%Y-%m-%d').date()
             except ValueError:
                 messages.error(request, "Invalid date format. Please use YYYY-MM-DD.")
-                return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})  # Re-render the form with an error message
+                return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})
 
         if time_str:
             try:
                 time = timezone.datetime.strptime(time_str, '%H:%M').time()
             except ValueError:
                 messages.error(request, "Invalid time format. Please use HH:MM.")
-                return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})  # Re-render the form with an error message
+                return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})
         
-
         team1_captain = None
         team2_captain = None
 
@@ -92,14 +117,12 @@ def create_match_view(request, username=None):
         team2 = Team.objects.create(match=match, name='Team 2', captain=team2_captain)
 
         # Create players for Team 1
-        team1_player_ids = [uid for uid in team1_players if uid]  # Filter out empty strings
-        for user_id in team1_player_ids:
+        for user_id in team1_players:
             user = User.objects.get(pk=user_id)
             Player.objects.create(team=team1, user=user, role=user.role)
 
         # Create players for Team 2
-        team2_player_ids =  [uid for uid in team2_players if uid]
-        for user_id in team2_player_ids:
+        for user_id in team2_players:
             user = User.objects.get(pk=user_id)
             Player.objects.create(team=team2, user=user, role=user.role)
 
