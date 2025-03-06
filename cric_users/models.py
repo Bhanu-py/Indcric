@@ -1,10 +1,30 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.urls import reverse
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class User(AbstractUser):
     # add role field that can take value only from 'batsman', 'bowler', 'allrounder' only
     role = models.CharField(max_length=20, default='batsman')
+    # Add rating fields for batting, bowling, and fielding
+    batting_rating = models.DecimalField(
+        max_digits=3, 
+        decimal_places=1, 
+        default=2.5,
+        validators=[MinValueValidator(0), MaxValueValidator(5)]
+    )
+    bowling_rating = models.DecimalField(
+        max_digits=3, 
+        decimal_places=1, 
+        default=2.5,
+        validators=[MinValueValidator(0), MaxValueValidator(5)]
+    )
+    fielding_rating = models.DecimalField(
+        max_digits=3, 
+        decimal_places=1, 
+        default=2.5,
+        validators=[MinValueValidator(0), MaxValueValidator(5)]
+    )
     pass
 
 class Payment(models.Model):

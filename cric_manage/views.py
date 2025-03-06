@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from cric_users.models import Match, Team, Player, Attendance, Payment
 from django.utils import timezone
 from django.contrib import messages
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
@@ -28,6 +28,24 @@ class UsersHtmxTableView(SingleTableMixin, FilterView):
         else:
             template_name = 'cric_manage/user_table_htmx.html'
         return template_name
+        
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Ensure all users have wallet records
+        from cric_users.models import Wallet
+        from decimal import Decimal
+        
+        for user in queryset:
+            Wallet.objects.get_or_create(
+                user=user,
+                defaults={
+                    'amount': Decimal('0.00'),
+                    'status': 'active'
+                }
+            )
+            
+        return queryset
         
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -341,16 +359,36 @@ def edit_user_view(request, user_id):
             is_staff = request.POST.get('is_staff') == 'True'
             wallet_amount = request.POST.get('wallet_amount')
             
+            # Get rating values
+            batting_rating = request.POST.get('batting_rating')
+            bowling_rating = request.POST.get('bowling_rating')
+            fielding_rating = request.POST.get('fielding_rating')
+            
+            # Process data and update the user
             try:
                 wallet_amount = Decimal(wallet_amount) if wallet_amount else Decimal('0.00')
-            except:
+                
+                # Convert ratings to Decimal with valid bounds (0-5)
+                batting_rating = min(max(Decimal(batting_rating if batting_rating else '2.5'), Decimal('0')), Decimal('5'))
+                bowling_rating = min(max(Decimal(bowling_rating if bowling_rating else '2.5'), Decimal('0')), Decimal('5'))
+                fielding_rating = min(max(Decimal(fielding_rating if fielding_rating else '2.5'), Decimal('0')), Decimal('5'))
+            except (ValueError, TypeError, InvalidOperation):
                 wallet_amount = Decimal('0.00')
+                batting_rating = Decimal('2.5')
+                bowling_rating = Decimal('2.5')
+                fielding_rating = Decimal('2.5')
                 
             # Update user data
             user.username = username
             user.email = email
             user.role = role
             user.is_staff = is_staff
+            
+            # Update ratings
+            user.batting_rating = batting_rating
+            user.bowling_rating = bowling_rating
+            user.fielding_rating = fielding_rating
+            
             user.save()
             
             # Update or create Wallet record
@@ -359,13 +397,19 @@ def edit_user_view(request, user_id):
                 wallet.save()
             else:
                 user.wallet_set.create(amount=wallet_amount)
-                
-            return render(request, 'cric_manage/edit_user_form.html', {
-                'user': user,
-                'wallet_amount': wallet_amount,
-                'message': 'User updated successfully!',
-                'success': True
-            })
+            
+            # If the request is HTMX, send the message in context
+            if request.headers.get('HX-Request'):
+                return render(request, 'cric_manage/edit_user_form.html', {
+                    'user': user,
+                    'wallet_amount': wallet_amount,
+                    'message': 'User updated successfully!',
+                    'success': True
+                })
+            
+            # For non-HTMX requests, redirect back to users list
+            messages.success(request, 'User updated successfully!')
+            return redirect('manage-users')
         
         # GET request - show the form
         return render(request, 'cric_manage/edit_user_form.html', {

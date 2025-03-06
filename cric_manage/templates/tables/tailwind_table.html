@@ -1,16 +1,16 @@
 {% load django_tables2 %}
 {% load i18n %}
 
-<table class="min-w-full bg-white border border-gray-300">
+<table {% if table.attrs %}{{ table.attrs.as_html }}{% else %}class="table-auto min-w-full divide-y divide-gray-200"{% endif %}>
     {% block table.thead %}
-    <thead class="bg-gray-100">
+    <thead>
         <tr>
             {% for column in table.columns %}
-                <th class="border-b border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 uppercase tracking-wider">
+                <th {{ column.attrs.th.as_html }} class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {% if column.orderable %}
-                        <a href="{% querystring table.prefixed_order_by_field=column.order_by_alias.next %}">{{ column.header }}</a>
+                        <a href="?{{ column.order_by_querystring }}">{{ column.header }}</a>
                     {% else %}
-                        <span>{{ column.header }}</span>
+                        {{ column.header }}
                     {% endif %}
                 </th>
             {% endfor %}
@@ -19,17 +19,19 @@
     {% endblock table.thead %}
     
     {% block table.tbody %}
-    <tbody>
+    <tbody class="bg-white divide-y divide-gray-200">
         {% for row in table.page.object_list|default:table.rows %}
             <tr class="{% cycle 'bg-white' 'bg-gray-50' %}">
                 {% for column, cell in row.items %}
-                    <td class="border-b border-gray-300 px-4 py-2 text-sm text-gray-800">{{ cell }}</td>
+                    <td {{ column.attrs.td.as_html }} class="px-6 py-4 whitespace-nowrap">
+                        {{ cell }}
+                    </td>
                 {% endfor %}
             </tr>
         {% empty %}
             {% if table.empty_text %}
             <tr>
-                <td colspan="{{ table.columns|length }}" class="border-b border-gray-300 px-4 py-2 text-sm text-gray-600">
+                <td colspan="{{ table.columns|length }}" class="px-6 py-4 text-center text-gray-500">
                     {{ table.empty_text }}
                 </td>
             </tr>
@@ -40,10 +42,10 @@
     
     {% block table.tfoot %}
     {% if table.has_footer %}
-    <tfoot class="bg-gray-100">
+    <tfoot>
         <tr>
             {% for column in table.columns %}
-                <td class="border-b border-gray-300 px-4 py-2 text-sm font-medium text-gray-700">{{ column.footer }}</td>
+                <td {{ column.attrs.tf.as_html }}>{{ column.footer }}</td>
             {% endfor %}
         </tr>
     </tfoot>
@@ -52,25 +54,54 @@
 </table>
 
 {% if table.page and table.paginator.num_pages > 1 %}
-<nav class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 mt-4" aria-label="Pagination">
-    <div class="hidden sm:block">
-        <p class="text-sm text-gray-700">
-            {% blocktrans with page=table.page.number pages=table.paginator.num_pages %}
-            Page {{ page }} of {{ pages }}
-            {% endblocktrans %}
-        </p>
+<div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div>
+            <p class="text-sm text-gray-700">
+                {% trans "Showing" %} 
+                <span class="font-medium">{{ table.page.start_index }}</span> 
+                {% trans "to" %} 
+                <span class="font-medium">{{ table.page.end_index }}</span> 
+                {% trans "of" %} 
+                <span class="font-medium">{{ table.page.paginator.count }}</span> 
+                {% trans "results" %}
+            </p>
+        </div>
+        <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                {% if table.page.has_previous %}
+                <a href="?{{ table.prefixed_page_field }}={{ table.page.previous_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <span class="sr-only">{% trans "Previous" %}</span>
+                    <!-- Heroicon name: outline/chevron-left -->
+                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </a>
+                {% endif %}
+                
+                {% for p in table.page.paginator.page_range %}
+                    {% if p == table.page.number %}
+                    <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-700">
+                        {{ p }}
+                    </span>
+                    {% elif p >= table.page.number|add:"-2" and p <= table.page.number|add:"2" %}
+                    <a href="?{{ table.prefixed_page_field }}={{ p }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        {{ p }}
+                    </a>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if table.page.has_next %}
+                <a href="?{{ table.prefixed_page_field }}={{ table.page.next_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <span class="sr-only">{% trans "Next" %}</span>
+                    <!-- Heroicon name: outline/chevron-right -->
+                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </a>
+                {% endif %}
+            </nav>
+        </div>
     </div>
-    <div class="flex flex-1 justify-between sm:justify-end">
-        {% if table.page.has_previous %}
-            <a href="{% querystring table.prefixed_page_field=table.page.previous_page_number %}" class="relative inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 mr-2">
-                {% trans "Previous" %}
-            </a>
-        {% endif %}
-        {% if table.page.has_next %}
-            <a href="{% querystring table.prefixed_page_field=table.page.next_page_number %}" class="relative inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
-                {% trans "Next" %}
-            </a>
-        {% endif %}
-    </div>
-</nav>
+</div>
 {% endif %}

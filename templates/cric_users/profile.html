@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto px-8 py-12">
@@ -39,15 +40,75 @@
                 <form method="post" enctype="multipart/form-data">
                     {% csrf_token %}
                     <div class="space-y-4">
-                        {% for field in form %}
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">{{ field.label }}</label>
-                            {{ field }}
-                            {% if field.errors %}
-                                <p class="text-red-500 text-xs mt-1">{{ field.errors.0 }}</p>
-                            {% endif %}
+                        <!-- Personal Information -->
+                        <div class="mb-6">
+                            <h2 class="text-xl font-semibold mb-3">Personal Information</h2>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">First Name</label>
+                                    {{ form.first_name }}
+                                    {% if form.first_name.errors %}
+                                        <p class="text-red-500 text-xs mt-1">{{ form.first_name.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Last Name</label>
+                                    {{ form.last_name }}
+                                    {% if form.last_name.errors %}
+                                        <p class="text-red-500 text-xs mt-1">{{ form.last_name.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
                         </div>
-                        {% endfor %}
+                        
+                        <!-- Cricket Information -->
+                        <div class="mb-6">
+                            <h2 class="text-xl font-semibold mb-3">Cricket Information</h2>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700">Role</label>
+                                {{ form.role }}
+                                {% if form.role.errors %}
+                                    <p class="text-red-500 text-xs mt-1">{{ form.role.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Rating Fields -->
+                            <div class="grid md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Batting Rating (0-5)</label>
+                                    {{ form.batting_rating }}
+                                    <div class="mt-1 text-yellow-500 flex">
+                                        <div class="text-xs text-gray-500 mt-1">Current: {{ user.batting_rating }}/5</div>
+                                    </div>
+                                    {% if form.batting_rating.errors %}
+                                        <p class="text-red-500 text-xs mt-1">{{ form.batting_rating.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Bowling Rating (0-5)</label>
+                                    {{ form.bowling_rating }}
+                                    <div class="mt-1 text-yellow-500 flex">
+                                        <div class="text-xs text-gray-500 mt-1">Current: {{ user.bowling_rating }}/5</div>
+                                    </div>
+                                    {% if form.bowling_rating.errors %}
+                                        <p class="text-red-500 text-xs mt-1">{{ form.bowling_rating.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Fielding Rating (0-5)</label>
+                                    {{ form.fielding_rating }}
+                                    <div class="mt-1 text-yellow-500 flex">
+                                        <div class="text-xs text-gray-500 mt-1">Current: {{ user.fielding_rating }}/5</div>
+                                    </div>
+                                    {% if form.fielding_rating.errors %}
+                                        <p class="text-red-500 text-xs mt-1">{{ form.fielding_rating.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="flex justify-end space-x-3">
                             <a href="{% url 'profile' %}" class="px-4 py-2 bg-gray-200 rounded-lg text-gray-700">Cancel</a>
                             <button type="submit" class="px-4 py-2 bg-blue-500 rounded-lg text-white hover:bg-blue-600">Save Changes</button>
@@ -79,6 +140,79 @@
                             <div>
                                 <p class="text-sm text-gray-500">Role</p>
                                 <p>{{ user.role|default:"Not specified" }}</p>
+                            </div>
+                            
+                            <!-- Skill Ratings -->
+                            <div>
+                                <p class="text-sm text-gray-500">Batting Rating</p>
+                                <div class="flex items-center">
+                                    <div class="flex text-yellow-400">
+                                        {% for i in "12345" %}
+                                            {% if forloop.counter <= user.batting_rating %}
+                                                <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                                                </svg>
+                                            {% elif forloop.counter <= user.batting_rating|add:"0.5" %}
+                                                <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z"/>
+                                                </svg>
+                                            {% else %}
+                                                <svg class="w-5 h-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                                                </svg>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <span class="ml-1">{{ user.batting_rating }}/5</span>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <p class="text-sm text-gray-500">Bowling Rating</p>
+                                <div class="flex items-center">
+                                    <div class="flex text-yellow-400">
+                                        {% for i in "12345" %}
+                                            {% if forloop.counter <= user.bowling_rating %}
+                                                <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                                                </svg>
+                                            {% elif forloop.counter <= user.bowling_rating|add:"0.5" %}
+                                                <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z"/>
+                                                </svg>
+                                            {% else %}
+                                                <svg class="w-5 h-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                                                </svg>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <span class="ml-1">{{ user.bowling_rating }}/5</span>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <p class="text-sm text-gray-500">Fielding Rating</p>
+                                <div class="flex items-center">
+                                    <div class="flex text-yellow-400">
+                                        {% for i in "12345" %}
+                                            {% if forloop.counter <= user.fielding_rating %}
+                                                <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                                                </svg>
+                                            {% elif forloop.counter <= user.fielding_rating|add:"0.5" %}
+                                                <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27z"/>
+                                                </svg>
+                                            {% else %}
+                                                <svg class="w-5 h-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                                                </svg>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <span class="ml-1">{{ user.fielding_rating }}/5</span>
+                                </div>
                             </div>
                             
                             <!-- Player statistics if available -->
