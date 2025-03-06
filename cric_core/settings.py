@@ -53,7 +53,6 @@ INSTALLED_APPS = [
     # 'allauth.socialaccount',
     
     "cric_users",
-    "cric_home",
     "cric_manage",
 ]
 SITE_ID = 1 
