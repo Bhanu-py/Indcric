@@ -17,39 +17,28 @@ User = get_user_model()
 
 
 class UsersHtmxTableView(SingleTableMixin, FilterView):
+    model = User
     table_class = UserHTMxTable
     filterset_class = UserFilter
-    queryset = User.objects.all()
-    paginate_by = 10
-
+    template_name = "cric_manage/user_table_htmx.html"  # Update to use your existing template
+    
     def get_template_names(self):
-        if self.request.htmx:
-            template_name = 'cric_manage/user_table_partial.html'
-        else:
-            template_name = 'cric_manage/user_table_htmx.html'
-        return template_name
-        
+        """Return appropriate template based on whether it's an HTMX request"""
+        if self.request.headers.get('HX-Request'):
+            return ["cric_manage/user_table_partial.html"]
+        return [self.template_name]
+    
     def get_queryset(self):
         queryset = super().get_queryset()
-        
-        # Ensure all users have wallet records
-        from cric_users.models import Wallet
-        from decimal import Decimal
-        
-        for user in queryset:
-            Wallet.objects.get_or_create(
-                user=user,
-                defaults={
-                    'amount': Decimal('0.00'),
-                    'status': 'active'
-                }
-            )
-            
+        # Debug output
+        print(f"UsersHtmxTableView: get_queryset called")
+        print(f"Filter parameters: {self.request.GET}")
         return queryset
         
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['filter'] = self.filterset  # Add the filter to the context
+        # Add the current request to the context
+        context['request'] = self.request
         return context
 
 

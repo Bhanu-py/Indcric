@@ -14,8 +14,21 @@
           hx-push-url="true"
           class="form-inline mb-3">
         {% csrf_token %}
-        <input type="text" name="query" placeholder="Search users" class="form-control mr-2" style="width: 60%; height: 50px;"> 
-        <button type="submit" class="btn btn-primary" style="width: 10%; height: 60px;">Search</button>
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+            <input type="text" name="query" placeholder="Search users" class="form-control mr-2" style="width: 60%; height: 50px;">
+            
+            <!-- Add wallet amount sorting dropdown -->
+            <div class="form-group">
+                <label for="sort_by_wallet">Sort by Wallet:</label>
+                <select name="sort_by_wallet" id="sort_by_wallet" class="form-control" onchange="this.form.submit()">
+                    <option value="">Default</option>
+                    <option value="asc" {% if request.GET.sort_by_wallet == 'asc' %}selected{% endif %}>Wallet (Low to High)</option>
+                    <option value="desc" {% if request.GET.sort_by_wallet == 'desc' %}selected{% endif %}>Wallet (High to Low)</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 10%; height: 60px;">Search</button>
+        </div>
     </form>
 
     <div class="progress">
