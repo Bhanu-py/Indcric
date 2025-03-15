@@ -22,7 +22,8 @@
                     
                     // Add all filter parameters
                     urlParams.forEach((value, key) => {
-                        if (key !== 'page' && key !== 'sort') {
+                        // Preserve all parameters except pagination 
+                        if (key !== 'page') {
                             newUrl.searchParams.set(key, value);
                         }
                     });

@@ -53,7 +53,6 @@ INSTALLED_APPS = [
     # 'allauth.socialaccount',
     
     "cric_users",
-    "cric_home",
     "cric_manage",
 ]
 SITE_ID = 1 
@@ -98,28 +97,28 @@ TEMPLATES = [
 WSGI_APPLICATION = "cric_core.wsgi.application"
 
 
-# Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
+# # Database
+# # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 # DATABASES = {
 #     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.getenv("databasename"),
-#         'USER': os.getenv("username"),
-#         'PASSWORD': os.getenv("password"),
-#         'HOST': os.getenv("hostname"),
-#         'PORT': os.getenv("port"),
-#         'OPTIONS': {
-#             'options': '-c search_path=django_schema,public'
-#         }
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv("databasename"),
+        'USER': os.getenv("username"),
+        'PASSWORD': os.getenv("password"),
+        'HOST': os.getenv("hostname"),
+        'PORT': os.getenv("port"),
+        'OPTIONS': {
+            'options': '-c search_path=django_schema,public'
+        }
+    }
+}
 
 
 

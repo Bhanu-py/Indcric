@@ -36,7 +36,7 @@ class UserHTMxTable(tables.Table):
         except Exception as e:
             print(f"Error fetching wallet for user {record.id}: {e}")
             return "€0.00"
-        
+    
     def render_role(self, value):
         """Render role with appropriate icon using hardcoded paths"""
         if not value:
