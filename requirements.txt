@@ -11,3 +11,4 @@ dj-database-url
 psycopg2
 python-dotenv
 crispy-bootstrap4
+psycopg2-binary>=2.9.3
