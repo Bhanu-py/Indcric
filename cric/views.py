@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
-from cric_users.models import Match, Team, Player, Attendance, Payment
+from .models import Match, Team, Player, Attendance, Payment
 from django.utils import timezone
 from django.contrib import messages
 from decimal import Decimal, InvalidOperation
@@ -9,7 +9,7 @@ from decimal import Decimal, InvalidOperation
 from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
 
-from cric_users.models import User
+from .models import User
 from .tables import UserHTMxTable
 from .filters import UserFilter
 
@@ -20,12 +20,12 @@ class UsersHtmxTableView(SingleTableMixin, FilterView):
     model = User
     table_class = UserHTMxTable
     filterset_class = UserFilter
-    template_name = "cric_manage/user_table_htmx.html"  # Update to use your existing template
+    template_name = "cric/pages/user_table_htmx.html"  # Update to use your existing template
     
     def get_template_names(self):
         """Return appropriate template based on whether it's an HTMX request"""
         if self.request.headers.get('HX-Request'):
-            return ["cric_manage/user_table_partial.html"]
+            return ["cric/partials/user_table_partial.html"]
         return [self.template_name]
     
     def get_queryset(self):
@@ -40,7 +40,6 @@ class UsersHtmxTableView(SingleTableMixin, FilterView):
         # Add the current request to the context
         context['request'] = self.request
         return context
-
 
 @login_required
 def create_match_view(request, username=None):
@@ -59,7 +58,7 @@ def create_match_view(request, username=None):
         # Check if we have valid player data before proceeding
         if not team1_players_str or not team2_players_str:
             messages.error(request, "Please select players for both teams.")
-            return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})
+            return render(request, 'cric/pages/create_match.html', {'users': User.objects.all()})
         
         # Safely convert player IDs to integers
         try:
@@ -67,12 +66,12 @@ def create_match_view(request, username=None):
             team2_players = [int(i) for i in team2_players_str.split(',') if i.strip()]
         except ValueError:
             messages.error(request, "Invalid player selection. Please try again.")
-            return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})
+            return render(request, 'cric/pages/create_match.html', {'users': User.objects.all()})
         
         # Validate we have at least one player in each team
         if not team1_players or not team2_players:
             messages.error(request, "Each team must have at least one player.")
-            return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})
+            return render(request, 'cric/pages/create_match.html', {'users': User.objects.all()})
             
         try:
             duration = int(duration) 
@@ -92,14 +91,14 @@ def create_match_view(request, username=None):
                 date = timezone.datetime.strptime(date_str, '%Y-%m-%d').date()
             except ValueError:
                 messages.error(request, "Invalid date format. Please use YYYY-MM-DD.")
-                return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})
+                return render(request, 'cric/pages/create_match.html', {'users': User.objects.all()})
 
         if time_str:
             try:
                 time = timezone.datetime.strptime(time_str, '%H:%M').time()
             except ValueError:
                 messages.error(request, "Invalid time format. Please use HH:MM.")
-                return render(request, 'cric_manage/create_match.html', {'users': User.objects.all()})
+                return render(request, 'cric/pages/create_match.html', {'users': User.objects.all()})
         
         team1_captain = None
         team2_captain = None
@@ -140,7 +139,7 @@ def create_match_view(request, username=None):
         context = {
             'users': all_users,
         }
-        return render(request, 'cric_manage/create_match.html', context)
+        return render(request, 'cric/pages/create_match.html', context)
 
 @login_required
 def attendance_view(request):
@@ -222,7 +221,7 @@ def attendance_view(request):
         'confirmed_count': confirmed_count,
         'dynamic_info': dynamic_info,
     }
-    return render(request, 'cric_manage/attendance.html', context)
+    return render(request, 'cric/pages/attendance.html', context)
 
 @login_required
 def payments_view(request):
@@ -292,8 +291,7 @@ def payments_view(request):
         'paid_list': paid_list,
         'attendance_by_player': attendance_by_player,
     }
-    return render(request, 'cric_manage/payments.html', context)
-
+    return render(request, 'cric/pages/payments.html', context)
 
 @login_required
 def manage_users(request):
@@ -331,7 +329,7 @@ def manage_users(request):
             
     users = User.objects.all()
     context = {'users': users}
-    return render(request, 'cric_manage/manage_users.html', context)
+    return render(request, 'cric/pages/manage_users.html', context)
 
 @login_required
 def edit_user_view(request, user_id):
@@ -389,7 +387,7 @@ def edit_user_view(request, user_id):
             
             # If the request is HTMX, send the message in context
             if request.headers.get('HX-Request'):
-                return render(request, 'cric_manage/edit_user_form.html', {
+                return render(request, 'cric/pages/edit_user_form.html', {
                     'user': user,
                     'wallet_amount': wallet_amount,
                     'message': 'User updated successfully!',
@@ -401,13 +399,13 @@ def edit_user_view(request, user_id):
             return redirect('manage-users')
         
         # GET request - show the form
-        return render(request, 'cric_manage/edit_user_form.html', {
+        return render(request, 'cric/pages/edit_user_form.html', {
             'user': user,
             'wallet_amount': wallet_amount
         })
         
     except User.DoesNotExist:
-        return render(request, 'cric_manage/edit_user_form.html', {
+        return render(request, 'cric/pages/edit_user_form.html', {
             'message': 'User not found.',
             'success': False
         })

@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.templatetags.static import static
-from cric_users.models import Wallet
+from .models import Wallet
 from django.conf import settings
 import os
 

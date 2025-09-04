@@ -45,15 +45,13 @@ INSTALLED_APPS = [
     'django_cleanup.apps.CleanupConfig',
 
     'django_tables2',
-    'cric_users.management.commands',
     'django_htmx',
     'django.contrib.sites',
     'allauth',
     'allauth.account',
     # 'allauth.socialaccount',
     
-    "cric_users",
-    "cric_manage",
+    "cric",
 ]
 SITE_ID = 1 
 
@@ -177,7 +175,7 @@ STATICFILES_DIRS = [
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-AUTH_USER_MODEL = 'cric_users.User'
+AUTH_USER_MODEL = 'cric.User'
 
 LOGGING = {
     'version': 1,

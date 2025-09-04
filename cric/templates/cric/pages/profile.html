@@ -2,14 +2,88 @@
 
 {% block content %}
 
-<div class="max-w-lg mx-auto flex flex-col items-center pt-20 px-4">
-    <img class="w-36 h-36 rounded-full object-cover mb-4" src="{{ profile.avatar }}" />
-    <div class="text-center">
-        <h1>{{ profile.username }}</h1>
-        <div class="text-gray-400 mb-2 -mt-3">@{{ profile.username }}</div>
-        {% if profile.info %}
-        <div class="mt-8 hyphens-auto">{{ profile.info|linebreaksbr }}</div>
-        {% endif %}  
+<div class="container mx-auto mt-10 p-5">
+    <div class="max-w-2xl mx-auto bg-white shadow-md rounded-lg overflow-hidden">
+        <div class="p-5">
+            {% if edit_mode %}
+            <h1 class="text-2xl font-bold mb-4">Edit Profile</h1>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="mb-4">
+                    <label for="id_role" class="block text-gray-700 font-medium mb-2">Role</label>
+                    {{ form.role }}
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div>
+                        <label for="id_batting_rating" class="block text-gray-700 font-medium mb-2">Batting Rating</label>
+                        {{ form.batting_rating }}
+                    </div>
+                    <div>
+                        <label for="id_bowling_rating" class="block text-gray-700 font-medium mb-2">Bowling Rating</label>
+                        {{ form.bowling_rating }}
+                    </div>
+                    <div>
+                        <label for="id_fielding_rating" class="block text-gray-700 font-medium mb-2">Fielding Rating</label>
+                        {{ form.fielding_rating }}
+                    </div>
+                </div>
+
+                <div class="mt-8 text-center">
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        Save Changes
+                    </button>
+                    <a href="{% url 'profile' %}" class="ml-4 text-gray-600 hover:text-gray-800">Cancel</a>
+                </div>
+            </form>
+            {% else %}
+            <div class="flex items-center space-x-4">
+                <!-- Placeholder for an avatar -->
+                <div class="w-24 h-24 bg-gray-300 rounded-full flex items-center justify-center">
+                    <span class="text-gray-500 text-4xl">{{ user.username|first|upper }}</span>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold">{{ user.username }}</h1>
+                    <p class="text-gray-600">{{ user.email }}</p>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <h2 class="text-xl font-semibold">Player Information</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <p class="text-gray-600 font-medium">Role</p>
+                        <p class="text-lg">{{ user.role|capfirst }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <h2 class="text-xl font-semibold">Skill Ratings</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div>
+                        <p class="text-gray-600 font-medium">Batting</p>
+                        <p class="text-lg">{{ user.batting_rating }} / 5.0</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 font-medium">Bowling</p>
+                        <p class="text-lg">{{ user.bowling_rating }} / 5.0</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 font-medium">Fielding</p>
+                        <p class="text-lg">{{ user.fielding_rating }} / 5.0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 text-center">
+                <a href="{% url 'profile-edit' %}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    Edit Profile
+                </a>
+            </div>
+            {% endif %}
+        </div>
     </div>
 </div>
 

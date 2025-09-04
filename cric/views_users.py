@@ -33,12 +33,12 @@ def profile_view(request, username=None):
                 form.save()
                 messages.success(request, "Profile updated successfully!")
                 return redirect('profile')
-        context = {'user': user, 'form': form, 'edit_mode': True}
+        context = {'user': user, 'form': form, 'edit_mode': True, 'is_profile_page': True}
     else:
         # Just display profile data
-        context = {'user': user}
+        context = {'user': user, 'is_profile_page': True}
     
-    return render(request, 'cric_users/profile.html', context)
+    return render(request, 'cric/pages/profile.html', context)
 
 
 @login_required
@@ -49,7 +49,8 @@ def profile_edit_view(request):
 
 @login_required
 def profile_settings_view(request):
-    return render(request, 'cric_users/profile_settings.html')
+    context = {'is_profile_page': True}
+    return render(request, 'cric/pages/profile_settings.html', context)
 
 
 @login_required
@@ -134,7 +135,7 @@ def profile_delete_view(request):
         messages.success(request, 'Account deleted, what a pity')
         return redirect('home')
     
-    return render(request, 'cric_users/profile_delete.html')
+    return render(request, 'cric/pages/profile_delete.html')
 
 
 @login_required
@@ -166,4 +167,4 @@ def match_detail_view(request, match_id):
         'team1_players': team1_players,
         'team2_players': team2_players,
     }
-    return render(request, 'cric_users/match_detail.html', context)
+    return render(request, 'cric/pages/match_detail.html', context)

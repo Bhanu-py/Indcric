@@ -2,7 +2,7 @@ from decimal import Decimal
 from django.db.models import Q, OuterRef, Subquery, DecimalField, Value
 from django.db.models.functions import Coalesce
 import django_filters
-from cric_users.models import User, Match, Team, Payment, Attendance, Wallet
+from .models import User, Match, Team, Payment, Attendance, Wallet
 
 class UserFilter(django_filters.FilterSet):
     query = django_filters.CharFilter(method='filter_query', label='Search')
