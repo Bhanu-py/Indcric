@@ -119,8 +119,10 @@
       <!-- Page-specific content -->
     {% endblock %}
 
+    {% if not is_profile_page %}
     {% block content %}
     {% endblock %}
+    {% endif %}
 
     {% block javascript %}{% endblock %}
 

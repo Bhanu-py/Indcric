@@ -45,15 +45,13 @@ INSTALLED_APPS = [
     'django_cleanup.apps.CleanupConfig',
 
     'django_tables2',
-    'cric_users.management.commands',
     'django_htmx',
     'django.contrib.sites',
     'allauth',
     'allauth.account',
     # 'allauth.socialaccount',
     
-    "cric_users",
-    "cric_manage",
+    "cric",
 ]
 SITE_ID = 1 
 
@@ -97,30 +95,40 @@ TEMPLATES = [
 WSGI_APPLICATION = "cric_core.wsgi.application"
 
 
-# # Database
-# # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
+# Database
+# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv("databasename"),
-        'USER': os.getenv("username"),
-        'PASSWORD': os.getenv("password"),
-        'HOST': os.getenv("hostname"),
-        'PORT': os.getenv("port"),
-        'OPTIONS': {
-            'options': '-c search_path=django_schema,public'
+# Check if database credentials are provided
+if os.getenv("hostname") and os.getenv("databasename") and os.getenv("username") and os.getenv("password"):
+    # Use provided remote database credentials
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv("databasename"),
+            'USER': os.getenv("username"),
+            'PASSWORD': os.getenv("password"),
+            'HOST': os.getenv("hostname"),
+            'PORT': os.getenv("port", "5432"),
+            'OPTIONS': {
+                'options': '-c search_path=django_schema,public'
+            }
         }
     }
-}
-
-
+else:
+    # Use local Docker PostgreSQL database with trust authentication
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'indcric_db',
+            'USER': 'indcric_user', 
+            'PASSWORD': 'indcric_password',
+            'HOST': '127.0.0.1',  # Use IP instead of localhost
+            'PORT': '5432',
+            'OPTIONS': {
+                'options': '-c search_path=django_schema,public',
+            }
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -167,7 +175,7 @@ STATICFILES_DIRS = [
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-AUTH_USER_MODEL = 'cric_users.User'
+AUTH_USER_MODEL = 'cric.User'
 
 LOGGING = {
     'version': 1,

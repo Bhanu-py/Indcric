@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="bg-white shadow-lg rounded-lg p-6">
+        <h1 class="text-4xl font-bold mb-4 text-gray-800">{{ match.name }}</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+                <p class="text-lg"><strong class="font-semibold text-gray-600">Date:</strong> {{ match.date }}</p>
+                <p class="text-lg"><strong class="font-semibold text-gray-600">Time:</strong> {{ match.time }}</p>
+                <p class="text-lg"><strong class="font-semibold text-gray-600">Location:</strong> {{ match.location }}</p>
+            </div>
+            <div>
+                <p class="text-lg"><strong class="font-semibold text-gray-600">Total Cost:</strong> €{{ match.cost }}</p>
+                {% if match.cost_per_person %}
+                    <p class="text-lg"><strong class="font-semibold text-gray-600">Cost Per Person:</strong> €{{ match.cost_per_person }}</p>
+                {% endif %}
+                {% if match.winner %}
+                    <p class="text-lg font-bold text-green-600">Winner: {{ match.winner.name }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <h2 class="text-3xl font-bold mt-8 mb-4 border-b pb-2 text-gray-700">Teams & Players</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {% for team in teams %}
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h3 class="text-2xl font-semibold mb-3 text-blue-600">{{ team.name }}</h3>
+                    <p class="mb-3"><strong class="text-gray-600">Captain:</strong> {{ team.captain.username }}</p>
+                    <ul class="list-disc list-inside">
+                        {% for player in team.player_set.all %}
+                            <li class="text-gray-700">{{ player.user.username }} ({{ player.role }})</li>
+                        {% empty %}
+                            <li class="text-gray-500">No players in this team.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% empty %}
+                <p class="text-gray-500">No teams have been set for this match.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

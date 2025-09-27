@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: indcric-db-1
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=indcric_db
+      - POSTGRES_USER=indcric_user
+      - POSTGRES_PASSWORD=indcric_password
+      # Use trust authentication for all connections
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    ports:
+      - "5432:5432"
+    # Ensure the database is properly configured after initialization
+    command: >
+      postgres -c listen_addresses='*'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U indcric_user -d indcric_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
