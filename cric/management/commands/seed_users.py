@@ -2,6 +2,7 @@ from django.core.management.base import BaseCommand
 from cric.models import User
 import csv
 
+
 class Command(BaseCommand):
     help = 'Seeds the database with initial users from a CSV file'
 
@@ -14,7 +15,7 @@ class Command(BaseCommand):
                     username=row['username'],
                     password=row['password'],
                     email=row['email'],
-                    role=row['role'],
+                    role=row['email'],
                     is_staff=bool(int(row['is_staff']))
                 )
         self.stdout.write(self.style.SUCCESS('Successfully seeded users.'))
