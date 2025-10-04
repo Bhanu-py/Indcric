@@ -24,14 +24,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-v@v8d$*(-5sso_wrjp(_tl7o3ao(_q98*c&0d4o3c5vbwxhbj%"
+SECRET_KEY = os.getenv(
+    'SECRET_KEY', "django-insecure-v@v8d$*(-5sso_wrjp(_tl7o3ao(_q98*c&0d4o3c5vbwxhbj%")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = ['*']  # Update with your domain(s) in production
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
-CSRF_TRUSTED_ORIGINS = [ 'https://*' ]
+CSRF_TRUSTED_ORIGINS = ['https://*.onrender.com', 'https://*']
 
 # Application definition
 
@@ -50,20 +51,22 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     # 'allauth.socialaccount',
-    
+
     "cric",
 ]
-SITE_ID = 1 
+SITE_ID = 1
 
-LOGIN_REDIRECT_URL = '/' 
+LOGIN_REDIRECT_URL = '/'
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # Add this for static files
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",  # Ensure this line is present
+    # Ensure this line is present
+    "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     'allauth.account.middleware.AccountMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
@@ -79,8 +82,10 @@ ROOT_URLCONF = "cric_core.urls"
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],  # include your custom templates folder if needed
-        'APP_DIRS': True,  # ensures app templates (like cric_manage) are detected
+        # include your custom templates folder if needed
+        'DIRS': [BASE_DIR / "templates"],
+        # ensures app templates (like cric_manage) are detected
+        'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 "django.template.context_processors.debug",
@@ -120,7 +125,7 @@ else:
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': 'indcric_db',
-            'USER': 'indcric_user', 
+            'USER': 'indcric_user',
             'PASSWORD': 'indcric_password',
             'HOST': '127.0.0.1',  # Use IP instead of localhost
             'PORT': '5432',
@@ -165,6 +170,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 STATICFILES_DIRS = [
     BASE_DIR / "static",
