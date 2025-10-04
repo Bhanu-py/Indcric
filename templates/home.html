@@ -22,7 +22,7 @@
     <section>
         <h2 class="text-2xl font-bold mb-4">Previous Matches</h2>
         {% if previous_matches %}
-            <div class="grid gap-4">
+            <div class="grid gap-4" width=20px>
                 {% for match in previous_matches %}
                     <a href="{% url 'match_detail' match.id %}" class="block bg-white shadow rounded-lg p-4 hover:shadow-md transition duration-200">
                         <h3 class="font-semibold text-lg">{{ match.name }}</h3>
