@@ -99,7 +99,7 @@ WSGI_APPLICATION = "cric_core.wsgi.application"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 # Check if database credentials are provided
-if os.getenv("db_hostname") and os.getenv("db_databasename") and os.getenv("db_username") and os.getenv("password"):
+if os.getenv("db_hostname") and os.getenv("db_databasename") and os.getenv("db_username") and os.getenv("db_password"):
     # Use provided remote database credentials
     DATABASES = {
         'default': {
@@ -170,8 +170,8 @@ STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
-# Add this line to define STATIC_ROOT - this is what's missing
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+# Change this line to point to a different directory
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
