@@ -99,16 +99,16 @@ WSGI_APPLICATION = "cric_core.wsgi.application"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 # Check if database credentials are provided
-if os.getenv("hostname") and os.getenv("databasename") and os.getenv("username") and os.getenv("password"):
+if os.getenv("db_hostname") and os.getenv("db_databasename") and os.getenv("db_username") and os.getenv("password"):
     # Use provided remote database credentials
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv("databasename"),
-            'USER': os.getenv("username"),
-            'PASSWORD': os.getenv("password"),
-            'HOST': os.getenv("hostname"),
-            'PORT': os.getenv("port", "5432"),
+            'NAME': os.getenv("db_databasename"),
+            'USER': os.getenv("db_username"),
+            'PASSWORD': os.getenv("db_password"),
+            'HOST': os.getenv("db_hostname"),
+            'PORT': os.getenv("db_port", "5432"),
             'OPTIONS': {
                 'options': '-c search_path=django_schema,public'
             }
