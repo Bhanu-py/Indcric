@@ -14,6 +14,8 @@ from pathlib import Path
 import os
 import dj_database_url
 from dotenv import load_dotenv
+import logging
+logger = logging.getLogger(__name__)
 load_dotenv(override=True)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -29,9 +31,12 @@ SECRET_KEY = "django-insecure-v@v8d$*(-5sso_wrjp(_tl7o3ao(_q98*c&0d4o3c5vbwxhbj%
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
-ALLOWED_HOSTS = ['*']  # Update with your domain(s) in production
+ALLOWED_HOSTS = ['icg-club.azurewebsites.net', 'localhost', '127.0.0.1']
 
-CSRF_TRUSTED_ORIGINS = [ 'https://*' ]
+CSRF_TRUSTED_ORIGINS = [
+    'https://icg-club.azurewebsites.net',
+    'http://icg-club.azurewebsites.net'
+]
 
 # Application definition
 
@@ -59,6 +64,7 @@ LOGIN_REDIRECT_URL = '/'
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # Add this line after SecurityMiddleware
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -98,9 +104,25 @@ WSGI_APPLICATION = "cric_core.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# Check if database credentials are provided
-if os.getenv("db_hostname") and os.getenv("db_databasename") and os.getenv("db_username") and os.getenv("db_password"):
-    # Use provided remote database credentials
+required_vars = ["db_hostname", "db_databasename", "db_username", "db_password"]
+missing = [var for var in required_vars if not os.getenv(var)]
+if missing and not DEBUG:
+    raise Exception(f"Missing environment variables: {', '.join(missing)}")
+
+
+# Check for connection string first (preferred method)
+DATABASE_URL = os.environ.get('CUSTOMCONNSTR_POSTGRESQL_CONNECTION_STRING')
+
+if DATABASE_URL:
+    logger.info("Using Azure connection string for database configuration")
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    }
+    DATABASES['default']['OPTIONS'] = {'options': '-c search_path=django_schema,public'}
+    
+# Fall back to individual environment variables if available
+elif os.getenv("db_hostname") and os.getenv("db_databasename") and os.getenv("db_username") and os.getenv("db_password"):
+    logger.info("Using individual environment variables for database configuration")
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -114,15 +136,17 @@ if os.getenv("db_hostname") and os.getenv("db_databasename") and os.getenv("db_u
             }
         }
     }
+    
+# Last resort: use local configuration
 else:
-    # Use local Docker PostgreSQL database with trust authentication
+    logger.info("Using local database configuration")
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': 'indcric_db',
             'USER': 'indcric_user', 
             'PASSWORD': 'indcric_password',
-            'HOST': '127.0.0.1',  # Use IP instead of localhost
+            'HOST': '127.0.0.1',
             'PORT': '5432',
             'OPTIONS': {
                 'options': '-c search_path=django_schema,public',
@@ -162,16 +186,29 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.1/howto/static-files/
-
 STATIC_URL = "static/"
 
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
-# Change this line to point to a different directory
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Add whitenoise for efficient static file serving on Azure
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # Add this line after SecurityMiddleware
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",  # Ensure this line is present
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'allauth.account.middleware.AccountMiddleware',
+    'django_htmx.middleware.HtmxMiddleware',
+]
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
