@@ -11,7 +11,7 @@ from django.db.utils import OperationalError
 from django.http import HttpResponse
 from django.contrib.auth import get_user_model
 from .forms import ProfileForm, EmailForm, UsernameForm
-from .models import Match
+from .models import Match, Session
 from django.utils import timezone
 
 
@@ -140,13 +140,37 @@ def profile_delete_view(request):
 
 @login_required
 def home_view(request):
-    upcoming_matches = Match.objects.filter(date__gte=timezone.now().date()).order_by('date', 'time')
-    previous_matches = Match.objects.filter(date__lt=timezone.now().date()).order_by('-date', '-time')
+    upcoming_sessions = Session.objects.filter(date__gte=timezone.now().date()).order_by('date', 'time')
+    previous_sessions = Session.objects.filter(date__lt=timezone.now().date()).order_by('-date', '-time')
     context = {
-        'upcoming_matches': upcoming_matches,
-        'previous_matches': previous_matches,
+        'upcoming_sessions': upcoming_sessions,
+        'previous_sessions': previous_sessions,
     }
     return render(request, "home.html", context)
+
+@login_required
+def session_detail_view(request, session_id):
+    session = get_object_or_404(Session, pk=session_id)
+    # Assuming one match per session for now
+    match = session.matches.first()
+    
+    team1_players = []
+    team2_players = []
+    teams = []
+    if match:
+        teams = match.teams.all()
+        if teams.count() >= 2:
+            team1_players = teams[0].players.select_related('user').all()
+            team2_players = teams[1].players.select_related('user').all()
+
+    context = {
+        'session': session,
+        'teams': teams,
+        'team1_players': team1_players,
+        'team2_players': team2_players,
+    }
+    return render(request, 'cric/pages/session_detail.html', context)
+
 
 @login_required
 def match_detail_view(request, match_id):

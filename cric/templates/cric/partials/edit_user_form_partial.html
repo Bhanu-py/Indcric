@@ -1,7 +1,18 @@
-{% extends "base.html" %}
+{% comment %}
+This is a partial template for the edit user form without header/footer
+Used for modal/popup display with HTMX
+{% endcomment %}
 
-{% block content %}
-<div class="max-w-lg mx-auto p-6 bg-white rounded shadow-md">
+<div class="modal-content">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold">Edit User</h2>
+        <button onclick="document.getElementById('modalOverlay').classList.add('hidden');" class="text-gray-500 hover:text-gray-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </div>
+
     {% if message %}
     <div class="mb-4 p-4 {% if success %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %} rounded">
         {{ message }}
@@ -9,9 +20,9 @@
     {% endif %}
     
     {% if user %}
-    <form method="post" action="{% url 'edit_user' user.id %}">
+    <form method="post" action="{% url 'cric:edit-user' user.id %}">
         {% csrf_token %}
-        <h2 class="text-xl font-bold mb-4">Edit User</h2>
+        
         <div class="mb-4">
             <label class="block text-gray-700 text-sm font-bold mb-2 !inline-block" for="username">Username</label>
             <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
@@ -79,11 +90,10 @@
             <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
                 Save Changes
             </button>
-            <a href="{% url 'manage-users' %}" class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800">
+            <button type="button" onclick="document.getElementById('modalOverlay').classList.add('hidden');" class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800">
                 Cancel
-            </a>
+            </button>
         </div>
     </form>
     {% endif %}
 </div>
-{% endblock %}
