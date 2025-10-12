@@ -1,40 +1,138 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-8 py-24">
-    <section class="mb-12">
-        <h2 class="text-2xl font-bold mb-4">Upcoming Sessions</h2>
-        {% if upcoming_sessions %}
-            <div class="grid gap-4">
-                {% for session in upcoming_sessions %}
-                    <a href="{{ session.get_absolute_url }}" class="block bg-white shadow rounded-lg p-4 hover:shadow-md transition duration-200">
-                        <h3 class="font-semibold text-lg">{{ session.name }}</h3>
-                        <p class="text-gray-600">
-                            Date: {{ session.date }} | Time: {{ session.time }} | Location: {{ session.location }}
-                        </p>
-                    </a>
-                {% endfor %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="mb-8">
+        <div class="flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-gray-900">Cricket Sessions</h1>
+            {% if user.is_staff %}
+            <a href="{% url 'create_session' %}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Create Session
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Upcoming Sessions -->
+    <div class="mb-12">
+        <h2 class="text-2xl font-semibold mb-4">Upcoming Sessions</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for session in upcoming_sessions %}
+            <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                <div class="px-6 py-4">
+                    <div class="flex justify-between items-start">
+                        <a href="{% url 'session_detail' session.id %}" class="block w-full">
+                            <h3 class="text-xl font-bold text-blue-600 hover:text-blue-800 mb-2">{{ session.name }}</h3>
+                            <p class="text-gray-600">{{ session.date|date:"j F Y" }} at {{ session.time }}</p>
+                            <p class="text-gray-600">{{ session.location }}</p>
+                        </a>
+                        {% if user.is_staff %}
+                        <div class="ml-4">
+                            <form method="POST" action="{% url 'delete_session' session.id %}" onsubmit="return confirm('Are you sure you want to delete this session? This action cannot be undone.');">
+                                {% csrf_token %}
+                                <button type="submit" class="text-red-500 hover:text-red-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if session.poll %}
+                    <div class="mt-4">
+                        <div class="flex items-center">
+                            <div class="text-sm text-gray-600">Poll:</div>
+                            <div class="ml-2 flex">
+                                <span class="text-xs font-semibold inline-block py-1 px-2 rounded-full text-green-600 bg-green-200 mr-1">
+                                    Yes: {{ vote_counts|get_item:session.id|get_item:'yes_votes' }}
+                                </span>
+                                <span class="text-xs font-semibold inline-block py-1 px-2 rounded-full text-red-600 bg-red-200">
+                                    No: {{ vote_counts|get_item:session.id|get_item:'no_votes' }}
+                                </span>
+                                {% if not session.poll.is_open %}
+                                <span class="ml-1 text-xs inline-flex items-center py-1 px-2 rounded-full text-yellow-600 bg-yellow-100">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                                    </svg>
+                                    Closed
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        {% with total=vote_counts|get_item:session.id|get_item:'total_votes' yes_percentage=vote_counts|get_item:session.id|get_item:'yes_percentage' %}
+                        {% if total > 0 %}
+                        <div class="mt-1">
+                            <div class="overflow-hidden h-2 text-xs flex rounded bg-gray-200">
+                                <div style="width: {{ yes_percentage }}%;" 
+                                     class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500">
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-        {% else %}
-            <p>No upcoming sessions.</p>
-        {% endif %}
-    </section>
-    <section>
-        <h2 class="text-2xl font-bold mb-4">Previous Sessions</h2>
-        {% if previous_sessions %}
-            <div class="grid gap-4">
-                {% for session in previous_sessions %}
-                    <a href="{{ session.get_absolute_url }}" class="block bg-white shadow rounded-lg p-4 hover:shadow-md transition duration-200">
-                        <h3 class="font-semibold text-lg">{{ session.name }}</h3>
-                        <p class="text-gray-600">
-                            Date: {{ session.date }} | Time: {{ session.time }} | Location: {{ session.location }}
-                        </p>
-                    </a>
-                {% endfor %}
+            {% empty %}
+            <div class="col-span-3">
+                <p class="text-gray-500 text-center">No upcoming sessions found.</p>
             </div>
-        {% else %}
-            <p>No previous sessions.</p>
-        {% endif %}
-    </section>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Previous Sessions -->
+    <div>
+        <h2 class="text-2xl font-semibold mb-4">Previous Sessions</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for session in previous_sessions %}
+            <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                <div class="px-6 py-4">
+                    <div class="flex justify-between items-start">
+                        <a href="{% url 'session_detail' session.id %}" class="block w-full">
+                            <h3 class="text-xl font-bold text-gray-600 hover:text-gray-800 mb-2">{{ session.name }}</h3>
+                            <p class="text-gray-600">{{ session.date|date:"j F Y" }} at {{ session.time }}</p>
+                            <p class="text-gray-600">{{ session.location }}</p>
+                        </a>
+                        {% if user.is_staff %}
+                        <div class="ml-4">
+                            <form method="POST" action="{% url 'delete_session' session.id %}" onsubmit="return confirm('Are you sure you want to delete this session? This action cannot be undone.');">
+                                {% csrf_token %}
+                                <button type="submit" class="text-red-500 hover:text-red-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if session.matches.exists %}
+                    <div class="mt-2">
+                        <p class="text-sm text-gray-600">
+                            {% with match=session.matches.first %}
+                            Match: {{ match.name }}
+                            {% if match.winner %}
+                            - Winner: {{ match.winner.name }}
+                            {% endif %}
+                            {% endwith %}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-3">
+                <p class="text-gray-500 text-center">No previous sessions found.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
 </div>
 {% endblock %}

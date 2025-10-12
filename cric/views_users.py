@@ -192,3 +192,11 @@ def match_detail_view(request, match_id):
         'team2_players': team2_players,
     }
     return render(request, 'cric/pages/match_detail.html', context)
+
+def profile_onboarding_view(request):
+    """
+    View for user profile onboarding process.
+    Currently redirects to profile page but can be expanded for first-time setup.
+    """
+    # For now, just redirect to the profile page
+    return redirect('profile')

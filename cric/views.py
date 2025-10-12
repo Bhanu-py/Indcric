@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
-from .models import Match, Team, MatchPlayer, Attendance, Payment, Session, Poll, Vote
+from .models import Match, Team, SessionPlayer, Attendance, Payment, Session, Poll, Vote
 from django.utils import timezone
 from django.contrib import messages
 from decimal import Decimal, InvalidOperation
@@ -86,7 +86,7 @@ def create_session_view(request, username=None):
             duration=duration,
             location=location,
             cost=cost,
-            # created_by=request.user  # Temporarily commented out until migrations are run
+            created_by=request.user
         )
         
         # Create a default poll for the session
@@ -112,7 +112,7 @@ def attendance_view(request):
     
     # Calculate and attach dynamic info for all matches
     for match in all_matches:
-        attended_mps = Attendance.objects.filter(match_player__match=match, attended=True)
+        attended_mps = Attendance.objects.filter(match_player__session=match.session, attended=True)
         count = attended_mps.count()
         cost = None
         if match.session and match.session.attendance_confirmed and match.session.cost_per_person:
@@ -132,7 +132,8 @@ def attendance_view(request):
 @login_required
 def match_attendance_detail_view(request, match_id):
     try:
-        match = Match.objects.prefetch_related('teams__captain', 'teams__matchplayer_set__player__user').get(pk=match_id)
+        match = Match.objects.prefetch_related('teams__captain').get(pk=match_id)
+        session = match.session
     except Match.DoesNotExist:
         messages.error(request, "The selected match does not exist.")
         return redirect('attendance_list')
@@ -141,8 +142,8 @@ def match_attendance_detail_view(request, match_id):
     if request.method == 'POST':
         present_mp_ids = request.POST.getlist('present')
         
-        # Update attendance records for all players in the match
-        for mp in match.matchplayer_set.all():
+        # Update attendance records for all players in the session
+        for mp in SessionPlayer.objects.filter(session=session):
             attendance, created = Attendance.objects.get_or_create(match_player=mp)
             attendance.attended = str(mp.id) in present_mp_ids
             attendance.save()
@@ -174,10 +175,12 @@ def match_attendance_detail_view(request, match_id):
     team1_players = []
     team2_players = []
     if teams.count() >= 2:
-        team1_players = teams[0].matchplayer_set.select_related('player').all()
-        team2_players = teams[1].matchplayer_set.select_related('player').all()
+        team1 = teams[0]
+        team2 = teams[1]
+        team1_players = SessionPlayer.objects.filter(session=session, team=team1).select_related('user').all()
+        team2_players = SessionPlayer.objects.filter(session=session, team=team2).select_related('user').all()
      
-    present_list = list(Attendance.objects.filter(match_player__match=match, attended=True).values_list('match_player_id', flat=True))
+    present_list = list(Attendance.objects.filter(match_player__session=session, attended=True).values_list('match_player_id', flat=True))
     
     context = {
         'match': match,
@@ -214,24 +217,20 @@ def payments_view(request):
         except Session.DoesNotExist:
             selected_session = None
 
-    # Build dictionary mapping attended players (player.id -> attendance record)
+    # Build dictionary mapping attended players (user.id -> attendance record)
     attendance_by_player = {}
     if selected_session:
-        match = selected_session.matches.first()
-        if match:
-            for attendance in Attendance.objects.filter(match=match, attended=True):
-                attendance_by_player[attendance.player.id] = attendance
+        for attendance in Attendance.objects.filter(match_player__session=selected_session, attended=True):
+            attendance_by_player[attendance.match_player.user.id] = attendance
 
     # Build list of player ids with payment status "paid"
     paid_list = []
     if selected_session:
         for payment in Payment.objects.filter(session=selected_session, status='paid'):
-            # Find the player associated with this user
-            for team in teams:
-                player = team.player_set.filter(user=payment.user).first()
-                if player:
-                    paid_list.append(str(player.id))
-                    break
+            # Find the session player associated with this user
+            session_player = SessionPlayer.objects.filter(session=selected_session, user=payment.user).first()
+            if session_player:
+                paid_list.append(str(session_player.id))
 
     context = {
         'sessions': sessions,
@@ -379,6 +378,7 @@ def session_detail_view(request, session_id):
     yes_percentage = 0
     yes_voters = []
     
+    
     if hasattr(session, 'poll'):
         poll = session.poll
         if request.user.is_authenticated:
@@ -413,22 +413,22 @@ def session_detail_view(request, session_id):
         teams = match.teams.all()
         if teams.count() >= 1:
             team1 = teams[0]
-            team1_players = team1.matchplayer_set.select_related('player').all()
+            team1_players = SessionPlayer.objects.filter(session=session, team=team1).select_related('user').all()
             
             # Mark users who are in teams as assigned
             for player in team1_players:
                 for voter in yes_voters:
-                    if voter['user'].id == player.player.id:
+                    if voter['user'].id == player.user.id:
                         voter['team_assigned'] = True
         
         if teams.count() >= 2:
             team2 = teams[1]
-            team2_players = team2.matchplayer_set.select_related('player').all()
+            team2_players = SessionPlayer.objects.filter(session=session, team=team2).select_related('user').all()
             
             # Mark users who are in teams as assigned
             for player in team2_players:
                 for voter in yes_voters:
-                    if voter['user'].id == player.player.id:
+                    if voter['user'].id == player.user.id:
                         voter['team_assigned'] = True
     
     context = {
@@ -504,6 +504,10 @@ def save_teams_view(request, session_id):
         team1_captain_id = request.POST.get('team1_captain')
         team2_captain_id = request.POST.get('team2_captain')
         
+        # Debug output
+        print(f"Team1 players: {team1_players_str}")
+        print(f"Team2 players: {team2_players_str}")
+        
         # Create or update match and teams
         match = None
         team1 = None
@@ -542,13 +546,13 @@ def save_teams_view(request, session_id):
                 )
             
             # Clear existing players and add new ones
-            MatchPlayer.objects.filter(match=match, team=team1).delete()
+            SessionPlayer.objects.filter(session=session, team=team1).delete()
             for player_id in team1_player_ids:
                 try:
-                    player = User.objects.get(id=player_id)
-                    MatchPlayer.objects.create(
-                        match=match,
-                        player=player,
+                    user = User.objects.get(id=player_id)
+                    SessionPlayer.objects.create(
+                        session=session,
+                        user=user,
                         team=team1
                     )
                 except User.DoesNotExist:
@@ -578,13 +582,13 @@ def save_teams_view(request, session_id):
                 )
             
             # Clear existing players and add new ones
-            MatchPlayer.objects.filter(match=match, team=team2).delete()
+            SessionPlayer.objects.filter(session=session, team=team2).delete()
             for player_id in team2_player_ids:
                 try:
-                    player = User.objects.get(id=player_id)
-                    MatchPlayer.objects.create(
-                        match=match,
-                        player=player,
+                    user = User.objects.get(id=player_id)
+                    SessionPlayer.objects.create(
+                        session=session,
+                        user=user,
                         team=team2
                     )
                 except User.DoesNotExist:
@@ -664,6 +668,28 @@ def create_user_view(request):
     # GET request - show the form
     return render(request, 'cric/pages/create_user_form.html')
 
+@login_required
+def delete_session_view(request, session_id):
+    """View for deleting a session (admin only)."""
+    if not request.user.is_staff:
+        messages.error(request, "You don't have permission to perform this action.")
+        return redirect('home')
+        
+    session = get_object_or_404(Session, id=session_id)
+    
+    if request.method == 'POST':
+        # Store session name to use in success message
+        session_name = session.name
+        
+        # Delete the session (this will cascade delete related objects)
+        session.delete()
+        
+        messages.success(request, f"Session '{session_name}' has been deleted.")
+        return redirect('home')
+    
+    # If it's a GET request, redirect to session detail
+    return redirect('session_detail', session_id=session_id)
+
 def home(request):
     """Home page view showing upcoming and previous sessions."""
     today = timezone.now().date()
@@ -674,8 +700,25 @@ def home(request):
     # Get previous sessions (past dates)
     previous_sessions = Session.objects.filter(date__lt=today).order_by('-date', '-time')[:10]  # Limit to 10 recent sessions
     
+    # Calculate vote counts for each session
+    session_vote_counts = {}
+    for session in list(upcoming_sessions) + list(previous_sessions):
+        if hasattr(session, 'poll'):
+            yes_votes = session.poll.votes.filter(choice='yes').count()
+            no_votes = session.poll.votes.filter(choice='no').count()
+            total_votes = yes_votes + no_votes
+            yes_percentage = (yes_votes / total_votes * 100) if total_votes > 0 else 0
+            
+            session_vote_counts[session.id] = {
+                'yes_votes': yes_votes,
+                'no_votes': no_votes,
+                'total_votes': total_votes,
+                'yes_percentage': yes_percentage
+            }
+    
     context = {
         'upcoming_sessions': upcoming_sessions,
         'previous_sessions': previous_sessions,
+        'vote_counts': session_vote_counts
     }
     return render(request, 'home.html', context)

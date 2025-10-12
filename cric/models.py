@@ -55,20 +55,20 @@ class PlayerProfile(models.Model):
     def __str__(self):
         return f"Profile of {self.user.username}"
 
-class MatchPlayer(models.Model):
-    match = models.ForeignKey('Match', on_delete=models.CASCADE)
-    player = models.ForeignKey(User, on_delete=models.CASCADE)
+class SessionPlayer(models.Model):
+    session = models.ForeignKey('Session', on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     team = models.ForeignKey('Team', on_delete=models.CASCADE)
     paid = models.BooleanField(default=False)
-
+    
     class Meta:
-        unique_together = ('match', 'player')
+        unique_together = [('session', 'user')]
 
     def __str__(self):
-        return f"{self.player.username} in {self.match.name}"
+        return f"{self.user.username} in {self.session.name}"
 
 class Attendance(models.Model):
-    match_player = models.ForeignKey(MatchPlayer, on_delete=models.CASCADE)
+    match_player = models.ForeignKey(SessionPlayer, on_delete=models.CASCADE)
     attended = models.BooleanField(default=False)
     payment = models.ForeignKey(Payment, on_delete=models.CASCADE, null=True)
     class Meta:

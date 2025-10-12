@@ -38,22 +38,34 @@
                 <div class="px-6 py-4">
                     <h2 class="text-xl font-bold mb-4">Attendance Poll</h2>
                     
-                    {% if user_vote %}
-                        <p class="mb-4">You've voted: <span class="font-semibold">{{ user_vote|title }}</span></p>
+                    {% if not session.poll.is_open %}
+                        <div class="mb-4 flex items-center text-yellow-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="font-semibold">Poll is closed</span>
+                        </div>
+                        {% if user_vote %}
+                            <p class="mb-4">You've voted: <span class="font-semibold">{{ user_vote|title }}</span></p>
+                        {% endif %}
                     {% else %}
-                        <p class="mb-4">Will you attend this session?</p>
-                        
-                        <form method="POST" action="{% url 'vote_session' session.poll.id %}">
-                            {% csrf_token %}
-                            <div class="flex space-x-2">
-                                <button type="submit" name="choice" value="yes" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">
-                                    Yes
-                                </button>
-                                <button type="submit" name="choice" value="no" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded">
-                                    No
-                                </button>
-                            </div>
-                        </form>
+                        {% if user_vote %}
+                            <p class="mb-4">You've voted: <span class="font-semibold">{{ user_vote|title }}</span></p>
+                        {% else %}
+                            <p class="mb-4">Will you attend this session?</p>
+                            
+                            <form method="POST" action="{% url 'vote_session' session.poll.id %}">
+                                {% csrf_token %}
+                                <div class="flex space-x-2">
+                                    <button type="submit" name="choice" value="yes" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">
+                                        Yes
+                                    </button>
+                                    <button type="submit" name="choice" value="no" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded">
+                                        No
+                                    </button>
+                                </div>
+                            </form>
+                        {% endif %}
                     {% endif %}
                     
                     <div class="mt-6">
@@ -89,9 +101,6 @@
                 <div class="px-6 py-4">
                     <h3 class="text-lg font-semibold mb-2">Admin Controls</h3>
                     <div class="space-y-2">
-                        <button id="create-match-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">
-                            Create Match & Teams
-                        </button>
                         {% if session.poll %}
                         <form method="POST" action="{% url 'close_poll' session.poll.id %}">
                             {% csrf_token %}
@@ -100,6 +109,12 @@
                             </button>
                         </form>
                         {% endif %}
+                        <form method="POST" action="{% url 'delete_session' session.id %}" onsubmit="return confirm('Are you sure you want to delete this session? This action cannot be undone.');">
+                            {% csrf_token %}
+                            <button type="submit" class="w-full bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded">
+                                Delete Session
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -163,17 +178,17 @@
                                     {% for player in team1_players %}
                                     <div class="bg-white p-2 rounded-md shadow-sm mb-2 {% if user.is_staff %}cursor-move{% endif %}" 
                                          {% if user.is_staff %}draggable="true" ondragstart="drag(event)"{% endif %}
-                                         id="user-{{ player.player.id }}" data-user-id="{{ player.player.id }}">
-                                        {% if player.player.role|lower == 'batsman' %}
+                                         id="user-{{ player.user.id }}" data-user-id="{{ player.user.id }}">
+                                        {% if player.user.role|lower == 'batsman' %}
                                             <img src="{% static 'icons/bat.png' %}" class="inline-block w-4 h-4 mr-1" alt="🏏"/>
-                                        {% elif player.player.role|lower == 'bowler' %}
+                                        {% elif player.user.role|lower == 'bowler' %}
                                             <img src="{% static 'icons/ball.png' %}" class="inline-block w-4 h-4 mr-1" alt="🔴"/>
-                                        {% elif player.player.role|lower == 'allrounder' %}
+                                        {% elif player.user.role|lower == 'allrounder' %}
                                             <img src="{% static 'icons/bat.png' %}" class="inline-block w-4 h-4 mr-1" alt="🏏"/>
                                             <img src="{% static 'icons/ball.png' %}" class="inline-block w-4 h-4 mr-1" alt="🔴"/>
                                         {% endif %}
-                                        {{ player.player.username }}
-                                        {% if player.player.id == team1.captain.id %}
+                                        {{ player.user.username }}
+                                        {% if player.user.id == team1.captain.id %}
                                         <span class="captain-badge">C</span>
                                         {% endif %}
                                     </div>
@@ -196,17 +211,17 @@
                                     {% for player in team2_players %}
                                     <div class="bg-white p-2 rounded-md shadow-sm mb-2 {% if user.is_staff %}cursor-move{% endif %}" 
                                          {% if user.is_staff %}draggable="true" ondragstart="drag(event)"{% endif %}
-                                         id="user-{{ player.player.id }}" data-user-id="{{ player.player.id }}">
-                                        {% if player.player.role|lower == 'batsman' %}
+                                         id="user-{{ player.user.id }}" data-user-id="{{ player.user.id }}">
+                                        {% if player.user.role|lower == 'batsman' %}
                                             <img src="{% static 'icons/bat.png' %}" class="inline-block w-4 h-4 mr-1" alt="🏏"/>
-                                        {% elif player.player.role|lower == 'bowler' %}
+                                        {% elif player.user.role|lower == 'bowler' %}
                                             <img src="{% static 'icons/ball.png' %}" class="inline-block w-4 h-4 mr-1" alt="🔴"/>
-                                        {% elif player.player.role|lower == 'allrounder' %}
+                                        {% elif player.user.role|lower == 'allrounder' %}
                                             <img src="{% static 'icons/bat.png' %}" class="inline-block w-4 h-4 mr-1" alt="🏏"/>
                                             <img src="{% static 'icons/ball.png' %}" class="inline-block w-4 h-4 mr-1" alt="🔴"/>
                                         {% endif %}
-                                        {{ player.player.username }}
-                                        {% if player.player.id == team2.captain.id %}
+                                        {{ player.user.username }}
+                                        {% if player.user.id == team2.captain.id %}
                                         <span class="captain-badge">C</span>
                                         {% endif %}
                                     </div>
@@ -380,6 +395,17 @@
 
         document.getElementById("team1_users").value = team1Users.join(',');
         document.getElementById("team2_users").value = team2Users.join(',');
+        
+        console.log("Team 1 users:", team1Users);
+        console.log("Team 2 users:", team2Users);
+        
+        // Validate the form values are set correctly
+        console.log("Form field values:", {
+            team1_users: document.getElementById("team1_users").value,
+            team2_users: document.getElementById("team2_users").value,
+            team1_captain: document.getElementById("team1_captain").value,
+            team2_captain: document.getElementById("team2_captain").value
+        });
         
         // Set captain as the first player in each team
         if (team1Users.length > 0) {
