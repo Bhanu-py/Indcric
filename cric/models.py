@@ -84,7 +84,13 @@ class Session(models.Model):
     # New fields:
     cost_per_person = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     attendance_confirmed = models.BooleanField(default=False)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_sessions')
+    created_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,  # Allow blank values
+        related_name='created_sessions'
+    )
     
     def get_absolute_url(self):
         return reverse('session_detail', args=[self.pk])

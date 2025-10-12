@@ -232,26 +232,35 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': '/home/LogFiles/application.log',  # Azure Web App log directory
-            'formatter': 'verbose',
-        },
+        # 'file': {
+        #     'level': 'DEBUG',
+        #     'class': 'logging.FileHandler',
+        #     'filename': '/home/LogFiles/application.log',  # Azure Web App log directory
+        #     'formatter': 'verbose',
+        # },
     },
     'loggers': {
         'django': {
-            'handlers': ['console', 'file'],
+            'handlers': [
+                'console',
+                # 'file'
+                ],
             'level': 'INFO',
             'propagate': True,
         },
         'django.request': {
-            'handlers': ['console', 'file'],
+            'handlers': [
+                'console',
+                # 'file'
+            ],
             'level': 'DEBUG',
             'propagate': False,
         },
         'your_app_name': {  # Replace with your actual app name
-            'handlers': ['console', 'file'],
+            'handlers': [
+                'console',
+                # 'file'
+            ],
             'level': 'DEBUG',
             'propagate': True,
         },
