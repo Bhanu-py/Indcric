@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-8">
+    <div class="bg-white shadow-md rounded-lg p-6">
+        <h1 class="text-3xl font-bold mb-2">{{ poll.match.name }}</h1>
+        <p class="text-gray-600 mb-4">{{ poll.match.date }} at {{ poll.match.time }}</p>
+        
+        <h2 class="text-2xl font-semibold mb-4">{{ poll.question }}</h2>
+
+        {% if poll.is_open %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="flex justify-around mb-4">
+                    <button type="submit" name="choice" value="yes" class="text-white font-bold py-2 px-6 rounded {% if user_vote == 'yes' %}bg-green-700{% else %}bg-green-500 hover:bg-green-600{% endif %}">
+                        Yes
+                    </button>
+                    <button type="submit" name="choice" value="no" class="text-white font-bold py-2 px-6 rounded {% if user_vote == 'no' %}bg-red-700{% else %}bg-red-500 hover:bg-red-600{% endif %}">
+                        No
+                    </button>
+                </div>
+            </form>
+        {% else %}
+            <p class="text-center text-red-500 font-bold mb-4">This poll is closed.</p>
+        {% endif %}
+
+        <div class="mt-6">
+            <h3 class="text-xl font-semibold mb-2">Results</h3>
+            <div class="w-full bg-gray-200 rounded-full h-6 flex">
+                <div class="bg-green-500 h-6 rounded-l-full text-xs font-medium text-blue-100 text-center p-0.5 leading-none" style="width: {% if total_votes > 0 %}{{ yes_votes|mul:100|floordiv:total_votes }}{% else %}0{% endif %}%">
+                    {% if total_votes > 0 %}{{ yes_votes|mul:100|floordiv:total_votes }}%{% endif %}
+                </div>
+                <div class="bg-red-500 h-6 rounded-r-full text-xs font-medium text-blue-100 text-center p-0.5 leading-none" style="width: {% if total_votes > 0 %}{{ no_votes|mul:100|floordiv:total_votes }}{% else %}0{% endif %}%">
+                    {% if total_votes > 0 %}{{ no_votes|mul:100|floordiv:total_votes }}%{% endif %}
+                </div>
+            </div>
+            <div class="flex justify-between mt-2 text-sm">
+                <span>Yes: {{ yes_votes }}</span>
+                <span>No: {{ no_votes }}</span>
+            </div>
+            <p class="text-center mt-2">Total Votes: {{ total_votes }}</p>
+        </div>
+
+        <div class="mt-6">
+            <h3 class="text-xl font-semibold mb-2">Share Poll</h3>
+            <input type="text" value="{{ poll_url }}" readonly class="w-full p-2 border rounded bg-gray-100">
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,467 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">{{ session.name }}</h1>
+        <div class="mt-2 grid grid-cols-2 gap-4">
+            <div>
+                <p class="text-gray-600">
+                    <span class="font-semibold">Date:</span> {{ session.date }}
+                </p>
+                <p class="text-gray-600">
+                    <span class="font-semibold">Time:</span> {{ session.time }}
+                </p>
+                <p class="text-gray-600">
+                    <span class="font-semibold">Duration:</span> {{ session.duration }} hours
+                </p>
+            </div>
+            <div>
+                <p class="text-gray-600">
+                    <span class="font-semibold">Location:</span> {{ session.location }}
+                </p>
+                <p class="text-gray-600">
+                    <span class="font-semibold">Cost:</span> {{ session.cost }}
+                </p>
+                <p class="text-gray-600">
+                    <span class="font-semibold">Created by:</span> {{ session.created_by.username }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Session Voting Card -->
+        <div class="lg:col-span-1">
+            <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                <div class="px-6 py-4">
+                    <h2 class="text-xl font-bold mb-4">Attendance Poll</h2>
+                    
+                    {% if user_vote %}
+                        <p class="mb-4">You've voted: <span class="font-semibold">{{ user_vote|title }}</span></p>
+                    {% else %}
+                        <p class="mb-4">Will you attend this session?</p>
+                        
+                        <form method="POST" action="{% url 'vote_session' session.poll.id %}">
+                            {% csrf_token %}
+                            <div class="flex space-x-2">
+                                <button type="submit" name="choice" value="yes" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">
+                                    Yes
+                                </button>
+                                <button type="submit" name="choice" value="no" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded">
+                                    No
+                                </button>
+                            </div>
+                        </form>
+                    {% endif %}
+                    
+                    <div class="mt-6">
+                        <h3 class="text-lg font-semibold mb-2">Current Votes</h3>
+                        <div class="relative pt-1">
+                            <div class="flex mb-2 items-center justify-between">
+                                <div>
+                                    <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-green-600 bg-green-200">
+                                        Yes: {{ yes_votes }}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-red-600 bg-red-200">
+                                        No: {{ no_votes }}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            {% if total_votes > 0 %}
+                                <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-200">
+                                    <div style="width:{{ yes_percentage }}%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500"></div>
+                                </div>
+                            {% else %}
+                                <p class="text-sm text-gray-500">No votes yet</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if user.is_staff %}
+            <div class="mt-4 bg-white shadow-md rounded-lg overflow-hidden">
+                <div class="px-6 py-4">
+                    <h3 class="text-lg font-semibold mb-2">Admin Controls</h3>
+                    <div class="space-y-2">
+                        <button id="create-match-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">
+                            Create Match & Teams
+                        </button>
+                        {% if session.poll %}
+                        <form method="POST" action="{% url 'close_poll' session.poll.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="w-full {% if session.poll.is_open %}bg-yellow-500 hover:bg-yellow-600{% else %}bg-green-500 hover:bg-green-600{% endif %} text-white py-2 px-4 rounded">
+                                {% if session.poll.is_open %}Close Poll{% else %}Open Poll{% endif %}
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Team Creation & Management Card -->
+        <div class="lg:col-span-2">
+            <div class="bg-white shadow-md rounded-lg overflow-hidden" id="team-management">
+                <div class="px-6 py-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">Team Management</h2>
+                        {% if user.is_staff %}
+                        <button id="shuffle-teams-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                            Shuffle Teams
+                        </button>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Team assignment area -->
+                    <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+                        <!-- Available Users (only for admin) -->
+                        {% if user.is_staff %}
+                        <div class="w-full md:w-1/3">
+                            <h3 class="text-lg font-semibold mb-2">
+                                Available Users
+                            </h3>
+                            <div id="available-users" class="bg-gray-100 p-4 rounded-lg min-h-[300px] max-h-[600px] overflow-y-auto" 
+                                 ondrop="drop(event)" ondragover="allowDrop(event)">
+                                {% for voter in yes_voters %}
+                                    {% if not voter.team_assigned %}
+                                    <div class="bg-white p-2 rounded-md shadow-sm mb-2 cursor-move" draggable="true" 
+                                         ondragstart="drag(event)" id="user-{{ voter.user.id }}" data-user-id="{{ voter.user.id }}">
+                                        {% if voter.user.role|lower == 'batsman' %}
+                                            <img src="{% static 'icons/bat.png' %}" class="inline-block w-4 h-4 mr-1" alt="🏏"/>
+                                        {% elif voter.user.role|lower == 'bowler' %}
+                                            <img src="{% static 'icons/ball.png' %}" class="inline-block w-4 h-4 mr-1" alt="🔴"/>
+                                        {% elif voter.user.role|lower == 'allrounder' %}
+                                            <img src="{% static 'icons/bat.png' %}" class="inline-block w-4 h-4 mr-1" alt="🏏"/>
+                                            <img src="{% static 'icons/ball.png' %}" class="inline-block w-4 h-4 mr-1" alt="🔴"/>
+                                        {% endif %}
+                                        {{ voter.user.username }}
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Team 1 -->
+                        <div class="w-full {% if user.is_staff %}md:w-1/3{% else %}md:w-1/2{% endif %}">
+                            <h3 class="text-lg font-semibold mb-2">
+                                <span id="team1-name">{% if team1 %}{{ team1.name }}{% else %}Team 1{% endif %}</span>
+                                {% if user.is_staff %}
+                                <button type="button" onclick="editTeamName('team1')" class="edit-button">Edit</button>
+                                {% endif %}
+                            </h3>
+                            <div id="team1-players" class="bg-gray-100 p-4 rounded-lg min-h-[300px] max-h-[600px] overflow-y-auto"
+                                 {% if user.is_staff %}ondrop="drop(event)" ondragover="allowDrop(event)"{% endif %}>
+                                {% if team1 %}
+                                    {% for player in team1_players %}
+                                    <div class="bg-white p-2 rounded-md shadow-sm mb-2 {% if user.is_staff %}cursor-move{% endif %}" 
+                                         {% if user.is_staff %}draggable="true" ondragstart="drag(event)"{% endif %}
+                                         id="user-{{ player.player.id }}" data-user-id="{{ player.player.id }}">
+                                        {% if player.player.role|lower == 'batsman' %}
+                                            <img src="{% static 'icons/bat.png' %}" class="inline-block w-4 h-4 mr-1" alt="🏏"/>
+                                        {% elif player.player.role|lower == 'bowler' %}
+                                            <img src="{% static 'icons/ball.png' %}" class="inline-block w-4 h-4 mr-1" alt="🔴"/>
+                                        {% elif player.player.role|lower == 'allrounder' %}
+                                            <img src="{% static 'icons/bat.png' %}" class="inline-block w-4 h-4 mr-1" alt="🏏"/>
+                                            <img src="{% static 'icons/ball.png' %}" class="inline-block w-4 h-4 mr-1" alt="🔴"/>
+                                        {% endif %}
+                                        {{ player.player.username }}
+                                        {% if player.player.id == team1.captain.id %}
+                                        <span class="captain-badge">C</span>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Team 2 -->
+                        <div class="w-full {% if user.is_staff %}md:w-1/3{% else %}md:w-1/2{% endif %}">
+                            <h3 class="text-lg font-semibold mb-2">
+                                <span id="team2-name">{% if team2 %}{{ team2.name }}{% else %}Team 2{% endif %}</span>
+                                {% if user.is_staff %}
+                                <button type="button" onclick="editTeamName('team2')" class="edit-button">Edit</button>
+                                {% endif %}
+                            </h3>
+                            <div id="team2-players" class="bg-gray-100 p-4 rounded-lg min-h-[300px] max-h-[600px] overflow-y-auto"
+                                 {% if user.is_staff %}ondrop="drop(event)" ondragover="allowDrop(event)"{% endif %}>
+                                {% if team2 %}
+                                    {% for player in team2_players %}
+                                    <div class="bg-white p-2 rounded-md shadow-sm mb-2 {% if user.is_staff %}cursor-move{% endif %}" 
+                                         {% if user.is_staff %}draggable="true" ondragstart="drag(event)"{% endif %}
+                                         id="user-{{ player.player.id }}" data-user-id="{{ player.player.id }}">
+                                        {% if player.player.role|lower == 'batsman' %}
+                                            <img src="{% static 'icons/bat.png' %}" class="inline-block w-4 h-4 mr-1" alt="🏏"/>
+                                        {% elif player.player.role|lower == 'bowler' %}
+                                            <img src="{% static 'icons/ball.png' %}" class="inline-block w-4 h-4 mr-1" alt="🔴"/>
+                                        {% elif player.player.role|lower == 'allrounder' %}
+                                            <img src="{% static 'icons/bat.png' %}" class="inline-block w-4 h-4 mr-1" alt="🏏"/>
+                                            <img src="{% static 'icons/ball.png' %}" class="inline-block w-4 h-4 mr-1" alt="🔴"/>
+                                        {% endif %}
+                                        {{ player.player.username }}
+                                        {% if player.player.id == team2.captain.id %}
+                                        <span class="captain-badge">C</span>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if user.is_staff %}
+                    <!-- Save Teams Form (Only visible to admins) -->
+                    <form id="save-teams-form" class="mt-6" method="POST" action="{% url 'save_teams' session.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" id="team1_name_input" name="team1_name" value="{% if team1 %}{{ team1.name }}{% else %}Team 1{% endif %}">
+                        <input type="hidden" id="team2_name_input" name="team2_name" value="{% if team2 %}{{ team2.name }}{% else %}Team 2{% endif %}">
+                        <input type="hidden" id="team1_users" name="team1_players">
+                        <input type="hidden" id="team2_users" name="team2_players">
+                        <input type="hidden" id="team1_captain" name="team1_captain">
+                        <input type="hidden" id="team2_captain" name="team2_captain">
+                        
+                        <div class="flex justify-end">
+                            <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                                Save Teams
+                            </button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .edit-button {
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        margin-left: 5px;
+        font-size: 0.8em;
+        color: gray;
+    }
+
+    .edit-button:hover {
+        color: darkgray;
+    }
+    
+    .captain-badge {
+        display: inline-block;
+        background-color: #4b5563;
+        color: white;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        text-align: center;
+        line-height: 18px;
+        font-size: 0.7rem;
+        font-weight: bold;
+        margin-left: 4px;
+        vertical-align: middle;
+    }
+</style>
+
+{% if user.is_staff %}
+<script>
+    let team1Name = '{% if team1 %}{{ team1.name }}{% else %}Team 1{% endif %}';
+    let team2Name = '{% if team2 %}{{ team2.name }}{% else %}Team 2{% endif %}';
+    let isEditingTeamName = false;
+
+    function editTeamName(team) {
+        isEditingTeamName = true;
+        const teamNameSpan = document.getElementById(team + '-name');
+        const currentName = team === 'team1' ? team1Name : team2Name;
+
+        const inputField = document.createElement('input');
+        inputField.type = 'text';
+        inputField.value = currentName;
+        inputField.classList.add("shadow", "appearance-none", "border", "rounded", "w-full", "py-2", "px-3", "text-gray-700", "leading-tight", "focus:outline-none", "focus:shadow-outline");
+
+        inputField.addEventListener('blur', function() {
+            if (team === 'team1') {
+                team1Name = inputField.value || 'Team 1';
+                document.getElementById('team1_name_input').value = team1Name;
+            } else {
+                team2Name = inputField.value || 'Team 2';
+                document.getElementById('team2_name_input').value = team2Name;
+            }
+            updateTeamNameDisplay(team);
+            isEditingTeamName = false;
+        });
+        
+        inputField.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                inputField.blur();
+            }
+        });
+
+        teamNameSpan.parentNode.replaceChild(inputField, teamNameSpan);
+        inputField.focus();
+    }
+
+    function updateTeamNameDisplay(team) {
+        const h3 = document.querySelector(`#${team}-players`).parentNode.querySelector('h3');
+        
+        const newTeamNameSpan = document.createElement('span');
+        newTeamNameSpan.id = team + '-name';
+        newTeamNameSpan.textContent = team === 'team1' ? team1Name : team2Name;
+
+        const editButton = document.createElement('button');
+        editButton.textContent = 'Edit';
+        editButton.onclick = function(e) { 
+            e.preventDefault();
+            editTeamName(team); 
+        };
+        editButton.type = 'button'; // Prevent form submission
+        editButton.classList.add("edit-button");
+
+        h3.innerHTML = '';
+        h3.appendChild(newTeamNameSpan);
+        h3.appendChild(editButton);
+    }
+    
+    function allowDrop(event) {
+        event.preventDefault();
+    }
+
+    function drag(event) {
+        event.dataTransfer.setData("user_id", event.target.id);
+    }
+
+    function drop(event) {
+        event.preventDefault();
+        var user_id = event.dataTransfer.getData("user_id");
+        var userElement = document.getElementById(user_id);
+        if (userElement && userElement.dataset.userId) {
+            // Remove captain badge from the element if it exists
+            const existingBadge = userElement.querySelector('.captain-badge');
+            if (existingBadge) {
+                userElement.removeChild(existingBadge);
+            }
+            
+            // Use event.currentTarget instead of event.target
+            const targetContainer = event.currentTarget;
+            targetContainer.appendChild(userElement);
+            
+            // Check if this is the first player in the team and add captain badge
+            if (targetContainer.id === 'team1-players' || targetContainer.id === 'team2-players') {
+                if (targetContainer.children.length === 1) {
+                    const captainBadge = document.createElement('span');
+                    captainBadge.className = 'captain-badge';
+                    captainBadge.textContent = 'C';
+                    userElement.appendChild(captainBadge);
+                }
+            }
+        }
+        updateHiddenFields();
+    }
+
+    function updateHiddenFields() {
+        const team1Container = document.getElementById("team1-players");
+        const team2Container = document.getElementById("team2-players");
+
+        const team1Users = Array.from(team1Container.children)
+            .filter(el => el.dataset && el.dataset.userId && el.dataset.userId.trim() !== "")
+            .map(el => el.dataset.userId);
+        const team2Users = Array.from(team2Container.children)
+            .filter(el => el.dataset && el.dataset.userId && el.dataset.userId.trim() !== "")
+            .map(el => el.dataset.userId);
+
+        document.getElementById("team1_users").value = team1Users.join(',');
+        document.getElementById("team2_users").value = team2Users.join(',');
+        
+        // Set captain as the first player in each team
+        if (team1Users.length > 0) {
+            document.getElementById("team1_captain").value = team1Users[0];
+        }
+        if (team2Users.length > 0) {
+            document.getElementById("team2_captain").value = team2Users[0];
+        }
+    }
+
+    function shuffleUsers() {
+        const availableUsersContainer = document.getElementById("available-users");
+        const team1Container = document.getElementById("team1-players");
+        const team2Container = document.getElementById("team2-players");
+
+        // Get all users from all containers
+        const allUsers = Array.from(availableUsersContainer.children)
+            .concat(Array.from(team1Container.children))
+            .concat(Array.from(team2Container.children))
+            .filter(child => child.id && child.id.startsWith("user-"));
+
+        // Remove any captain badges
+        allUsers.forEach(user => {
+            const captainBadge = user.querySelector('.captain-badge');
+            if (captainBadge) {
+                user.removeChild(captainBadge);
+            }
+        });
+
+        // Clear existing containers
+        availableUsersContainer.innerHTML = "";
+        team1Container.innerHTML = "";
+        team2Container.innerHTML = "";
+
+        // Shuffle all users
+        for (let i = allUsers.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [allUsers[i], allUsers[j]] = [allUsers[j], allUsers[i]];
+        }
+
+        // Distribute users back to containers
+        const totalUsers = allUsers.length;
+        const perTeam = Math.floor(totalUsers / 2);
+        
+        for (let i = 0; i < allUsers.length; i++) {
+            if (i < perTeam) {
+                // Add captain badge to first player in team 1
+                if (i === 0) {
+                    const captainBadge = document.createElement('span');
+                    captainBadge.className = 'captain-badge';
+                    captainBadge.textContent = 'C';
+                    allUsers[i].appendChild(captainBadge);
+                }
+                team1Container.appendChild(allUsers[i]);
+            } else if (i < perTeam * 2) {
+                // Add captain badge to first player in team 2
+                if (i === perTeam) {
+                    const captainBadge = document.createElement('span');
+                    captainBadge.className = 'captain-badge';
+                    captainBadge.textContent = 'C';
+                    allUsers[i].appendChild(captainBadge);
+                }
+                team2Container.appendChild(allUsers[i]);
+            } else {
+                availableUsersContainer.appendChild(allUsers[i]);
+            }
+        }
+
+        updateHiddenFields(); // Update hidden input fields after shuffle
+    }
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set up shuffle button event listener
+        const shuffleBtn = document.getElementById('shuffle-teams-btn');
+        if (shuffleBtn) {
+            shuffleBtn.addEventListener('click', shuffleUsers);
+        }
+        
+        // Initialize hidden fields
+        updateHiddenFields();
+    });
+</script>
+{% endif %}
+{% endblock %}

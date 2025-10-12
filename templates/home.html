@@ -3,37 +3,37 @@
 {% block content %}
 <div class="max-w-4xl mx-auto px-8 py-24">
     <section class="mb-12">
-        <h2 class="text-2xl font-bold mb-4">Upcoming Matches</h2>
-        {% if upcoming_matches %}
+        <h2 class="text-2xl font-bold mb-4">Upcoming Sessions</h2>
+        {% if upcoming_sessions %}
             <div class="grid gap-4">
-                {% for match in upcoming_matches %}
-                    <a href="{% url 'match_detail' match.id %}" class="block bg-white shadow rounded-lg p-4 hover:shadow-md transition duration-200">
-                        <h3 class="font-semibold text-lg">{{ match.name }}</h3>
+                {% for session in upcoming_sessions %}
+                    <a href="{{ session.get_absolute_url }}" class="block bg-white shadow rounded-lg p-4 hover:shadow-md transition duration-200">
+                        <h3 class="font-semibold text-lg">{{ session.name }}</h3>
                         <p class="text-gray-600">
-                            Date: {{ match.date }} | Time: {{ match.time }} | Location: {{ match.location }}
+                            Date: {{ session.date }} | Time: {{ session.time }} | Location: {{ session.location }}
                         </p>
                     </a>
                 {% endfor %}
             </div>
         {% else %}
-            <p>No upcoming matches.</p>
+            <p>No upcoming sessions.</p>
         {% endif %}
     </section>
     <section>
-        <h2 class="text-2xl font-bold mb-4">Previous Matches</h2>
-        {% if previous_matches %}
-            <div class="grid gap-4" width=20px>
-                {% for match in previous_matches %}
-                    <a href="{% url 'match_detail' match.id %}" class="block bg-white shadow rounded-lg p-4 hover:shadow-md transition duration-200">
-                        <h3 class="font-semibold text-lg">{{ match.name }}</h3>
+        <h2 class="text-2xl font-bold mb-4">Previous Sessions</h2>
+        {% if previous_sessions %}
+            <div class="grid gap-4">
+                {% for session in previous_sessions %}
+                    <a href="{{ session.get_absolute_url }}" class="block bg-white shadow rounded-lg p-4 hover:shadow-md transition duration-200">
+                        <h3 class="font-semibold text-lg">{{ session.name }}</h3>
                         <p class="text-gray-600">
-                            Date: {{ match.date }} | Time: {{ match.time }} | Location: {{ match.location }}
+                            Date: {{ session.date }} | Time: {{ session.time }} | Location: {{ session.location }}
                         </p>
                     </a>
                 {% endfor %}
             </div>
         {% else %}
-            <p>No previous matches.</p>
+            <p>No previous sessions.</p>
         {% endif %}
     </section>
 </div>

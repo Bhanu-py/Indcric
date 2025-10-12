@@ -1,7 +1,7 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
-from .models import Match, Team, Player, Attendance, Payment
+from .models import Match, Team, MatchPlayer, Attendance, Payment, Session, Poll, Vote
 from django.utils import timezone
 from django.contrib import messages
 from decimal import Decimal, InvalidOperation
@@ -20,7 +20,7 @@ class UsersHtmxTableView(SingleTableMixin, FilterView):
     model = User
     table_class = UserHTMxTable
     filterset_class = UserFilter
-    template_name = "cric/pages/user_table_htmx.html"  # Update to use your existing template
+    template_name = "cric/pages/user_table_htmx.html"  # Make sure this template exists
     
     def get_template_names(self):
         """Return appropriate template based on whether it's an HTMX request"""
@@ -42,7 +42,7 @@ class UsersHtmxTableView(SingleTableMixin, FilterView):
         return context
 
 @login_required
-def create_match_view(request, username=None):
+def create_session_view(request, username=None):
     if request.method == 'POST':
         name = request.POST['name']
         date_str = request.POST.get('date')
@@ -50,28 +50,6 @@ def create_match_view(request, username=None):
         duration = request.POST.get('duration', 3)
         location = request.POST.get('location', '')
         cost = request.POST.get('cost', 0)
-        
-        # Safely get team players
-        team1_players_str = request.POST.get('team1_players', '')
-        team2_players_str = request.POST.get('team2_players', '')
-        
-        # Check if we have valid player data before proceeding
-        if not team1_players_str or not team2_players_str:
-            messages.error(request, "Please select players for both teams.")
-            return render(request, 'cric/pages/create_match.html', {'users': User.objects.all()})
-        
-        # Safely convert player IDs to integers
-        try:
-            team1_players = [int(i) for i in team1_players_str.split(',') if i.strip()]
-            team2_players = [int(i) for i in team2_players_str.split(',') if i.strip()]
-        except ValueError:
-            messages.error(request, "Invalid player selection. Please try again.")
-            return render(request, 'cric/pages/create_match.html', {'users': User.objects.all()})
-        
-        # Validate we have at least one player in each team
-        if not team1_players or not team2_players:
-            messages.error(request, "Each team must have at least one player.")
-            return render(request, 'cric/pages/create_match.html', {'users': User.objects.all()})
             
         try:
             duration = int(duration) 
@@ -91,202 +69,173 @@ def create_match_view(request, username=None):
                 date = timezone.datetime.strptime(date_str, '%Y-%m-%d').date()
             except ValueError:
                 messages.error(request, "Invalid date format. Please use YYYY-MM-DD.")
-                return render(request, 'cric/pages/create_match.html', {'users': User.objects.all()})
+                return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
 
         if time_str:
             try:
                 time = timezone.datetime.strptime(time_str, '%H:%M').time()
             except ValueError:
                 messages.error(request, "Invalid time format. Please use HH:MM.")
-                return render(request, 'cric/pages/create_match.html', {'users': User.objects.all()})
-        
-        team1_captain = None
-        team2_captain = None
+                return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
 
-        if team1_players:
-             team1_captain = User.objects.get(pk=team1_players[0])
-        if team2_players:
-            team2_captain = User.objects.get(pk=team2_players[0])
-
-        # First create the Match
-        match = Match.objects.create(
+        # Create the Session
+        session = Session.objects.create(
             name=name,
             date=date,
             time=time,
             duration=duration,
             location=location,
             cost=cost,
+            # created_by=request.user  # Temporarily commented out until migrations are run
+        )
+        
+        # Create a default poll for the session
+        poll = Poll.objects.create(
+            session=session,
+            question="Will you attend this session?",
+            is_open=True
         )
 
-        # Then create the Teams, associating them with the Match
-        team1 = Team.objects.create(match=match, name='Team 1', captain=team1_captain)
-        team2 = Team.objects.create(match=match, name='Team 2', captain=team2_captain)
-
-        # Create players for Team 1
-        for user_id in team1_players:
-            user = User.objects.get(pk=user_id)
-            Player.objects.create(team=team1, user=user, role=user.role)
-
-        # Create players for Team 2
-        for user_id in team2_players:
-            user = User.objects.get(pk=user_id)
-            Player.objects.create(team=team2, user=user, role=user.role)
-
-        messages.success(request, 'Match created successfully!')
+        messages.success(request, 'Session created successfully!')
         return redirect('home')
     else:
         all_users = User.objects.all()
         context = {
             'users': all_users,
         }
-        return render(request, 'cric/pages/create_match.html', context)
+        return render(request, 'cric/pages/create_session.html', context)
 
 @login_required
 def attendance_view(request):
-    matches = Match.objects.all()
-    selected_match = None
-    teams = []
-    if request.method == 'POST':
-        match_id = request.POST.get('match_id')
-        try:
-            selected_match = Match.objects.get(pk=match_id)
-            teams = list(selected_match.team_set.all())
-            present_ids = request.POST.getlist('present')
-            for team in teams:
-                for player in team.player_set.all():
-                    att, created = Attendance.objects.get_or_create(match=selected_match, player=player)
-                    att.attended = str(player.id) in present_ids
-                    att.save()
-            messages.success(request, 'Attendance updated successfully!')
-            # If confirming attendance, calculate cost per person.
-            if 'confirm_attendance' in request.POST:
-                attended_count = 0
-                for team in teams:
-                    for player in team.player_set.all():
-                        try:
-                            if Attendance.objects.get(match=selected_match, player=player).attended:
-                                attended_count += 1
-                        except Attendance.DoesNotExist:
-                            pass
-                if attended_count:
-                    selected_match.cost_per_person = round(selected_match.cost / attended_count, 2)
-                    selected_match.attendance_confirmed = True
-                    selected_match.save()
-                    messages.success(request, 'Attendance confirmed and cost per person updated!')
-                else:
-                    messages.error(request, 'No players attended to confirm.')
-        except Match.DoesNotExist:
-            messages.error(request, 'Match not found!')
-    elif 'match_id' in request.GET:
-        match_id = request.GET.get('match_id')
-        try:
-            selected_match = Match.objects.get(pk=match_id)
-            teams = list(selected_match.team_set.all())
-        except Match.DoesNotExist:
-            selected_match = None
-
-    # Build list of player ids with attendance marked true.
-    present_list = []
-    if selected_match:
-        for team in teams:
-            for player in team.player_set.all():
-                try:
-                    record = Attendance.objects.get(match=selected_match, player=player)
-                    if record.attended:
-                        present_list.append(player.id)
-                except Attendance.DoesNotExist:
-                    pass
-
-    dynamic_cost_per_person = None
-    if selected_match and present_list:
-        dynamic_cost_per_person = round(selected_match.cost / len(present_list), 2)
+    # This view will now only list the matches.
+    all_matches = Match.objects.filter(session__isnull=False).select_related('session').order_by('-session__date', '-session__time')
     
-    dynamic_count = len(present_list) if selected_match else 0
-    confirmed_count = dynamic_count if selected_match and selected_match.attendance_confirmed else None
+    # Calculate and attach dynamic info for all matches
+    for match in all_matches:
+        attended_mps = Attendance.objects.filter(match_player__match=match, attended=True)
+        count = attended_mps.count()
+        cost = None
+        if match.session and match.session.attendance_confirmed and match.session.cost_per_person:
+             cost = match.session.cost_per_person
+        elif count > 0 and match.session and match.session.cost > 0:
+            cost = round(match.session.cost / Decimal(count), 2)
 
-    dynamic_info = {}
-    for m in matches:
-        records = Attendance.objects.filter(match=m, attended=True)
-        count = records.count()
-        cost = round(m.cost / count, 2) if count else None
-        dynamic_info[str(m.id)] = {'count': count, 'cost': cost}
+        match.attended_count = count
+        match.cost_per_person_calculated = cost
 
     context = {
-        'matches': matches,
-        'selected_match': selected_match,
-        'teams': teams,
-        'present_list': present_list,
-        'dynamic_cost_per_person': dynamic_cost_per_person,
-        'dynamic_count': dynamic_count,
-        'confirmed_count': confirmed_count,
-        'dynamic_info': dynamic_info,
+        'matches': all_matches,
     }
-    return render(request, 'cric/pages/attendance.html', context)
+    return render(request, 'cric/pages/attendance_list.html', context)
+
+
+@login_required
+def match_attendance_detail_view(request, match_id):
+    try:
+        match = Match.objects.prefetch_related('teams__captain', 'teams__matchplayer_set__player__user').get(pk=match_id)
+    except Match.DoesNotExist:
+        messages.error(request, "The selected match does not exist.")
+        return redirect('attendance_list')
+
+    # POST request handling (saving changes)
+    if request.method == 'POST':
+        present_mp_ids = request.POST.getlist('present')
+        
+        # Update attendance records for all players in the match
+        for mp in match.matchplayer_set.all():
+            attendance, created = Attendance.objects.get_or_create(match_player=mp)
+            attendance.attended = str(mp.id) in present_mp_ids
+            attendance.save()
+        
+        messages.success(request, f'Attendance for "{match.name}" updated successfully!')
+
+        # Handle attendance confirmation and cost calculation
+        if 'confirm_attendance' in request.POST:
+            present_count = len(present_mp_ids)
+            session = match.session
+            if session:
+                if present_count > 0 and session.cost > 0:
+                    cost_per_person = session.cost / Decimal(present_count)
+                    session.cost_per_person = round(cost_per_person, 2)
+                    session.attendance_confirmed = True
+                    session.save()
+                    messages.success(request, f'Attendance confirmed for {present_count} players. Cost per person is {session.cost_per_person}.')
+                else:
+                    # Reset if no one is present or cost is zero
+                    session.cost_per_person = None
+                    session.attendance_confirmed = False
+                    session.save()
+                    messages.warning(request, 'Attendance confirmation reset (no players or no cost).')
+        
+        return redirect('match_attendance_detail', match_id=match.id)
+
+    # GET request handling (displaying the page)
+    teams = match.teams.all()
+    team1_players = []
+    team2_players = []
+    if teams.count() >= 2:
+        team1_players = teams[0].matchplayer_set.select_related('player').all()
+        team2_players = teams[1].matchplayer_set.select_related('player').all()
+     
+    present_list = list(Attendance.objects.filter(match_player__match=match, attended=True).values_list('match_player_id', flat=True))
+    
+    context = {
+        'match': match,
+        'teams': teams,
+        'team1_players': team1_players,
+        'team2_players': team2_players,
+        'present_list': present_list,
+    }
+    return render(request, 'cric/pages/attendance_detail.html', context)
+
 
 @login_required
 def payments_view(request):
-    matches = Match.objects.all()
-    selected_match = None
+    sessions = Session.objects.all()
+    selected_session = None
     teams = []
     if request.method == 'POST':
-        match_id = request.POST.get('match_id')
+        session_id = request.POST.get('session_id')
         try:
-            selected_match = Match.objects.get(pk=match_id)
-            teams = list(selected_match.team_set.all())
-            paid_ids = request.POST.getlist('paid')
-            for team in teams:
-                for player in team.player_set.all():
-                    try:
-                        attendance = Attendance.objects.get(match=selected_match, player=player)
-                        if attendance.attended:
-                            payment, created = Payment.objects.get_or_create(
-                                user=player.user, match=selected_match,
-                                defaults={
-                                    'amount': (selected_match.cost_per_person if selected_match.attendance_confirmed else selected_match.cost)
-                                }
-                            )
-                            payment.status = 'paid' if str(player.id) in paid_ids else 'pending'
-                            payment.save()
-                    except Attendance.DoesNotExist:
-                        pass
-            messages.success(request, 'Payments updated successfully!')
-        except Match.DoesNotExist:
-            messages.error(request, 'Match not found!')
-    elif 'match_id' in request.GET:
-        match_id = request.GET.get('match_id')
+            selected_session = Session.objects.get(pk=session_id)
+            match = selected_session.matches.first()
+            if match:
+                teams = list(match.team_set.all())
+
+        except Session.DoesNotExist:
+            messages.error(request, 'Session not found!')
+    elif 'session_id' in request.GET:
+        session_id = request.GET.get('session_id')
         try:
-            selected_match = Match.objects.get(pk=match_id)
-            teams = list(selected_match.team_set.all())
-        except Match.DoesNotExist:
-            selected_match = None
+            selected_session = Session.objects.get(pk=session_id)
+            match = selected_session.matches.first()
+            if match:
+                teams = list(match.team_set.all())
+        except Session.DoesNotExist:
+            selected_session = None
 
     # Build dictionary mapping attended players (player.id -> attendance record)
     attendance_by_player = {}
-    if selected_match:
-        for team in teams:
-            for player in team.player_set.all():
-                try:
-                    record = Attendance.objects.get(match=selected_match, player=player)
-                    if record.attended:
-                        attendance_by_player[player.id] = record
-                except Attendance.DoesNotExist:
-                    pass
+    if selected_session:
+        match = selected_session.matches.first()
+        if match:
+            for attendance in Attendance.objects.filter(match=match, attended=True):
+                attendance_by_player[attendance.player.id] = attendance
 
     # Build list of player ids with payment status "paid"
     paid_list = []
-    if selected_match:
-        for team in teams:
-            for player in team.player_set.all():
-                try:
-                    payment = Payment.objects.get(user=player.user, match=selected_match)
-                    if payment.status == 'paid':
-                        paid_list.append(player.id)
-                except Payment.DoesNotExist:
-                    pass
+    if selected_session:
+        for payment in Payment.objects.filter(session=selected_session, status='paid'):
+            # Find the player associated with this user
+            for team in teams:
+                player = team.player_set.filter(user=payment.user).first()
+                if player:
+                    paid_list.append(str(player.id))
+                    break
 
     context = {
-        'matches': matches,
-        'selected_match': selected_match,
+        'sessions': sessions,
+        'selected_session': selected_session,
         'teams': teams,
         'paid_list': paid_list,
         'attendance_by_player': attendance_by_player,
@@ -329,6 +278,7 @@ def manage_users(request):
             
     users = User.objects.all()
     context = {'users': users}
+    # Explicitly specify the full template path to ensure consistency
     return render(request, 'cric/pages/manage_users.html', context)
 
 @login_required
@@ -344,6 +294,7 @@ def edit_user_view(request, user_id):
             email = request.POST.get('email')
             role = request.POST.get('role')
             is_staff = request.POST.get('is_staff') == 'True'
+            is_superuser = request.POST.get('is_superuser') == 'True'  # Add admin checkbox
             wallet_amount = request.POST.get('wallet_amount')
             
             # Get rating values
@@ -370,6 +321,7 @@ def edit_user_view(request, user_id):
             user.email = email
             user.role = role
             user.is_staff = is_staff
+            user.is_superuser = is_superuser  # Save admin status
             
             # Update ratings
             user.batting_rating = batting_rating
@@ -385,27 +337,345 @@ def edit_user_view(request, user_id):
             else:
                 user.wallet_set.create(amount=wallet_amount)
             
-            # If the request is HTMX, send the message in context
-            if request.headers.get('HX-Request'):
-                return render(request, 'cric/pages/edit_user_form.html', {
-                    'user': user,
-                    'wallet_amount': wallet_amount,
-                    'message': 'User updated successfully!',
-                    'success': True
-                })
-            
-            # For non-HTMX requests, redirect back to users list
             messages.success(request, 'User updated successfully!')
-            return redirect('manage-users')
+            # Always redirect to the namespaced URL to ensure consistent UI
+            return redirect('cric:manage-users')
         
-        # GET request - show the form
+        # Check if this is an HTMX request (for modal/popup view)
+        if request.headers.get('HX-Request'):
+            # For HTMX requests, use a partial template without header/footer
+            return render(request, 'cric/partials/edit_user_form_partial.html', {
+                'user': user,
+                'wallet_amount': wallet_amount
+            })
+        
+        # For regular requests, use the full page template
         return render(request, 'cric/pages/edit_user_form.html', {
             'user': user,
-            'wallet_amount': wallet_amount
+            'wallet_amount': wallet_amount,
+            'modal_view': True  # Flag to indicate this should be rendered as a modal
         })
         
     except User.DoesNotExist:
+        if request.headers.get('HX-Request'):
+            return render(request, 'cric/partials/edit_user_form_partial.html', {
+                'message': 'User not found.',
+                'success': False
+            })
         return render(request, 'cric/pages/edit_user_form.html', {
             'message': 'User not found.',
             'success': False
         })
+
+@login_required
+def session_detail_view(request, session_id):
+    session = get_object_or_404(Session, id=session_id)
+    
+    # Get poll information if it exists
+    user_vote = None
+    yes_votes = 0
+    no_votes = 0
+    total_votes = 0
+    yes_percentage = 0
+    yes_voters = []
+    
+    if hasattr(session, 'poll'):
+        poll = session.poll
+        if request.user.is_authenticated:
+            vote = Vote.objects.filter(poll=poll, user=request.user).first()
+            if vote:
+                user_vote = vote.choice
+        
+        yes_votes = poll.votes.filter(choice='yes').count()
+        no_votes = poll.votes.filter(choice='no').count()
+        total_votes = yes_votes + no_votes
+        
+        if total_votes > 0:
+            yes_percentage = (yes_votes / total_votes) * 100
+            
+        # Get users who voted yes
+        yes_voters = []
+        for vote in poll.votes.filter(choice='yes').select_related('user'):
+            voter_info = {
+                'user': vote.user,
+                'team_assigned': False
+            }
+            yes_voters.append(voter_info)
+    
+    # Get match and team information if it exists
+    match = session.matches.first()
+    team1 = None
+    team2 = None
+    team1_players = []
+    team2_players = []
+    
+    if match:
+        teams = match.teams.all()
+        if teams.count() >= 1:
+            team1 = teams[0]
+            team1_players = team1.matchplayer_set.select_related('player').all()
+            
+            # Mark users who are in teams as assigned
+            for player in team1_players:
+                for voter in yes_voters:
+                    if voter['user'].id == player.player.id:
+                        voter['team_assigned'] = True
+        
+        if teams.count() >= 2:
+            team2 = teams[1]
+            team2_players = team2.matchplayer_set.select_related('player').all()
+            
+            # Mark users who are in teams as assigned
+            for player in team2_players:
+                for voter in yes_voters:
+                    if voter['user'].id == player.player.id:
+                        voter['team_assigned'] = True
+    
+    context = {
+        'session': session,
+        'user_vote': user_vote,
+        'yes_votes': yes_votes,
+        'no_votes': no_votes,
+        'total_votes': total_votes,
+        'yes_percentage': yes_percentage,
+        'yes_voters': yes_voters,
+        'team1': team1,
+        'team2': team2,
+        'team1_players': team1_players,
+        'team2_players': team2_players,
+        'match': match,
+    }
+    
+    return render(request, 'cric/pages/session_detail.html', context)
+
+@login_required
+def vote_session_view(request, poll_id):
+    poll = get_object_or_404(Poll, id=poll_id)
+    session = poll.session
+    
+    if request.method == 'POST':
+        if not poll.is_open:
+            messages.error(request, "This poll is closed.")
+            return redirect('session_detail', session_id=session.id)
+        
+        choice = request.POST.get('choice')
+        if choice in ['yes', 'no']:
+            vote, created = Vote.objects.update_or_create(
+                poll=poll,
+                user=request.user,
+                defaults={'choice': choice}
+            )
+            messages.success(request, f"You have voted '{choice}'.")
+        else:
+            messages.error(request, "Invalid choice.")
+    
+    return redirect('session_detail', session_id=session.id)
+
+@login_required
+def close_poll_view(request, poll_id):
+    if not request.user.is_staff:
+        messages.error(request, "You don't have permission to perform this action.")
+        return redirect('home')
+        
+    poll = get_object_or_404(Poll, id=poll_id)
+    session = poll.session
+    
+    if request.method == 'POST':
+        poll.is_open = not poll.is_open
+        poll.save()
+        status = "opened" if poll.is_open else "closed"
+        messages.success(request, f"Poll has been {status}.")
+    
+    return redirect('session_detail', session_id=session.id)
+
+@login_required
+def save_teams_view(request, session_id):
+    if not request.user.is_staff:
+        messages.error(request, "You don't have permission to perform this action.")
+        return redirect('session_detail', session_id=session_id)
+    
+    session = get_object_or_404(Session, id=session_id)
+    
+    if request.method == 'POST':
+        team1_name = request.POST.get('team1_name', 'Team 1')
+        team2_name = request.POST.get('team2_name', 'Team 2')
+        team1_players_str = request.POST.get('team1_players', '')
+        team2_players_str = request.POST.get('team2_players', '')
+        team1_captain_id = request.POST.get('team1_captain')
+        team2_captain_id = request.POST.get('team2_captain')
+        
+        # Create or update match and teams
+        match = None
+        team1 = None
+        team2 = None
+        
+        # Get the match or create a new one
+        if session.matches.exists():
+            match = session.matches.first()
+        else:
+            match = Match.objects.create(
+                session=session, 
+                name=f"Match for {session.name}"
+            )
+        
+        # Process team 1
+        if team1_players_str:
+            team1_player_ids = [int(pid) for pid in team1_players_str.split(',') if pid.strip()]
+            
+            # Get or create team 1
+            if match.teams.exists():
+                team1 = match.teams.first()
+                team1.name = team1_name
+                team1_captain = None
+                if team1_captain_id:
+                    team1_captain = User.objects.get(id=team1_captain_id)
+                    team1.captain = team1_captain
+                team1.save()
+            else:
+                team1_captain = None
+                if team1_captain_id:
+                    team1_captain = User.objects.get(id=team1_captain_id)
+                team1 = Team.objects.create(
+                    match=match,
+                    name=team1_name,
+                    captain=team1_captain
+                )
+            
+            # Clear existing players and add new ones
+            MatchPlayer.objects.filter(match=match, team=team1).delete()
+            for player_id in team1_player_ids:
+                try:
+                    player = User.objects.get(id=player_id)
+                    MatchPlayer.objects.create(
+                        match=match,
+                        player=player,
+                        team=team1
+                    )
+                except User.DoesNotExist:
+                    continue
+        
+        # Process team 2
+        if team2_players_str:
+            team2_player_ids = [int(pid) for pid in team2_players_str.split(',') if pid.strip()]
+            
+            # Get or create team 2
+            if match.teams.count() > 1:
+                team2 = match.teams.all()[1]
+                team2.name = team2_name
+                team2_captain = None
+                if team2_captain_id:
+                    team2_captain = User.objects.get(id=team2_captain_id)
+                    team2.captain = team2_captain
+                team2.save()
+            else:
+                team2_captain = None
+                if team2_captain_id:
+                    team2_captain = User.objects.get(id=team2_captain_id)
+                team2 = Team.objects.create(
+                    match=match,
+                    name=team2_name,
+                    captain=team2_captain
+                )
+            
+            # Clear existing players and add new ones
+            MatchPlayer.objects.filter(match=match, team=team2).delete()
+            for player_id in team2_player_ids:
+                try:
+                    player = User.objects.get(id=player_id)
+                    MatchPlayer.objects.create(
+                        match=match,
+                        player=player,
+                        team=team2
+                    )
+                except User.DoesNotExist:
+                    continue
+        
+        messages.success(request, "Teams saved successfully!")
+    
+    return redirect('session_detail', session_id=session_id)
+
+@login_required
+def create_user_view(request):
+    """View for creating a new user."""
+    if not request.user.is_staff:
+        messages.error(request, "You don't have permission to perform this action.")
+        return redirect('cric:manage-users')
+        
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        role = request.POST.get('role', 'batsman')
+        is_staff = request.POST.get('is_staff') == 'on'
+        is_superuser = request.POST.get('is_superuser') == 'on'
+        wallet_amount = request.POST.get('wallet_amount', '0.00')
+        
+        # Validate inputs
+        if not username or not password:
+            messages.error(request, "Username and password are required.")
+            return render(request, 'cric/pages/create_user_form.html')
+            
+        # Check if user already exists
+        if User.objects.filter(username=username).exists():
+            messages.error(request, f"User '{username}' already exists.")
+            return render(request, 'cric/pages/create_user_form.html', {
+                'username': username,
+                'email': email,
+                'role': role,
+                'is_staff': is_staff,
+                'is_superuser': is_superuser,
+                'wallet_amount': wallet_amount
+            })
+            
+        try:
+            # Create new user
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password
+            )
+            user.role = role
+            user.is_staff = is_staff
+            user.is_superuser = is_superuser
+            user.save()
+            
+            # Create wallet if amount provided
+            try:
+                amount = Decimal(wallet_amount)
+                user.wallet_set.create(amount=amount)
+            except (ValueError, InvalidOperation):
+                user.wallet_set.create(amount=Decimal('0.00'))
+                
+            messages.success(request, f"User '{username}' created successfully!")
+            
+            # Always use the namespaced URL for redirection to ensure consistent UI
+            return redirect('cric:manage-users')
+        except Exception as e:
+            messages.error(request, f"Error creating user: {str(e)}")
+            return render(request, 'cric/pages/create_user_form.html', {
+                'username': username,
+                'email': email,
+                'role': role,
+                'is_staff': is_staff,
+                'is_superuser': is_superuser,
+                'wallet_amount': wallet_amount
+            })
+    
+    # GET request - show the form
+    return render(request, 'cric/pages/create_user_form.html')
+
+def home(request):
+    """Home page view showing upcoming and previous sessions."""
+    today = timezone.now().date()
+    
+    # Get upcoming sessions (today or future dates)
+    upcoming_sessions = Session.objects.filter(date__gte=today).order_by('date', 'time')
+    
+    # Get previous sessions (past dates)
+    previous_sessions = Session.objects.filter(date__lt=today).order_by('-date', '-time')[:10]  # Limit to 10 recent sessions
+    
+    context = {
+        'upcoming_sessions': upcoming_sessions,
+        'previous_sessions': previous_sessions,
+    }
+    return render(request, 'home.html', context)
