@@ -4,6 +4,14 @@
 {% load i18n %}
 
 {% block main %}
+<div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="mb-6 flex justify-between items-center">
+        <h2 class="text-2xl font-bold">User Management</h2>
+        <a href="{% url 'cric:create_user' %}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">
+            Create User
+        </a>
+    </div>
+
     <h1>Users table</h1>
 
     {# Updated search form using correct URL name with HTMX push-url to maintain browser history #}
@@ -162,120 +170,128 @@
             </div>
         </div>
     </div>
+</div>
+
+<script>
+    // Make sure we have a CSRF token for AJAX requests
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]') ? 
+                    document.querySelector('input[name="csrfmiddlewaretoken"]').value : '';
     
-    <script>
-        // Make sure we have a CSRF token for AJAX requests
-        const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]') ? 
-                        document.querySelector('input[name="csrfmiddlewaretoken"]').value : '';
+    // Add click event listeners to table rows when the DOM loads
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("DOM loaded, initializing table row handlers");
+        initializeTableRowHandlers();
+    });
+    
+    // Function to initialize click handlers on table rows
+    function initializeTableRowHandlers() {
+        console.log("Initializing table row handlers");
+        const rows = document.querySelectorAll('.table-container tbody tr');
+        console.log(`Found ${rows.length} table rows`);
         
-        // Add click event listeners to table rows when the DOM loads
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOM loaded, initializing table row handlers");
-            initializeTableRowHandlers();
-        });
-        
-        // Function to initialize click handlers on table rows
-        function initializeTableRowHandlers() {
-            console.log("Initializing table row handlers");
-            const rows = document.querySelectorAll('.table-container tbody tr');
-            console.log(`Found ${rows.length} table rows`);
-            
-            rows.forEach(row => {
-                row.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    console.log("Row clicked");
-                    const userId = this.querySelector('td:first-child').textContent.trim();
-                    console.log(`User ID: ${userId}`);
-                    
-                    if (userId && !isNaN(userId)) {
-                        openUserEditModal(userId);
-                    } else {
-                        console.error("Invalid user ID:", userId);
-                    }
-                });
-            });
-        }
-        
-        // Re-initialize handlers after HTMX refreshes the table
-        document.body.addEventListener('htmx:afterSwap', function(event) {
-            console.log("htmx:afterSwap event detected");
-            if (event.detail.target.classList.contains('table-container') || 
-                event.detail.target.querySelector('.table-container')) {
-                console.log("Table container was updated, reinitializing row handlers");
-                setTimeout(() => {
-                    initializeTableRowHandlers();
-                }, 100);
-            }
-        });
-        
-        // Function to open the edit modal for a user
-        function openUserEditModal(userId) {
-            console.log(`Opening modal for user ID: ${userId}`);
-            // First reset the modal
-            closeModal();
-            
-            const modal = document.getElementById('editUserModal');
-            if (!modal) {
-                console.error("Modal element not found!");
-                return;
-            }
-            
-            // Set timeout to ensure the modal is reset before opening
-            setTimeout(() => {
-                console.log("Loading user data via HTMX");
-                // Make the AJAX request to load the form
-                htmx.ajax('GET', `/manage/edit-user/${userId}/`, {
-                    target: '#editUserForm',
-                    swap: 'innerHTML',
-                    headers: {
-                        'X-CSRFToken': csrfToken
-                    }
-                });
+        rows.forEach(row => {
+            row.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log("Row clicked");
+                const userId = this.querySelector('td:first-child').textContent.trim();
+                console.log(`User ID: ${userId}`);
                 
-                console.log("Displaying modal");
-                // Show the modal
-                modal.style.display = 'block';
-                document.body.classList.add('modal-open');
+                if (userId && !isNaN(userId)) {
+                    openUserEditModal(userId);
+                } else {
+                    console.error("Invalid user ID:", userId);
+                }
+            });
+        });
+    }
+    
+    // Re-initialize handlers after HTMX refreshes the table
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        console.log("htmx:afterSwap event detected");
+        if (event.detail.target.classList.contains('table-container') || 
+            event.detail.target.querySelector('.table-container')) {
+            console.log("Table container was updated, reinitializing row handlers");
+            setTimeout(() => {
+                initializeTableRowHandlers();
             }, 100);
         }
+    });
+    
+    // Function to open the edit modal for a user
+    function openUserEditModal(userId) {
+        console.log(`Opening modal for user ID: ${userId}`);
+        // First reset the modal
+        closeModal();
         
-        // Function to close the modal
-        function closeModal() {
-            console.log("Closing modal");
-            const modal = document.getElementById('editUserModal');
-            if (!modal) return;
+        const modal = document.getElementById('editUserModal');
+        if (!modal) {
+            console.error("Modal element not found!");
+            return;
+        }
+        
+        // Set timeout to ensure the modal is reset before opening
+        setTimeout(() => {
+            console.log("Loading user data via HTMX");
+            // Make the AJAX request to load the form
+            htmx.ajax('GET', `/manage/edit-user/${userId}/`, {
+                target: '#editUserForm',
+                swap: 'innerHTML',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                }
+            });
             
-            modal.style.display = 'none';
-            document.body.classList.remove('modal-open');
-            
-            // Clear the form content
-            const formContainer = document.getElementById('editUserForm');
-            if (formContainer) {
-                formContainer.innerHTML = '';
-            }
-        }
+            console.log("Displaying modal");
+            // Show the modal
+            modal.style.display = 'block';
+            document.body.classList.add('modal-open');
+        }, 100);
+    }
+    
+    // Function to close the modal
+    function closeModal() {
+        console.log("Closing modal");
+        const modal = document.getElementById('editUserModal');
+        if (!modal) return;
         
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('editUserModal');
-            if (event.target == modal) {
-                closeModal();
-            }
-        }
+        modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
         
-        // Function to refresh the users table
-        function refreshUserTable() {
-            console.log("Refreshing user table");
-            const tableContainer = document.querySelector('.table-container');
-            if (tableContainer) {
-                htmx.ajax('GET', '{% url "manage-users" %}', {
-                    target: '.table-container',
-                    swap: 'outerHTML',
-                    headers: {
-                        'X-CSRFToken': csrfToken
-                    }
-                });
-            }
+        // Clear the form content
+        const formContainer = document.getElementById('editUserForm');
+        if (formContainer) {
+            formContainer.innerHTML = '';
         }
-    </script>
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('editUserModal');
+        if (event.target == modal) {
+            closeModal();
+        }
+    }
+    
+    // Function to refresh the users table
+    function refreshUserTable() {
+        console.log("Refreshing user table");
+        const tableContainer = document.querySelector('.table-container');
+        if (tableContainer) {
+            htmx.ajax('GET', '{% url "manage-users" %}', {
+                target: '.table-container',
+                swap: 'outerHTML',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                }
+            });
+        }
+    }
+    
+    // Close modal when ESC key is pressed
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            document.getElementById('editUserModal').classList.add('hidden');
+        }
+    });
+</script>
 {% endblock %}

@@ -20,7 +20,7 @@ class UsersHtmxTableView(SingleTableMixin, FilterView):
     model = User
     table_class = UserHTMxTable
     filterset_class = UserFilter
-    template_name = "cric/pages/user_table_htmx.html"  # Update to use your existing template
+    template_name = "cric/pages/user_table_htmx.html"  # Make sure this template exists
     
     def get_template_names(self):
         """Return appropriate template based on whether it's an HTMX request"""
