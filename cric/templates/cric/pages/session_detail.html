@@ -296,23 +296,27 @@
         isEditingTeamName = true;
         const teamNameSpan = document.getElementById(team + '-name');
         const currentName = team === 'team1' ? team1Name : team2Name;
+        const h3 = teamNameSpan.parentNode;
 
         const inputField = document.createElement('input');
         inputField.type = 'text';
         inputField.value = currentName;
         inputField.classList.add("shadow", "appearance-none", "border", "rounded", "w-full", "py-2", "px-3", "text-gray-700", "leading-tight", "focus:outline-none", "focus:shadow-outline");
 
-        inputField.addEventListener('blur', function() {
+        const saveName = () => {
+            const newName = inputField.value.trim() || (team === 'team1' ? 'Team 1' : 'Team 2');
             if (team === 'team1') {
-                team1Name = inputField.value || 'Team 1';
+                team1Name = newName;
                 document.getElementById('team1_name_input').value = team1Name;
             } else {
-                team2Name = inputField.value || 'Team 2';
+                team2Name = newName;
                 document.getElementById('team2_name_input').value = team2Name;
             }
             updateTeamNameDisplay(team);
             isEditingTeamName = false;
-        });
+        };
+
+        inputField.addEventListener('blur', saveName);
         
         inputField.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
@@ -321,7 +325,12 @@
             }
         });
 
-        teamNameSpan.parentNode.replaceChild(inputField, teamNameSpan);
+        h3.replaceChild(inputField, teamNameSpan);
+        // Remove the edit button while editing
+        const editButton = h3.querySelector('.edit-button');
+        if (editButton) {
+            h3.removeChild(editButton);
+        }
         inputField.focus();
     }
 

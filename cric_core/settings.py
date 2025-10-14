@@ -31,7 +31,7 @@ SECRET_KEY = "django-insecure-v@v8d$*(-5sso_wrjp(_tl7o3ao(_q98*c&0d4o3c5vbwxhbj%
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
-ALLOWED_HOSTS = ['icg-club.azurewebsites.net', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['icg-club.azurewebsites.net', 'localhost', '127.0.0.1', '*']
 
 CSRF_TRUSTED_ORIGINS = [
     'https://icg-club.azurewebsites.net',

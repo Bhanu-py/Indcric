@@ -509,44 +509,30 @@ def save_teams_view(request, session_id):
         print(f"Team2 players: {team2_players_str}")
         
         # Create or update match and teams
-        match = None
-        team1 = None
-        team2 = None
+        match, _ = Match.objects.get_or_create(
+            session=session, 
+            defaults={'name': f"Match for {session.name}"}
+        )
         
-        # Get the match or create a new one
-        if session.matches.exists():
-            match = session.matches.first()
-        else:
-            match = Match.objects.create(
-                session=session, 
-                name=f"Match for {session.name}"
-            )
+        # ** FIX: Delete existing teams and session players to rebuild them **
+        match.teams.all().delete()
+        SessionPlayer.objects.filter(session=session).delete()
         
         # Process team 1
         if team1_players_str:
             team1_player_ids = [int(pid) for pid in team1_players_str.split(',') if pid.strip()]
             
-            # Get or create team 1
-            if match.teams.exists():
-                team1 = match.teams.first()
-                team1.name = team1_name
-                team1_captain = None
-                if team1_captain_id:
-                    team1_captain = User.objects.get(id=team1_captain_id)
-                    team1.captain = team1_captain
-                team1.save()
-            else:
-                team1_captain = None
-                if team1_captain_id:
-                    team1_captain = User.objects.get(id=team1_captain_id)
-                team1 = Team.objects.create(
-                    match=match,
-                    name=team1_name,
-                    captain=team1_captain
-                )
+            team1_captain = None
+            if team1_captain_id:
+                team1_captain = User.objects.get(id=team1_captain_id)
             
-            # Clear existing players and add new ones
-            SessionPlayer.objects.filter(session=session, team=team1).delete()
+            team1 = Team.objects.create(
+                match=match,
+                name=team1_name,
+                captain=team1_captain
+            )
+            
+            # Add new players
             for player_id in team1_player_ids:
                 try:
                     user = User.objects.get(id=player_id)
@@ -562,27 +548,17 @@ def save_teams_view(request, session_id):
         if team2_players_str:
             team2_player_ids = [int(pid) for pid in team2_players_str.split(',') if pid.strip()]
             
-            # Get or create team 2
-            if match.teams.count() > 1:
-                team2 = match.teams.all()[1]
-                team2.name = team2_name
-                team2_captain = None
-                if team2_captain_id:
-                    team2_captain = User.objects.get(id=team2_captain_id)
-                    team2.captain = team2_captain
-                team2.save()
-            else:
-                team2_captain = None
-                if team2_captain_id:
-                    team2_captain = User.objects.get(id=team2_captain_id)
-                team2 = Team.objects.create(
-                    match=match,
-                    name=team2_name,
-                    captain=team2_captain
-                )
+            team2_captain = None
+            if team2_captain_id:
+                team2_captain = User.objects.get(id=team2_captain_id)
+
+            team2 = Team.objects.create(
+                match=match,
+                name=team2_name,
+                captain=team2_captain
+            )
             
-            # Clear existing players and add new ones
-            SessionPlayer.objects.filter(session=session, team=team2).delete()
+            # Add new players
             for player_id in team2_player_ids:
                 try:
                     user = User.objects.get(id=player_id)
