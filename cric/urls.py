@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 from . import views_users
 from .views import UsersHtmxTableView, create_session_view, attendance_view, match_attendance_detail_view
-from .views import payments_view, manage_users, edit_user_view, create_user_view, delete_session_view
+from .views import payments_view, manage_users, edit_user_view, create_user_view, delete_session_view, delete_user_view
 from .views import session_detail_view, vote_session_view, close_poll_view, save_teams_view, delete_session_view
 from .views_polls import poll_detail_view, create_poll_view
 
@@ -24,6 +24,7 @@ urlpatterns = [
     path('manage-users/', manage_users, name='manage-users'),
     path('users/edit/<int:user_id>/', edit_user_view, name='edit_user'),
     path('users/create/', create_user_view, name='create_user'),
+    path('users/delete/<int:user_id>/', delete_user_view, name='delete_user'),
     path('users/table/', UsersHtmxTableView.as_view(), name='users_table'),
     
     # Profile URLs
