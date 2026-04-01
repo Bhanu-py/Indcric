@@ -9,6 +9,16 @@
         </a>
     </div>
 
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="px-4 py-3 rounded-lg mb-2 {% if message.tags == 'success' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="overflow-x-auto bg-white rounded-lg shadow overflow-y-auto">
         <table class="min-w-full leading-normal">
             <thead>
@@ -44,7 +54,7 @@
                         <p class="text-gray-900 whitespace-no-wrap">{{ user.email }}</p>
                     </td>
                     <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                        <span class="relative inline-block px-3 py-1 font-semibold 
+                        <span class="relative inline-block px-3 py-1 font-semibold
                         {% if user.role == 'batsman' %}
                             text-blue-800 bg-blue-100
                         {% elif user.role == 'bowler' %}
@@ -57,7 +67,7 @@
                         </span>
                     </td>
                     <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                        <span class="relative inline-block px-3 py-1 font-semibold 
+                        <span class="relative inline-block px-3 py-1 font-semibold
                         {% if user.is_superuser %}
                             text-red-800 bg-red-100
                         {% elif user.is_staff %}
@@ -83,15 +93,15 @@
                         {% with wallet=user.wallet_set.first %}
                         <p class="text-gray-900 whitespace-no-wrap">
                             {% if wallet %}
-                                â‚¬{{ wallet.amount }}
+                                &euro;{{ wallet.amount }}
                             {% else %}
-                                â‚¬0.00
+                                &euro;0.00
                             {% endif %}
                         </p>
                         {% endwith %}
                     </td>
                     <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                        <button hx-get="{% url 'cric:edit_user' user.id %}"     
+                        <button hx-get="{% url 'cric:edit_user' user.id %}"
                                 hx-target="#editUserModal"
                                 hx-swap="innerHTML"
                                 class="text-indigo-600 hover:text-indigo-900 mr-4"
@@ -118,19 +128,18 @@
     </div>
 </div>
 
-
-<!-- Hidden form for delete POST -->
+<!-- Hidden form used to submit DELETE via POST -->
 <form id="deleteForm" method="post" action="">
     {% csrf_token %}
 </form>
 
-<!-- Confirmation modal for delete -->
+<!-- Delete confirmation modal -->
 <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center z-50">
     <div class="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl">
         <h3 class="text-lg font-semibold text-gray-800 mb-2">Delete Player</h3>
         <p class="text-gray-600 mb-6">Are you sure you want to delete <strong id="deletePlayerName"></strong>? This cannot be undone.</p>
         <div class="flex justify-end gap-3">
-            <button onclick="document.getElementById('deleteModal').classList.add('hidden')"
+            <button onclick="closeDeleteModal()"
                     class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium">
                 Cancel
             </button>
@@ -141,7 +150,8 @@
         </div>
     </div>
 </div>
-<!-- Modal for editing users -->
+
+<!-- Edit user modal -->
 <div id="modalOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center z-50" onclick="this.classList.add('hidden');">
     <div id="editUserModal" class="bg-white rounded-lg p-6 max-w-lg w-full" onclick="event.stopPropagation();">
         <!-- Modal content will be loaded here via HTMX -->
@@ -155,18 +165,21 @@ function confirmDelete(actionUrl, playerName) {
     document.getElementById('deleteModal').classList.remove('hidden');
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Setup HTMX event listeners
-    document.body.addEventListener('htmx:afterSwap', function(event) {
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.body.addEventListener('htmx:afterSwap', function (event) {
         if (event.detail.target.id === 'editUserModal') {
             document.getElementById('modalOverlay').classList.remove('hidden');
         }
     });
-    
-    // Close modal when ESC key is pressed
-    document.addEventListener('keydown', function(event) {
+
+    document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
             document.getElementById('modalOverlay').classList.add('hidden');
+            closeDeleteModal();
         }
     });
 });

@@ -318,7 +318,8 @@ def delete_user_view(request, user_id):
             else:
                 username = user.get_full_name() or user.username
                 user.delete()
-                messages.success(request, f"User '{username}' deleted successfully.")
+                messages.success(
+                    request, f"User '{username}' deleted successfully.")
         except User.DoesNotExist:
             messages.error(request, "User not found.")
     return redirect('cric:manage-users')
