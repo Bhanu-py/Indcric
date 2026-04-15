@@ -123,7 +123,7 @@ class Vote(models.Model):
 class Match(models.Model):
     session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name='matches', null=True)
     name = models.CharField(max_length=100)
-    winner = models.ForeignKey('Team', on_delete=models.CASCADE, related_name='won_matches', null=True, blank=True)
+    winner = models.ForeignKey('Team', on_delete=models.SET_NULL, related_name='won_matches', null=True, blank=True)
 
     def __str__(self):
         return f"{self.name} in {self.session.name}"
