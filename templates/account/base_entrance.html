@@ -1,7 +1,37 @@
 {% extends "base.html" %}
+{% block header %}{% endblock %}
+
 {% block content %}
-    <div class="max-w-md mx-auto my-8 bg-white shadow-lg rounded-lg p-6">
-        {% block account_top %}{% endblock account_top %}
-        {% block account_content %}{% endblock account_content %}
+<div class="min-h-screen flex items-center justify-center bg-stone-50 px-4 py-12">
+    <div class="w-full max-w-sm">
+
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <a href="/" class="inline-flex flex-col items-center gap-2">
+                <div class="w-12 h-12 rounded-2xl bg-pitch-700 flex items-center justify-center shadow-lg">
+                    <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.04 2.11L15.63 3.52c-.78-.3-1.6-.52-2.46-.52C9.48 3 6 6.48 6 10.17c0 2.1.94 3.98 2.42 5.27L3 21l1.41 1.41 5.27-5.27c1.25 1.42 3.07 2.32 5.09 2.32C18.52 19.46 22 15.98 22 12.27c0-3.72-3.48-6.2-4.96-10.16zm-2.87 14.35c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-lg font-bold text-stone-900 leading-tight">IndCric</p>
+                    <p class="text-xs text-stone-400">Cricket Club Manager</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-stone-100 overflow-hidden">
+            <div class="h-1 w-full bg-gradient-to-r from-pitch-600 to-pitch-400"></div>
+            <div class="px-7 py-7 allauth">
+                {% block account_top %}{% endblock %}
+                {% block account_content %}{% endblock %}
+            </div>
+        </div>
+
+        <p class="text-center text-xs text-stone-400 mt-6">
+            <a href="{% url 'account_login' %}" class="hover:text-stone-600 transition-colors">← Back to sign in</a>
+        </p>
     </div>
-{% endblock content %}
+</div>
+{% endblock %}

@@ -1,90 +1,198 @@
-{% extends 'layouts/blank.html' %}
+{% extends 'base.html' %}
+
+{% block title %}{{ profile_user.username }} — IndCric{% endblock %}
 
 {% block content %}
+<div class="page-content-narrow">
 
-<div class="container mx-auto mt-10 p-5">
-    <div class="max-w-2xl mx-auto bg-white shadow-md rounded-lg overflow-hidden">
-        <div class="p-5">
-            {% if edit_mode %}
-            <h1 class="text-2xl font-bold mb-4">Edit Profile</h1>
-            <form method="post" enctype="multipart/form-data">
+    {% if edit_mode %}
+    <!-- ── Edit mode ── -->
+    <div class="mb-6">
+        <a href="{% url 'profile' %}" class="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-800 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Back to Profile
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h1 class="text-base font-bold text-stone-900">Edit Profile</h1>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" class="space-y-6">
                 {% csrf_token %}
-                
-                <div class="mb-4">
-                    <label for="id_role" class="block text-gray-700 font-medium mb-2">Role</label>
-                    {{ form.role }}
+
+                <div>
+                    <label class="form-label" for="id_role">Playing Role</label>
+                    <div class="grid grid-cols-3 gap-3" x-data="{ role: '{{ user.role }}' }">
+                        {% for val, label in form.role.field.choices %}
+                        <label class="relative cursor-pointer">
+                            <input type="radio" name="role" value="{{ val }}"
+                                   class="sr-only peer"
+                                   {% if val == form.role.value %}checked{% endif %}>
+                            <div class="peer-checked:border-pitch-600 peer-checked:bg-pitch-50 peer-checked:text-pitch-800
+                                        border-2 border-stone-200 rounded-xl p-3 text-center text-sm font-semibold text-stone-600
+                                        hover:border-pitch-300 transition-all">
+                                {% if val == 'batsman' %}🏏{% elif val == 'bowler' %}🎯{% else %}⭐{% endif %}
+                                <p class="mt-1 text-xs">{{ label }}</p>
+                            </div>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    {% if form.role.errors %}
+                    <ul class="errorlist mt-1">{% for e in form.role.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                    {% endif %}
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                    <div>
-                        <label for="id_batting_rating" class="block text-gray-700 font-medium mb-2">Batting Rating</label>
-                        {{ form.batting_rating }}
-                    </div>
-                    <div>
-                        <label for="id_bowling_rating" class="block text-gray-700 font-medium mb-2">Bowling Rating</label>
-                        {{ form.bowling_rating }}
-                    </div>
-                    <div>
-                        <label for="id_fielding_rating" class="block text-gray-700 font-medium mb-2">Fielding Rating</label>
-                        {{ form.fielding_rating }}
+                <div>
+                    <h3 class="text-sm font-bold text-stone-700 mb-3">Skill Ratings <span class="text-stone-400 font-normal">(0.0 – 5.0)</span></h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="form-label" for="id_batting_rating">Batting</label>
+                            <input type="number" name="batting_rating" id="id_batting_rating"
+                                   class="form-input" min="0" max="5" step="0.1"
+                                   value="{{ form.batting_rating.value|default:user.batting_rating }}">
+                            {% if form.batting_rating.errors %}
+                            <ul class="errorlist mt-1">{% for e in form.batting_rating.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label class="form-label" for="id_bowling_rating">Bowling</label>
+                            <input type="number" name="bowling_rating" id="id_bowling_rating"
+                                   class="form-input" min="0" max="5" step="0.1"
+                                   value="{{ form.bowling_rating.value|default:user.bowling_rating }}">
+                            {% if form.bowling_rating.errors %}
+                            <ul class="errorlist mt-1">{% for e in form.bowling_rating.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label class="form-label" for="id_fielding_rating">Fielding</label>
+                            <input type="number" name="fielding_rating" id="id_fielding_rating"
+                                   class="form-input" min="0" max="5" step="0.1"
+                                   value="{{ form.fielding_rating.value|default:user.fielding_rating }}">
+                            {% if form.fielding_rating.errors %}
+                            <ul class="errorlist mt-1">{% for e in form.fielding_rating.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
 
-                <div class="mt-8 text-center">
-                    <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                        Save Changes
-                    </button>
-                    <a href="{% url 'profile' %}" class="ml-4 text-gray-600 hover:text-gray-800">Cancel</a>
+                <div class="flex items-center gap-3 pt-2">
+                    <button type="submit" class="btn btn-primary btn-md">Save Changes</button>
+                    <a href="{% url 'profile' %}" class="btn btn-secondary btn-md">Cancel</a>
                 </div>
             </form>
-            {% else %}
-            <div class="flex items-center space-x-4">
-                <!-- Placeholder for an avatar -->
-                <div class="w-24 h-24 bg-gray-300 rounded-full flex items-center justify-center">
-                    <span class="text-gray-500 text-4xl">{{ user.username|first|upper }}</span>
-                </div>
-                <div>
-                    <h1 class="text-2xl font-bold">{{ user.username }}</h1>
-                    <p class="text-gray-600">{{ user.email }}</p>
-                </div>
-            </div>
-
-            <div class="mt-6">
-                <h2 class="text-xl font-semibold">Player Information</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <div>
-                        <p class="text-gray-600 font-medium">Role</p>
-                        <p class="text-lg">{{ user.role|capfirst }}</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-6">
-                <h2 class="text-xl font-semibold">Skill Ratings</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                    <div>
-                        <p class="text-gray-600 font-medium">Batting</p>
-                        <p class="text-lg">{{ user.batting_rating }} / 5.0</p>
-                    </div>
-                    <div>
-                        <p class="text-gray-600 font-medium">Bowling</p>
-                        <p class="text-lg">{{ user.bowling_rating }} / 5.0</p>
-                    </div>
-                    <div>
-                        <p class="text-gray-600 font-medium">Fielding</p>
-                        <p class="text-lg">{{ user.fielding_rating }} / 5.0</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-8 text-center">
-                <a href="{% url 'profile-edit' %}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                    Edit Profile
-                </a>
-            </div>
-            {% endif %}
         </div>
     </div>
-</div>
 
+    {% else %}
+    <!-- ── View mode ── -->
+
+    <!-- Profile header card -->
+    <div class="card mb-5">
+        <div class="h-20 bg-gradient-to-r from-pitch-800 to-pitch-600 rounded-t-2xl"></div>
+        <div class="px-6 pb-6">
+            <div class="flex items-end justify-between -mt-8 mb-4">
+                <div class="w-16 h-16 rounded-2xl bg-amber-500 flex items-center justify-center text-white text-2xl font-bold ring-4 ring-white shadow-md">
+                    {{ user.username|first|upper }}
+                </div>
+                {% if user == request.user %}
+                <a href="{% url 'profile_edit' %}" class="btn btn-secondary btn-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    Edit Profile
+                </a>
+                {% endif %}
+            </div>
+
+            <div class="flex items-center gap-3 flex-wrap">
+                <div>
+                    <h1 class="text-lg font-bold text-stone-900">{{ user.get_full_name|default:user.username }}</h1>
+                    <p class="text-sm text-stone-400">@{{ user.username }}</p>
+                </div>
+                <span class="badge
+                    {% if user.role == 'batsman' %}badge-sky
+                    {% elif user.role == 'bowler' %}badge-red
+                    {% else %}badge-purple{% endif %}">
+                    {% if user.role == 'batsman' %}🏏{% elif user.role == 'bowler' %}🎯{% else %}⭐{% endif %}
+                    {{ user.role|capfirst }}
+                </span>
+                {% if user.is_staff %}
+                <span class="badge badge-amber">Staff</span>
+                {% endif %}
+            </div>
+            <p class="text-sm text-stone-400 mt-1">{{ user.email }}</p>
+        </div>
+    </div>
+
+    <!-- Skill ratings -->
+    <div class="card mb-5">
+        <div class="card-header">
+            <h2 class="text-sm font-bold text-stone-800">Skill Ratings</h2>
+        </div>
+        <div class="card-body space-y-4">
+            <div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-sm font-medium text-stone-600">🏏 Batting</span>
+                    <span class="text-sm font-bold text-stone-800">{{ user.batting_rating|default:"0.0" }} <span class="text-stone-400 font-normal">/ 5.0</span></span>
+                </div>
+                <div class="rating-bar">
+                    <div class="rating-fill transition-all duration-500" style="width: {% widthratio user.batting_rating|default:0 5 100 %}%"></div>
+                </div>
+            </div>
+            <div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-sm font-medium text-stone-600">🎯 Bowling</span>
+                    <span class="text-sm font-bold text-stone-800">{{ user.bowling_rating|default:"0.0" }} <span class="text-stone-400 font-normal">/ 5.0</span></span>
+                </div>
+                <div class="rating-bar">
+                    <div class="rating-fill transition-all duration-500" style="width: {% widthratio user.bowling_rating|default:0 5 100 %}%"></div>
+                </div>
+            </div>
+            <div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-sm font-medium text-stone-600">🤸 Fielding</span>
+                    <span class="text-sm font-bold text-stone-800">{{ user.fielding_rating|default:"0.0" }} <span class="text-stone-400 font-normal">/ 5.0</span></span>
+                </div>
+                <div class="rating-bar">
+                    <div class="rating-fill transition-all duration-500" style="width: {% widthratio user.fielding_rating|default:0 5 100 %}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Career stats -->
+    {% if user.playerprofile %}
+    <div class="card mb-5">
+        <div class="card-header">
+            <h2 class="text-sm font-bold text-stone-800">Career Stats</h2>
+        </div>
+        <div class="card-body">
+            <div class="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                <div class="text-center p-3 bg-stone-50 rounded-xl">
+                    <p class="stat-value">{{ user.playerprofile.matches_played|default:0 }}</p>
+                    <p class="stat-label">Matches</p>
+                </div>
+                <div class="text-center p-3 bg-stone-50 rounded-xl">
+                    <p class="stat-value">{{ user.playerprofile.runs_scored|default:0 }}</p>
+                    <p class="stat-label">Runs</p>
+                </div>
+                <div class="text-center p-3 bg-stone-50 rounded-xl">
+                    <p class="stat-value">{{ user.playerprofile.wickets_taken|default:0 }}</p>
+                    <p class="stat-label">Wickets</p>
+                </div>
+                <div class="text-center p-3 bg-stone-50 rounded-xl">
+                    <p class="stat-value">{{ user.playerprofile.catches_taken|default:0 }}</p>
+                    <p class="stat-label">Catches</p>
+                </div>
+                <div class="text-center p-3 bg-stone-50 rounded-xl">
+                    <p class="stat-value">{{ user.playerprofile.stumps_taken|default:0 }}</p>
+                    <p class="stat-label">Stumpings</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% endif %}
+</div>
 {% endblock %}

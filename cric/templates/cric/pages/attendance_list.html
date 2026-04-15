@@ -1,47 +1,78 @@
 {% extends 'base.html' %}
 
-{% block content %}
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <h1 class="text-3xl font-bold text-gray-900 mb-8 text-center">Match Attendance</h1>
+{% block title %}Attendance — IndCric{% endblock %}
 
-    <div class="space-y-6">
+{% block content %}
+<div class="page-content">
+
+    <div class="mb-6">
+        <h1 class="text-xl font-bold text-stone-900">Match Attendance</h1>
+        <p class="text-sm text-stone-500 mt-0.5">Confirm who played in each session</p>
+    </div>
+
+    <div class="space-y-3">
         {% for match in matches %}
-            <a href="{% url 'cric:match_attendance_detail' match.id %}" class="block bg-white shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                <div class="p-6">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-800">{{ match.session.name }}</h2>
-                            <p class="text-sm text-gray-600">{{ match.session.date }} at {{ match.session.time }}</p>
-                            <p class="text-sm text-gray-500 mb-4">{{ match.session.location }}</p>
-                        </div>
-                        {% if match.session.attendance_confirmed %}
-                            <div class="ml-4 flex-shrink-0 text-xs font-bold text-green-600 border border-green-500 rounded-full py-1 px-3">
-                                CONFIRMED
-                            </div>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="border-t border-gray-200 mt-4 pt-4 flex justify-around text-sm">
-                        <div class="text-center">
-                            <span class="font-semibold text-gray-700">Players Attended</span>
-                            <span class="block mt-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-bold">{{ match.attended_count }}</span>
-                        </div>
-                        <div class="text-center">
-                            <span class="font-semibold text-gray-700">Cost per Person</span>
-                            {% with cost=match.cost_per_person_calculated %}
-                                <span class="block mt-1 px-3 py-1 {% if cost %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %} rounded-full font-bold">
-                                    {% if cost %}${{ cost }}{% else %}N/A{% endif %}
-                                </span>
-                            {% endwith %}
-                        </div>
-                    </div>
-                </div>
-            </a>
-        {% empty %}
-            <div class="text-center bg-white shadow rounded-lg p-6">
-                <p class="text-gray-500">No matches found.</p>
+        <a href="{% url 'cric:match_attendance_detail' match.id %}"
+           class="card flex items-center gap-4 p-5 hover:shadow-md transition-all group">
+
+            <!-- Date blob -->
+            <div class="shrink-0 w-12 h-12 rounded-xl bg-pitch-50 flex flex-col items-center justify-center">
+                <span class="text-base font-bold text-pitch-800 leading-none">{{ match.session.date|date:"j" }}</span>
+                <span class="text-xs text-pitch-600 font-medium">{{ match.session.date|date:"M" }}</span>
             </div>
+
+            <!-- Info -->
+            <div class="flex-1 min-w-0">
+                <h3 class="text-sm font-bold text-stone-900 group-hover:text-pitch-700 transition-colors truncate">
+                    {{ match.session.name }}
+                </h3>
+                <div class="flex items-center gap-3 mt-1 flex-wrap">
+                    <span class="flex items-center gap-1 text-xs text-stone-400">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        {{ match.session.time }}
+                    </span>
+                    <span class="flex items-center gap-1 text-xs text-stone-400">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        {{ match.session.location }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="shrink-0 flex items-center gap-4">
+                <div class="text-center">
+                    <p class="text-lg font-bold text-stone-800">{{ match.attended_count }}</p>
+                    <p class="text-xs text-stone-400 font-medium">Players</p>
+                </div>
+
+                {% with cost=match.cost_per_person_calculated %}
+                {% if cost %}
+                <div class="text-center">
+                    <p class="text-lg font-bold text-pitch-700">&euro;{{ cost }}</p>
+                    <p class="text-xs text-stone-400 font-medium">Per person</p>
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                {% if match.session.attendance_confirmed %}
+                <span class="badge badge-green shrink-0">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    Confirmed
+                </span>
+                {% else %}
+                <span class="badge badge-amber shrink-0">Pending</span>
+                {% endif %}
+            </div>
+
+            <svg class="w-4 h-4 text-stone-300 group-hover:text-pitch-500 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </a>
+        {% empty %}
+        <div class="card p-12 text-center">
+            <svg class="w-10 h-10 text-stone-200 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            <p class="text-sm text-stone-400">No matches found.</p>
+        </div>
         {% endfor %}
     </div>
+
 </div>
 {% endblock %}

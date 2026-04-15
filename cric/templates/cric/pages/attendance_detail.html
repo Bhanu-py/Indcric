@@ -1,75 +1,123 @@
 {% extends 'base.html' %}
 
+{% block title %}Attendance — {{ match.session.name }}{% endblock %}
+
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">{{ match.session.name }} - Attendance</h1>
-        <p class="text-gray-600">{{ match.session.date }} at {{ match.session.time }}</p>
-        {% if match.session.attendance_confirmed %}
-            <div class="mt-4 inline-block bg-green-100 text-green-800 text-sm font-bold px-4 py-2 rounded-full">
-                Attendance Confirmed. Cost per person: ${{ match.session.cost_per_person }}
+<div class="page-content">
+
+    <a href="{% url 'cric:attendance_list' %}" class="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-800 transition-colors mb-5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        All Matches
+    </a>
+
+    <!-- Header -->
+    <div class="card mb-6">
+        <div class="p-6">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h1 class="text-lg font-bold text-stone-900">{{ match.session.name }}</h1>
+                    <p class="text-sm text-stone-400 mt-0.5">{{ match.session.date|date:"j F Y" }} at {{ match.session.time }} &bull; {{ match.session.location }}</p>
+                </div>
+                {% if match.session.attendance_confirmed %}
+                <div class="flex items-center gap-3 flex-wrap">
+                    <span class="badge badge-green">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                        Attendance Confirmed
+                    </span>
+                    {% if match.session.cost_per_person %}
+                    <span class="badge badge-amber">
+                        &euro;{{ match.session.cost_per_person }} per person
+                    </span>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
-        {% endif %}
+        </div>
     </div>
 
     <form method="post" action="{% url 'cric:match_attendance_detail' match.id %}">
         {% csrf_token %}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {% if teams.count >= 2 %}
+
+        {% if teams.count >= 2 %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+
             <!-- Team 1 -->
-            <div class="bg-white shadow-lg rounded-lg p-6">
-                <h3 class="font-bold text-2xl text-center mb-4">{{ teams.0.name }}</h3>
-                <p class="text-gray-600 text-center mb-4">Captain: {{ teams.0.captain.username }}</p>
-                <ul class="space-y-3">
+            <div class="card">
+                <div class="h-1 bg-pitch-600 rounded-t-2xl"></div>
+                <div class="card-header">
+                    <div>
+                        <h2 class="text-sm font-bold text-pitch-800">{{ teams.0.name }}</h2>
+                        <p class="text-xs text-stone-400 mt-0.5">Captain: {{ teams.0.captain.username }}</p>
+                    </div>
+                </div>
+                <div class="card-body space-y-2">
                     {% for mp in team1_players %}
-                    <li class="flex items-center justify-between bg-gray-50 p-3 rounded-md">
-                        <label for="mp_{{ mp.id }}" class="font-medium text-gray-800">{{ mp.player.username }}</label>
+                    <label for="mp_{{ mp.id }}"
+                           class="flex items-center justify-between p-3 rounded-xl border border-stone-100 hover:border-pitch-200 hover:bg-pitch-50 cursor-pointer transition-all
+                           {% if match.session.attendance_confirmed %}opacity-60 cursor-default{% endif %}">
+                        <div class="flex items-center gap-3">
+                            <span class="w-7 h-7 rounded-full bg-pitch-100 text-pitch-700 flex items-center justify-center text-xs font-bold">
+                                {{ mp.player.username|first|upper }}
+                            </span>
+                            <span class="text-sm font-medium text-stone-800">{{ mp.player.username }}</span>
+                        </div>
                         <input type="checkbox" name="present" value="{{ mp.id }}" id="mp_{{ mp.id }}"
-                               class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                               class="w-4 h-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500 cursor-pointer"
                                {% if mp.id in present_list %}checked{% endif %}
                                {% if match.session.attendance_confirmed %}disabled{% endif %}>
-                    </li>
+                    </label>
                     {% empty %}
-                    <li class="text-gray-500">No players in this team.</li>
+                    <p class="text-sm text-stone-400 text-center py-4">No players assigned.</p>
                     {% endfor %}
-                </ul>
+                </div>
             </div>
 
             <!-- Team 2 -->
-            <div class="bg-white shadow-lg rounded-lg p-6">
-                <h3 class="font-bold text-2xl text-center mb-4">{{ teams.1.name }}</h3>
-                <p class="text-gray-600 text-center mb-4">Captain: {{ teams.1.captain.username }}</p>
-                <ul class="space-y-3">
+            <div class="card">
+                <div class="h-1 bg-amber-500 rounded-t-2xl"></div>
+                <div class="card-header">
+                    <div>
+                        <h2 class="text-sm font-bold text-amber-700">{{ teams.1.name }}</h2>
+                        <p class="text-xs text-stone-400 mt-0.5">Captain: {{ teams.1.captain.username }}</p>
+                    </div>
+                </div>
+                <div class="card-body space-y-2">
                     {% for mp in team2_players %}
-                    <li class="flex items-center justify-between bg-gray-50 p-3 rounded-md">
-                        <label for="mp_{{ mp.id }}" class="font-medium text-gray-800">{{ mp.player.username }}</label>
+                    <label for="mp_{{ mp.id }}"
+                           class="flex items-center justify-between p-3 rounded-xl border border-stone-100 hover:border-amber-200 hover:bg-amber-50 cursor-pointer transition-all
+                           {% if match.session.attendance_confirmed %}opacity-60 cursor-default{% endif %}">
+                        <div class="flex items-center gap-3">
+                            <span class="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold">
+                                {{ mp.player.username|first|upper }}
+                            </span>
+                            <span class="text-sm font-medium text-stone-800">{{ mp.player.username }}</span>
+                        </div>
                         <input type="checkbox" name="present" value="{{ mp.id }}" id="mp_{{ mp.id }}"
-                               class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                               class="w-4 h-4 rounded border-stone-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
                                {% if mp.id in present_list %}checked{% endif %}
                                {% if match.session.attendance_confirmed %}disabled{% endif %}>
-                    </li>
+                    </label>
                     {% empty %}
-                    <li class="text-gray-500">No players in this team.</li>
+                    <p class="text-sm text-stone-400 text-center py-4">No players assigned.</p>
                     {% endfor %}
-                </ul>
+                </div>
             </div>
-            {% endif %}
         </div>
+        {% endif %}
 
         {% if not match.session.attendance_confirmed %}
-        <div class="mt-8 flex justify-center space-x-4">
-            <button type="submit" name="save_attendance" class="px-6 py-2 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+        <div class="flex items-center gap-3">
+            <button type="submit" name="save_attendance" class="btn btn-secondary btn-md">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
                 Save Changes
             </button>
-            <button type="submit" name="confirm_attendance" class="px-6 py-2 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
-                Confirm Attendance & Calculate Cost
+            <button type="submit" name="confirm_attendance" class="btn btn-success btn-md">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                Confirm &amp; Calculate Cost
             </button>
         </div>
         {% endif %}
     </form>
-    
-    <div class="text-center mt-8">
-        <a href="{% url 'cric:attendance_list' %}" class="text-indigo-600 hover:text-indigo-800">&larr; Back to All Matches</a>
-    </div>
+
 </div>
 {% endblock %}

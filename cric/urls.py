@@ -3,7 +3,7 @@ from . import views
 from . import views_users
 from .views import UsersHtmxTableView, create_session_view, attendance_view, match_attendance_detail_view
 from .views import payments_view, manage_users, edit_user_view, create_user_view, delete_session_view, delete_user_view
-from .views import session_detail_view, vote_session_view, close_poll_view, save_teams_view, delete_session_view
+from .views import session_detail_view, vote_session_view, close_poll_view, save_teams_view, delete_session_view, add_match_view, record_score_view, delete_match_view
 from .views_polls import poll_detail_view, create_poll_view
 
 urlpatterns = [
@@ -19,6 +19,9 @@ urlpatterns = [
          create_poll_view, name='create_poll'),
     path('session/<int:session_id>/save-teams/',
          save_teams_view, name='save_teams'),
+    path('session/<int:session_id>/add-match/', add_match_view, name='add_match'),
+    path('match/<int:match_id>/record-score/', record_score_view, name='record_score'),
+    path('match/<int:match_id>/delete/', delete_match_view, name='delete_match'),
     path('attendance/', attendance_view, name='attendance_list'),
     path('attendance/match/<int:match_id>/',
          match_attendance_detail_view, name='match_attendance_detail'),
@@ -31,20 +34,20 @@ urlpatterns = [
     path('users/delete/<int:user_id>/', delete_user_view, name='delete_user'),
     path('users/table/', UsersHtmxTableView.as_view(), name='users_table'),
 
-    # Profile URLs
+    # Profile URLs — specific routes must come before the <str:username> catch-all
     path('profile/', views_users.profile_view, name='profile'),
-    path('profile/<str:username>/', views_users.profile_view,
-         name='profile_with_username'),
     path('profile/edit/', views_users.profile_edit_view, name='profile_edit'),
     path('profile/settings/', views_users.profile_settings_view,
          name='profile-settings'),
     path('profile/email/', views_users.profile_emailchange,
-         name='profile-email-change'),
+         name='profile-emailchange'),
     path('profile/username/', views_users.profile_usernamechange,
-         name='profile-username-change'),
+         name='profile-usernamechange'),
     path('profile/verify-email/', views_users.profile_emailverify,
          name='profile-email-verify'),
     path('profile/delete/', views_users.profile_delete_view, name='profile-delete'),
     path('profile/onboarding/', views_users.profile_onboarding_view,
          name='profile-onboarding'),
+    path('profile/<str:username>/', views_users.profile_view,
+         name='profile_with_username'),
 ]

@@ -1,22 +1,32 @@
-<form hx-post="{% url 'profile-emailchange' %}" class="space-y-4 bg-gray-50 p-4 rounded-lg">
+<form hx-post="{% url 'profile-emailchange' %}"
+      hx-target="#email-form"
+      hx-swap="innerHTML"
+      class="space-y-4">
     {% csrf_token %}
     <div>
-        <label class="block text-sm font-medium text-gray-700">{{ form.email.label }}</label>
-        {{ form.email }}
-        {% if form.email.errors %}
-            <p class="text-red-500 text-xs mt-1">{{ form.email.errors.0 }}</p>
-        {% endif %}
+        <label class="form-label" for="id_email">New Email Address</label>
+        <input class="form-input {% if form.email.errors %}!border-red-400 focus:!ring-red-400{% endif %}"
+               type="email"
+               id="id_email"
+               name="email"
+               value="{{ form.email.value|default:'' }}"
+               placeholder="your@email.com"
+               autocomplete="email">
+        {% for error in form.email.errors %}
+        <p class="mt-1 text-xs text-red-600 flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            {{ error }}
+        </p>
+        {% endfor %}
     </div>
-    <div class="flex justify-end space-x-3">
-        <button type="button" 
-                hx-get="{% url 'profile-settings' %}" 
-                hx-target="#email-form" 
+    <div class="flex items-center gap-3">
+        <button type="submit" class="btn btn-primary btn-md">Save Email</button>
+        <button type="button"
+                hx-get="{% url 'profile-emailchange' %}"
+                hx-target="#email-form"
                 hx-swap="innerHTML"
-                class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg">
+                class="btn btn-secondary btn-md">
             Cancel
-        </button>
-        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-            Save
         </button>
     </div>
 </form>

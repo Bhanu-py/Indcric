@@ -1,14 +1,72 @@
-{% extends "account/base_entrance.html" %}
+{% extends "base.html" %}
 {% load i18n %}
-{% block head_title %}
-    {% trans "Logout" %}
-{% endblock head_title %}
-{% block account_top %}
-    <h1>{% trans "Confirm Logout" %}</h1>
-    <p>{% trans "Are you sure you want to logout?" %}</p>
-    <form method="post" action="{% url 'account_logout' %}">
-        {% csrf_token %}
-        <button type="submit">{% trans "Logout" %}</button>
-    </form>
-{% endblock account_top %}
-<!-- Removed duplicate content blocks that cause the popup to render twice -->
+
+{% block title %}Sign Out — IndCric{% endblock %}
+{% block header %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-stone-50 px-4">
+
+    <div class="w-full max-w-sm">
+
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <a href="/" class="inline-flex flex-col items-center gap-2">
+                <div class="w-12 h-12 rounded-2xl bg-pitch-700 flex items-center justify-center shadow-lg">
+                    <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.04 2.11L15.63 3.52c-.78-.3-1.6-.52-2.46-.52C9.48 3 6 6.48 6 10.17c0 2.1.94 3.98 2.42 5.27L3 21l1.41 1.41 5.27-5.27c1.25 1.42 3.07 2.32 5.09 2.32C18.52 19.46 22 15.98 22 12.27c0-3.72-3.48-6.2-4.96-10.16zm-2.87 14.35c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/>
+                    </svg>
+                </div>
+                <span class="text-lg font-bold text-stone-900">IndCric</span>
+            </a>
+        </div>
+
+        <!-- Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-stone-100 overflow-hidden">
+
+            <!-- Top accent -->
+            <div class="h-1 w-full bg-gradient-to-r from-pitch-600 to-pitch-400"></div>
+
+            <div class="px-8 py-8 text-center">
+
+                <!-- Icon -->
+                <div class="w-14 h-14 rounded-2xl bg-stone-100 flex items-center justify-center mx-auto mb-5">
+                    <svg class="w-7 h-7 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
+                              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                </div>
+
+                <h1 class="text-lg font-bold text-stone-900 !mb-1.5">Sign out of IndCric?</h1>
+                <p class="text-sm text-stone-500 mb-7">
+                    You'll need to sign in again to access your club dashboard.
+                </p>
+
+                <form method="post" action="{% url 'account_logout' %}">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="w-full flex items-center justify-center gap-2 bg-stone-800 hover:bg-stone-900 active:scale-[.98]
+                                   text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all duration-150
+                                   focus:outline-none focus:ring-2 focus:ring-stone-500 focus:ring-offset-2 shadow-sm mb-3">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        Yes, sign me out
+                    </button>
+                </form>
+
+                <a href="/"
+                   class="w-full flex items-center justify-center gap-2 bg-white border border-stone-200 hover:bg-stone-50 active:scale-[.98]
+                          text-stone-700 text-sm font-semibold px-5 py-2.5 rounded-xl transition-all duration-150
+                          focus:outline-none focus:ring-2 focus:ring-stone-300 focus:ring-offset-2">
+                    Cancel, take me back
+                </a>
+
+            </div>
+        </div>
+
+        <p class="text-center text-xs text-stone-400 mt-6">© 2025 IndCric · Built for the club.</p>
+    </div>
+</div>
+{% endblock %}

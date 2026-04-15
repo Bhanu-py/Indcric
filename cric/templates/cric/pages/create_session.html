@@ -1,45 +1,72 @@
 {% extends 'base.html' %}
-{% load static %}
+
+{% block title %}Create Session — IndCric{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-8 py-24">
-    <h2 class="text-2xl font-bold mb-4">Create Session</h2>
-    <form method="post" id="create-session-form">
-        {% csrf_token %}
-        <div class="grid grid-cols-2 gap-4 mb-4">
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="name">Session Name:</label>
-                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="name" name="name" type="text" placeholder="Enter session name">
-            </div>
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="date">Date:</label>
-                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="date" name="date" type="date">
-            </div>
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="time">Time:</label>
-                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="time" name="time" type="time">
-            </div>
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="duration">Duration:</label>
-                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="duration" name="duration" type="number" placeholder="Enter duration in hours" value="3">
-            </div>
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="location">Location:</label>
-                <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="location" name="location">
-                    <option value="GUSB" selected>GUSB</option>
-                    <option value="Henry Storyplein">Henry Storyplein</option>
-                </select>
-            </div>
-             <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="cost">Cost:</label>
-                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="cost" name="cost" type="number" step="0.01" placeholder="Enter cost" value="80">
-            </div>
-        </div>
-        
-        <div class="mt-6">
-            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">Create Session</button>
-        </div>
-    </form>
-</div>
+<div class="page-content-narrow">
 
+    <a href="{% url 'home' %}" class="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-800 transition-colors mb-5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to Dashboard
+    </a>
+
+    <div class="card">
+        <div class="card-header">
+            <h1 class="text-base font-bold text-stone-900">Create New Session</h1>
+            <p class="text-xs text-stone-400 mt-0.5">Schedule a cricket session for the club</p>
+        </div>
+        <div class="card-body">
+            <form method="post" id="create-session-form" class="space-y-5">
+                {% csrf_token %}
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div class="sm:col-span-2">
+                        <label class="form-label" for="name">Session Name</label>
+                        <input class="form-input" id="name" name="name" type="text"
+                               placeholder="e.g. Sunday Cricket — April 2025">
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="date">Date</label>
+                        <input class="form-input" id="date" name="date" type="date">
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="time">Start Time</label>
+                        <input class="form-input" id="time" name="time" type="time">
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="duration">Duration (hours)</label>
+                        <input class="form-input" id="duration" name="duration" type="number"
+                               placeholder="3" value="3" min="1" max="12">
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="cost">Total Cost (&euro;)</label>
+                        <input class="form-input" id="cost" name="cost" type="number"
+                               step="0.01" placeholder="80.00" value="80">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="form-label" for="location">Venue</label>
+                        <select class="form-select" id="location" name="location">
+                            <option value="GUSB">GUSB</option>
+                            <option value="Henry Storyplein">Henry Storyplein</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex items-center gap-3">
+                    <button type="submit" class="btn btn-primary btn-md">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Create Session
+                    </button>
+                    <a href="{% url 'home' %}" class="btn btn-secondary btn-md">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
 {% endblock %}

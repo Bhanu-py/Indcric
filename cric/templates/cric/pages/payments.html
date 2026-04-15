@@ -1,50 +1,107 @@
 {% extends 'base.html' %}
 
+{% block title %}Payments — IndCric{% endblock %}
+
 {% block content %}
-<div class="max-w-4xl mx-auto px-8 py-24">
-    <h1 class="text-3xl font-bold mb-8">Payments</h1>
+<div class="page-content">
+
+    <div class="mb-6">
+        <h1 class="text-xl font-bold text-stone-900">Payments</h1>
+        <p class="text-sm text-stone-500 mt-0.5">Track session payments for each match</p>
+    </div>
+
+    <!-- Match picker -->
     <section class="mb-8">
-        <h2 class="text-2xl font-bold mb-4">Matches</h2>
-        <div class="grid gap-4 md:grid-cols-3">
+        <div class="flex items-center gap-2 mb-4">
+            <div class="w-1 h-5 rounded-full bg-pitch-600"></div>
+            <h2 class="text-sm font-bold text-stone-600 uppercase tracking-wide">Select a Match</h2>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {% for match in matches %}
-                <a href="?match_id={{ match.id }}" class="block bg-white shadow rounded-lg p-4 hover:shadow-md transition duration-200">
-                    <strong class="text-lg">{{ match.name }}</strong><br>
-                    <span class="text-gray-600">{{ match.date }}</span>
-                </a>
+            <a href="?match_id={{ match.id }}"
+               class="card p-4 hover:shadow-md transition-all group
+               {% if selected_match and selected_match.id == match.id %}ring-2 ring-pitch-500 shadow-md{% endif %}">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-pitch-50 flex flex-col items-center justify-center shrink-0">
+                        <span class="text-sm font-bold text-pitch-800 leading-none">{{ match.date|date:"j" }}</span>
+                        <span class="text-[10px] text-pitch-600 font-medium">{{ match.date|date:"M" }}</span>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-sm font-bold text-stone-800 truncate group-hover:text-pitch-700 transition-colors">{{ match.name }}</p>
+                        <p class="text-xs text-stone-400">{{ match.date }}</p>
+                    </div>
+                    {% if selected_match and selected_match.id == match.id %}
+                    <svg class="w-4 h-4 text-pitch-600 ml-auto shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    {% endif %}
+                </div>
+            </a>
+            {% empty %}
+            <div class="col-span-3 card p-8 text-center">
+                <p class="text-sm text-stone-400">No matches available.</p>
+            </div>
             {% endfor %}
         </div>
     </section>
 
+    <!-- Payment details for selected match -->
     {% if selected_match %}
     <section>
-        <h2 class="text-2xl font-bold mb-4">Attended Players for Match: {{ selected_match.name }}</h2>
+        <div class="flex items-center gap-2 mb-4">
+            <div class="w-1 h-5 rounded-full bg-amber-500"></div>
+            <h2 class="text-sm font-bold text-stone-600 uppercase tracking-wide">{{ selected_match.name }} — Payments</h2>
+        </div>
+
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="match_id" value="{{ selected_match.id }}">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                 {% for team in teams %}
-                <div>
-                    <h3 class="text-xl font-semibold mb-2">{{ team.name }} (Captain: {{ team.captain.username }})</h3>
-                    <ul>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="text-sm font-bold text-stone-800">{{ team.name }}</h3>
+                        <p class="text-xs text-stone-400 mt-0.5">Captain: {{ team.captain.username }}</p>
+                    </div>
+                    <div class="card-body space-y-2">
                         {% for player in team.player_set.all %}
-                            {% if player.id in attendance_by_player %}
-                                <li class="mb-2">
-                                    <label class="inline-flex items-center">
-                                        <input type="checkbox" name="paid" value="{{ player.id }}" class="form-checkbox h-5 w-5 text-green-600" {% if player.id in paid_list %}checked="checked"{% endif %}>
-                                        <span class="ml-2">{{ player.user.username }} - {{ player.role }}</span>
-                                    </label>
-                                </li>
-                            {% endif %}
+                        {% if player.id in attendance_by_player %}
+                        <label for="paid_{{ player.id }}"
+                               class="flex items-center justify-between p-3 rounded-xl border border-stone-100
+                               hover:border-pitch-200 hover:bg-pitch-50 cursor-pointer transition-all">
+                            <div class="flex items-center gap-3">
+                                <span class="w-7 h-7 rounded-full bg-stone-100 text-stone-600 flex items-center justify-center text-xs font-bold">
+                                    {{ player.user.username|first|upper }}
+                                </span>
+                                <div>
+                                    <p class="text-sm font-medium text-stone-800">{{ player.user.username }}</p>
+                                    <p class="text-xs text-stone-400">{{ player.role }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                {% if player.id in paid_list %}
+                                <span class="badge badge-green text-xs">Paid</span>
+                                {% else %}
+                                <span class="badge badge-amber text-xs">Pending</span>
+                                {% endif %}
+                                <input type="checkbox" name="paid" value="{{ player.id }}" id="paid_{{ player.id }}"
+                                       class="w-4 h-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500 cursor-pointer"
+                                       {% if player.id in paid_list %}checked{% endif %}>
+                            </div>
+                        </label>
+                        {% endif %}
                         {% endfor %}
-                    </ul>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
-            <button type="submit" class="mt-6 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+
+            <button type="submit" class="btn btn-primary btn-md">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
                 Save Changes
             </button>
         </form>
     </section>
     {% endif %}
+
 </div>
 {% endblock %}

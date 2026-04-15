@@ -1,42 +1,88 @@
-{% extends 'layouts/blank.html' %}
+{% extends 'base.html' %}
+
+{% block title %}Account Settings — IndCric{% endblock %}
 
 {% block content %}
-<div class="container mx-auto mt-10 p-5">
-    <div class="max-w-2xl mx-auto bg-white shadow-md rounded-lg overflow-hidden">
-        <div class="p-5">
-            <h1 class="text-2xl font-bold mb-6">Account Settings</h1>
+<div class="page-content-narrow">
 
-            <div class="space-y-6">
-                <!-- Change Username -->
-                <div>
-                    <h2 class="text-xl font-semibold">Change Username</h2>
-                    <div hx-get="{% url 'profile-usernamechange' %}" hx-trigger="load" hx-target="this">
-                        <!-- Username form will be loaded here -->
-                        <p class="text-gray-500">Loading...</p>
-                    </div>
-                </div>
+    <div class="mb-6 flex items-center gap-3">
+        <a href="{% url 'profile' %}" class="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-800 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Back to Profile
+        </a>
+    </div>
 
-                <!-- Change Email -->
-                <div>
-                    <h2 class="text-xl font-semibold">Change Email</h2>
-                    <div hx-get="{% url 'profile-emailchange' %}" hx-trigger="load" hx-target="this">
-                        <!-- Email form will be loaded here -->
-                        <p class="text-gray-500">Loading...</p>
-                    </div>
-                </div>
+    <h1 class="text-xl font-bold text-stone-900 mb-6">Account Settings</h1>
 
-                <!-- Delete Account -->
-                <div>
-                    <h2 class="text-xl font-semibold">Delete Account</h2>
-                    <p class="text-gray-600">Permanently delete your account. This action cannot be undone.</p>
-                    <div class="mt-4">
-                        <a href="{% url 'profile-delete' %}" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
-                            Delete My Account
-                        </a>
-                    </div>
-                </div>
+    <!-- Change Username -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2 class="text-sm font-bold text-stone-800">Username</h2>
+            <p class="text-xs text-stone-400 mt-0.5">Change how others see your name in the club</p>
+        </div>
+        <div class="card-body" id="username-form"
+             hx-get="{% url 'profile-usernamechange' %}"
+             hx-trigger="load"
+             hx-target="#username-form"
+             hx-swap="innerHTML">
+            <div class="flex items-center gap-2 text-sm text-stone-400 py-2">
+                <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Loading...
             </div>
         </div>
     </div>
+
+    <!-- Change Email -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2 class="text-sm font-bold text-stone-800">Email Address</h2>
+            <p class="text-xs text-stone-400 mt-0.5">Your current email: <span class="font-medium text-stone-600">{{ request.user.email|default:"—" }}</span></p>
+        </div>
+        <div class="card-body" id="email-form"
+             hx-get="{% url 'profile-emailchange' %}"
+             hx-trigger="load"
+             hx-target="#email-form"
+             hx-swap="innerHTML">
+            <div class="flex items-center gap-2 text-sm text-stone-400 py-2">
+                <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2 class="text-sm font-bold text-stone-800">Password</h2>
+            <p class="text-xs text-stone-400 mt-0.5">Update your login password</p>
+        </div>
+        <div class="card-body">
+            <a href="{% url 'account_change_password' %}" class="btn btn-secondary btn-md">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                Change Password
+            </a>
+        </div>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="card border-red-100">
+        <div class="card-header border-red-100">
+            <h2 class="text-sm font-bold text-red-700">Danger Zone</h2>
+            <p class="text-xs text-stone-400 mt-0.5">Irreversible actions — proceed with caution</p>
+        </div>
+        <div class="card-body">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <p class="text-sm font-medium text-stone-800">Delete Account</p>
+                    <p class="text-xs text-stone-400 mt-0.5">Permanently delete your account and all associated data</p>
+                </div>
+                <a href="{% url 'profile-delete' %}" class="btn btn-danger btn-md shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    Delete Account
+                </a>
+            </div>
+        </div>
+    </div>
+
 </div>
 {% endblock %}

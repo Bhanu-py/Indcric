@@ -1,55 +1,109 @@
 {% load static %}
-<header class="flex items-center justify-between bg-gray-800 h-20 px-8 text-white sticky top-0 z-40">
-    <div>
-        <a class="flex items-center gap-2" href="/">
-            {% comment %} <img class="h-6" src="{% static 'images/logo.svg' %}" alt="Logo"/> {% endcomment %}
-            <span class="text-lg font-bold">ICG</span>
-        </a>
+<header class="bg-pitch-900 text-white sticky top-0 z-40 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+
+            <!-- Logo -->
+            <a href="/" class="flex items-center gap-2.5 shrink-0">
+                <div class="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.04 2.11L15.63 3.52c-.78-.3-1.6-.52-2.46-.52C9.48 3 6 6.48 6 10.17c0 2.1.94 3.98 2.42 5.27L3 21l1.41 1.41 5.27-5.27c1.25 1.42 3.07 2.32 5.09 2.32C18.52 19.46 22 15.98 22 12.27c0-3.72-3.48-6.2-4.96-10.16zm-2.87 14.35c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/>
+                    </svg>
+                </div>
+                <span class="text-base font-bold tracking-tight">IndCric</span>
+            </a>
+
+            <!-- Nav -->
+            <nav class="flex items-center gap-1">
+                {% if request.user.is_authenticated %}
+
+                <a href="{% url 'home' %}" class="flex items-center gap-1.5 h-10 px-3 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    Dashboard
+                </a>
+
+                {% if request.user.is_staff %}
+                <div x-data="{ open: false }" class="relative">
+                    <button @click="open = !open" @click.away="open = false"
+                            class="flex items-center gap-1.5 h-10 px-3 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        Manage
+                        <svg :class="open ? 'rotate-180' : ''" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div x-show="open" x-cloak
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 -translate-y-2 scale-95"
+                         x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                         x-transition:leave-end="opacity-0 -translate-y-2 scale-95"
+                         class="absolute right-0 top-12 w-52 bg-white text-stone-800 rounded-2xl shadow-xl border border-stone-100 py-2 z-50">
+                        <a href="{% url 'cric:manage-create-session' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
+                            <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            Create Session
+                        </a>
+                        <a href="{% url 'cric:attendance_list' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
+                            <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                            Attendance
+                        </a>
+                        <a href="{% url 'cric:manage-payments' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
+                            <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                            Payments
+                        </a>
+                        <div class="my-1 border-t border-stone-100"></div>
+                        <a href="{% url 'cric:manage-users' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
+                            <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                            Users
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- User dropdown -->
+                <div x-data="{ open: false }" class="relative">
+                    <button @click="open = !open" @click.away="open = false"
+                            class="flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-white/10 transition-colors">
+                        <img class="h-7 w-7 rounded-full object-cover ring-2 ring-amber-400"
+                             src="https://ui-avatars.com/api/?name={{ request.user.username }}&background=166534&color=fff&bold=true"
+                             alt="{{ request.user.username }}"/>
+                        <span class="hidden sm:block text-sm font-medium max-w-[120px] truncate">
+                            {{ request.user.get_full_name|default:request.user.username }}
+                        </span>
+                        <svg :class="open ? 'rotate-180' : ''" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div x-show="open" x-cloak
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 -translate-y-2 scale-95"
+                         x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                         x-transition:leave-end="opacity-0 -translate-y-2 scale-95"
+                         class="absolute right-0 top-12 w-48 bg-white text-stone-800 rounded-2xl shadow-xl border border-stone-100 py-2 z-50">
+                        <div class="px-4 py-2 border-b border-stone-100 mb-1">
+                            <p class="text-xs font-semibold text-stone-900 truncate">{{ request.user.get_full_name|default:request.user.username }}</p>
+                            <p class="text-xs text-stone-400 truncate">{{ request.user.email }}</p>
+                        </div>
+                        <a href="{% url 'profile' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
+                            <svg class="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            My Profile
+                        </a>
+                        <a href="{% url 'profile-settings' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
+                            <svg class="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            Settings
+                        </a>
+                        <div class="my-1 border-t border-stone-100"></div>
+                        <a href="{% url 'account_logout' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                            Log Out
+                        </a>
+                    </div>
+                </div>
+
+                {% else %}
+                <a href="{% url 'account_login' %}" class="flex items-center gap-1.5 h-10 px-4 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium">Login</a>
+                <a href="{% url 'account_signup' %}?next={% url 'profile-onboarding' %}" class="flex items-center btn btn-md btn-amber ml-1">Sign Up</a>
+                {% endif %}
+            </nav>
+        </div>
     </div>
-    <nav class="block relative">
-        <ul class="navitems flex items-center justify-center h-full">
-            {% if request.user.is_authenticated %}
-            <li><a href="{% url 'home' %}">Dashboard</a></li>
-            {% if request.user.is_staff %}
-            <li x-data="{ manageOpen: false }" class="relative">
-                <a @click="manageOpen = !manageOpen" @click.away="manageOpen = false" class="cursor-pointer select-none">
-                    Manage
-                    <img x-bind:class="manageOpen && 'rotate-180 duration-300'" class="w-4 inline-block ml-1" src="https://img.icons8.com/small/32/ffffff/expand-arrow.png" alt="Dropdown" />
-                </a>
-                <div x-show="manageOpen" x-cloak class="absolute right-0 bg-white text-black shadow rounded-lg w-48 p-2 z-20"
-                     x-transition:enter="duration-300 ease-out"
-                     x-transition:enter-start="opacity-0 -translate-y-5 scale-90"
-                     x-transition:enter-end="opacity-100 translate-y-0 scale-100">
-                    <ul class="hoverlist">
-                        <li><a href="{% url 'cric:manage-create-session' %}">Create Session</a></li>
-                        <li><a href="{% url 'cric:attendance_list' %}">Attendance</a></li>
-                        <li><a href="{% url 'cric:manage-payments' %}">Payments</a></li>
-                        <li><a href="{% url 'cric:manage-users' %}">Users</a></li>
-                    </ul>
-                </div>
-            </div>
-            {% endif %}
-            <li x-data="{ dropdownOpen: false }" class="relative">
-                <a @click="dropdownOpen = !dropdownOpen" @click.away="dropdownOpen = false" class="cursor-pointer select-none">
-                    <img class="h-8 w-8 rounded-full object-cover" src="https://ui-avatars.com/api/?name={{ request.user.username }}&background=random" alt="Avatar" />
-                    {{ request.user.get_full_name|default:request.user.username }}
-                    <img x-bind:class="dropdownOpen && 'rotate-180 duration-300'" class="w-4 inline-block" src="https://img.icons8.com/small/32/ffffff/expand-arrow.png" alt="Dropdown" />
-                </a>
-                <div x-show="dropdownOpen" x-cloak class="absolute right-0 bg-white text-black shadow rounded-lg w-40 p-2 z-20"
-                     x-transition:enter="duration-300 ease-out"
-                     x-transition:enter-start="opacity-0 -translate-y-5 scale-90"
-                     x-transition:enter-end="opacity-100 translate-y-0 scale-100">
-                    <ul class="hoverlist [&>li>a]:justify-end">
-                        <li><a href="{% url 'profile' %}">My Profile</a></li>
-                        <li><a href="{% url 'profile-settings' %}">Settings</a></li>
-                        <li><a href="{% url 'account_logout' %}">Log Out</a></li>
-                    </ul>
-                </div>
-            </li>
-            {% else %}
-            <li><a href="{% url 'account_login' %}">Login</a></li> 
-            <li><a href="{% url 'account_signup' %}?next={% url 'profile-onboarding' %}">Signup</a></li> 
-            {% endif %}
-        </ul>
-    </nav>
 </header>

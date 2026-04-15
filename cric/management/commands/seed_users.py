@@ -8,13 +8,22 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         with open('initial_users.csv', 'r') as file:
             reader = csv.DictReader(file)
+            created_count = 0
+            skipped_count = 0
             for row in reader:
-                # Use create_user to ensure passwords are hashed
-                User.objects.create_user(
+                user, created = User.objects.get_or_create(
                     username=row['username'],
-                    password=row['password'],
-                    email=row['email'],
-                    role=row['role'],
-                    is_staff=bool(int(row['is_staff']))
+                    defaults={
+                        'email': row['email'],
+                        'role': row['role'].lower(),
+                        'is_staff': bool(int(row['is_staff'])),
+                    }
                 )
-        self.stdout.write(self.style.SUCCESS('Successfully seeded users.'))
+                if created:
+                    user.set_password(row['password'])
+                    user.save()
+                    created_count += 1
+                else:
+                    skipped_count += 1
+        self.stdout.write(self.style.SUCCESS(
+            f'Done: {created_count} created, {skipped_count} already existed.'))

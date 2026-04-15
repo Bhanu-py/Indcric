@@ -1,7 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
-from .models import Match, Team, SessionPlayer, Attendance, Payment, Session, Poll, Vote
+from .models import Match, Team, Player, SessionPlayer, Attendance, Payment, Session, Poll, Vote
+from django.urls import reverse
 from django.utils import timezone
 from django.contrib import messages
 from decimal import Decimal, InvalidOperation
@@ -421,67 +422,46 @@ def edit_user_view(request, user_id):
 def session_detail_view(request, session_id):
     session = get_object_or_404(Session, id=session_id)
 
-    # Get poll information if it exists
+    # Poll info
     user_vote = None
-    yes_votes = 0
-    no_votes = 0
-    total_votes = 0
+    yes_votes = no_votes = total_votes = 0
     yes_percentage = 0
     yes_voters = []
-
     if hasattr(session, 'poll'):
         poll = session.poll
-        if request.user.is_authenticated:
-            vote = Vote.objects.filter(poll=poll, user=request.user).first()
-            if vote:
-                user_vote = vote.choice
-
+        vote = Vote.objects.filter(poll=poll, user=request.user).first()
+        user_vote = vote.choice if vote else None
         yes_votes = poll.votes.filter(choice='yes').count()
         no_votes = poll.votes.filter(choice='no').count()
         total_votes = yes_votes + no_votes
-
         if total_votes > 0:
             yes_percentage = (yes_votes / total_votes) * 100
+        yes_voters = [{'user': v.user, 'team_assigned': False}
+                      for v in poll.votes.filter(choice='yes').select_related('user')]
 
-        # Get users who voted yes
-        yes_voters = []
-        for vote in poll.votes.filter(choice='yes').select_related('user'):
-            voter_info = {
-                'user': vote.user,
-                'team_assigned': False
-            }
-            yes_voters.append(voter_info)
+    # All matches
+    matches = list(session.matches.prefetch_related('teams__players__user').order_by('id'))
 
-    # Get match and team information if it exists
-    match = session.matches.first()
-    team1 = None
-    team2 = None
-    team1_players = []
-    team2_players = []
+    # Edit match from query string
+    edit_match_id = request.GET.get('edit_match')
+    edit_match = edit_team1 = edit_team2 = None
+    edit_team1_players = []
+    edit_team2_players = []
 
-    if match:
-        teams = match.teams.all()
-        if teams.count() >= 1:
-            team1 = teams[0]
-            team1_players = SessionPlayer.objects.filter(
-                session=session, team=team1).select_related('user').all()
+    if edit_match_id:
+        edit_match = get_object_or_404(Match, id=edit_match_id, session=session)
+        teams = list(edit_match.teams.order_by('id'))
+        if len(teams) >= 1:
+            edit_team1 = teams[0]
+            edit_team1_players = list(edit_team1.players.select_related('user').all())
+        if len(teams) >= 2:
+            edit_team2 = teams[1]
+            edit_team2_players = list(edit_team2.players.select_related('user').all())
 
-            # Mark users who are in teams as assigned
-            for player in team1_players:
-                for voter in yes_voters:
-                    if voter['user'].id == player.user.id:
-                        voter['team_assigned'] = True
-
-        if teams.count() >= 2:
-            team2 = teams[1]
-            team2_players = SessionPlayer.objects.filter(
-                session=session, team=team2).select_related('user').all()
-
-            # Mark users who are in teams as assigned
-            for player in team2_players:
-                for voter in yes_voters:
-                    if voter['user'].id == player.user.id:
-                        voter['team_assigned'] = True
+    # Mark yes voters as assigned if they're in the edit match's teams
+    assigned_ids = {p.user.id for p in edit_team1_players + edit_team2_players}
+    for voter in yes_voters:
+        voter['team_assigned'] = voter['user'].id in assigned_ids
 
     context = {
         'session': session,
@@ -491,13 +471,13 @@ def session_detail_view(request, session_id):
         'total_votes': total_votes,
         'yes_percentage': yes_percentage,
         'yes_voters': yes_voters,
-        'team1': team1,
-        'team2': team2,
-        'team1_players': team1_players,
-        'team2_players': team2_players,
-        'match': match,
+        'matches': matches,
+        'edit_match': edit_match,
+        'edit_team1': edit_team1,
+        'edit_team2': edit_team2,
+        'edit_team1_players': edit_team1_players,
+        'edit_team2_players': edit_team2_players,
     }
-
     return render(request, 'cric/pages/session_detail.html', context)
 
 
@@ -513,12 +493,15 @@ def vote_session_view(request, poll_id):
 
         choice = request.POST.get('choice')
         if choice in ['yes', 'no']:
-            vote, created = Vote.objects.update_or_create(
+            Vote.objects.update_or_create(
                 poll=poll,
                 user=request.user,
                 defaults={'choice': choice}
             )
-            messages.success(request, f"You have voted '{choice}'.")
+            messages.success(request, f"Vote updated to '{choice}'.")
+        elif choice == 'withdraw':
+            Vote.objects.filter(poll=poll, user=request.user).delete()
+            messages.success(request, "Your vote has been removed.")
         else:
             messages.error(request, "Invalid choice.")
 
@@ -547,8 +530,7 @@ def close_poll_view(request, poll_id):
 @login_required
 def save_teams_view(request, session_id):
     if not request.user.is_staff:
-        messages.error(
-            request, "You don't have permission to perform this action.")
+        messages.error(request, "You don't have permission to perform this action.")
         return redirect('session_detail', session_id=session_id)
 
     session = get_object_or_404(Session, id=session_id)
@@ -560,76 +542,133 @@ def save_teams_view(request, session_id):
         team2_players_str = request.POST.get('team2_players', '')
         team1_captain_id = request.POST.get('team1_captain')
         team2_captain_id = request.POST.get('team2_captain')
+        match_id = request.POST.get('match_id')
+        match_name = request.POST.get('match_name', '').strip()
 
-        # Debug output
-        print(f"Team1 players: {team1_players_str}")
-        print(f"Team2 players: {team2_players_str}")
+        team1_ids = [p for p in team1_players_str.split(',') if p.strip()]
+        team2_ids = [p for p in team2_players_str.split(',') if p.strip()]
+        if len(team1_ids) < 5 or len(team2_ids) < 5:
+            messages.error(request, "Each team must have at least 5 players before saving.")
+            return redirect('session_detail', session_id=session_id)
 
-        # Create or update match and teams
-        match, _ = Match.objects.get_or_create(
-            session=session,
-            defaults={'name': f"Match for {session.name}"}
-        )
+        if match_id:
+            match = get_object_or_404(Match, id=match_id, session=session)
+            if match_name:
+                match.name = match_name
+                match.save(update_fields=['name'])
+        else:
+            match_number = session.matches.count() + 1
+            match = Match.objects.create(
+                session=session,
+                name=match_name or f"Match {match_number}"
+            )
 
-        # ** FIX: Delete existing teams and session players to rebuild them **
+        # Delete existing teams for this match only (cascades to Player)
         match.teams.all().delete()
-        SessionPlayer.objects.filter(session=session).delete()
 
-        # Process team 1
-        if team1_players_str:
-            team1_player_ids = [
-                int(pid) for pid in team1_players_str.split(',') if pid.strip()]
+        # Team 1
+        team1_captain = User.objects.filter(id=team1_captain_id).first() if team1_captain_id else None
+        team1 = Team.objects.create(match=match, name=team1_name, captain=team1_captain)
+        for pid in team1_ids:
+            try:
+                u = User.objects.get(id=int(pid))
+                Player.objects.create(user=u, team=team1, role=u.role)
+            except (User.DoesNotExist, ValueError):
+                pass
 
-            team1_captain = None
-            if team1_captain_id:
-                team1_captain = User.objects.get(id=team1_captain_id)
+        # Team 2
+        team2_captain = User.objects.filter(id=team2_captain_id).first() if team2_captain_id else None
+        team2 = Team.objects.create(match=match, name=team2_name, captain=team2_captain)
+        for pid in team2_ids:
+            try:
+                u = User.objects.get(id=int(pid))
+                Player.objects.create(user=u, team=team2, role=u.role)
+            except (User.DoesNotExist, ValueError):
+                pass
 
-            team1 = Team.objects.create(
-                match=match,
-                name=team1_name,
-                captain=team1_captain
-            )
+        messages.success(request, f"Teams saved for {match.name}!")
 
-            # Add new players
-            for player_id in team1_player_ids:
-                try:
-                    user = User.objects.get(id=player_id)
-                    SessionPlayer.objects.create(
-                        session=session,
-                        user=user,
-                        team=team1
+    return redirect('session_detail', session_id=session_id)
+
+
+@login_required
+def add_match_view(request, session_id):
+    if not request.user.is_staff:
+        messages.error(request, "You don't have permission to perform this action.")
+        return redirect('session_detail', session_id=session_id)
+
+    session = get_object_or_404(Session, id=session_id)
+
+    if request.method == 'POST':
+        last_match = session.matches.order_by('-id').first()
+        match_number = session.matches.count() + 1
+        new_match = Match.objects.create(
+            session=session,
+            name=f"Match {match_number}"
+        )
+        # Copy teams from last match
+        if last_match:
+            for old_team in last_match.teams.order_by('id'):
+                new_team = Team.objects.create(
+                    match=new_match,
+                    name=old_team.name,
+                    captain=old_team.captain
+                )
+                for old_player in old_team.players.select_related('user').all():
+                    Player.objects.create(
+                        user=old_player.user,
+                        team=new_team,
+                        role=old_player.role
                     )
-                except User.DoesNotExist:
-                    continue
+        return redirect(f"{reverse('session_detail', args=[session_id])}?edit_match={new_match.id}")
 
-        # Process team 2
-        if team2_players_str:
-            team2_player_ids = [
-                int(pid) for pid in team2_players_str.split(',') if pid.strip()]
+    return redirect('session_detail', session_id=session_id)
 
-            team2_captain = None
-            if team2_captain_id:
-                team2_captain = User.objects.get(id=team2_captain_id)
 
-            team2 = Team.objects.create(
-                match=match,
-                name=team2_name,
-                captain=team2_captain
-            )
+@login_required
+def record_score_view(request, match_id):
+    if not request.user.is_staff:
+        messages.error(request, "You don't have permission to perform this action.")
+        return redirect('home')
 
-            # Add new players
-            for player_id in team2_player_ids:
-                try:
-                    user = User.objects.get(id=player_id)
-                    SessionPlayer.objects.create(
-                        session=session,
-                        user=user,
-                        team=team2
-                    )
-                except User.DoesNotExist:
-                    continue
+    match = get_object_or_404(Match, id=match_id)
 
-        messages.success(request, "Teams saved successfully!")
+    if request.method == 'POST':
+        teams = list(match.teams.order_by('id'))
+        if len(teams) >= 2:
+            try:
+                teams[0].runs = max(0, int(request.POST.get('team1_runs', 0)))
+                teams[0].wickets = min(10, max(0, int(request.POST.get('team1_wickets', 0))))
+                teams[0].save()
+                teams[1].runs = max(0, int(request.POST.get('team2_runs', 0)))
+                teams[1].wickets = min(10, max(0, int(request.POST.get('team2_wickets', 0))))
+                teams[1].save()
+                if teams[0].runs > teams[1].runs:
+                    match.winner = teams[0]
+                elif teams[1].runs > teams[0].runs:
+                    match.winner = teams[1]
+                else:
+                    match.winner = None
+                match.save()
+                messages.success(request, f"Score saved for {match.name}.")
+            except (ValueError, TypeError):
+                messages.error(request, "Invalid score values.")
+
+    return redirect('session_detail', session_id=match.session.id)
+
+
+@login_required
+def delete_match_view(request, match_id):
+    if not request.user.is_staff:
+        messages.error(request, "You don't have permission to perform this action.")
+        return redirect('home')
+
+    match = get_object_or_404(Match, id=match_id)
+    session_id = match.session.id
+
+    if request.method == 'POST':
+        match.delete()
+        messages.success(request, f"{match.name} deleted.")
 
     return redirect('session_detail', session_id=session_id)
 

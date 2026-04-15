@@ -137,20 +137,13 @@ elif os.getenv("db_hostname") and os.getenv("db_databasename") and os.getenv("db
         }
     }
     
-# Last resort: use local configuration
+# Last resort: use local SQLite
 else:
-    logger.info("Using local database configuration")
+    logger.info("Using local SQLite database configuration")
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'indcric_db',
-            'USER': 'indcric_user', 
-            'PASSWORD': 'indcric_password',
-            'HOST': '127.0.0.1',
-            'PORT': '5432',
-            'OPTIONS': {
-                'options': '-c search_path=django_schema,public',
-            }
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
 

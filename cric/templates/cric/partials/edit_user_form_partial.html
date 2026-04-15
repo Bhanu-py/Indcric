@@ -1,99 +1,98 @@
-{% comment %}
-This is a partial template for the edit user form without header/footer
-Used for modal/popup display with HTMX
-{% endcomment %}
+{% comment %}Partial loaded via HTMX into the edit modal{% endcomment %}
 
-<div class="modal-content">
-    <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold">Edit User</h2>
-        <button onclick="document.getElementById('modalOverlay').classList.add('hidden');" class="text-gray-500 hover:text-gray-700">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
+<div class="flex items-center justify-between mb-5">
+    <h2 class="text-base font-bold text-stone-900">Edit Player</h2>
+    <button type="button"
+            onclick="document.getElementById('modalOverlay').classList.add('hidden')"
+            class="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+</div>
+
+{% if message %}
+<div class="mb-4 p-3 rounded-xl text-sm font-medium
+            {% if success %}bg-pitch-50 text-pitch-800 border border-pitch-200
+            {% else %}bg-red-50 text-red-700 border border-red-200{% endif %}">
+    {{ message }}
+</div>
+{% endif %}
+
+{% if user %}
+<form method="post" action="{% url 'cric:edit-user' user.id %}" class="space-y-4">
+    {% csrf_token %}
+
+    <div class="grid grid-cols-2 gap-4">
+        <div>
+            <label class="form-label" for="username">Username</label>
+            <input class="form-input" id="username" name="username" type="text" value="{{ user.username }}">
+        </div>
+        <div>
+            <label class="form-label" for="email">Email</label>
+            <input class="form-input" id="email" name="email" type="email" value="{{ user.email }}">
+        </div>
+    </div>
+
+    <div>
+        <label class="form-label" for="role">Playing Role</label>
+        <select class="form-select" id="role" name="role">
+            <option value="batsman" {% if user.role == 'batsman' %}selected{% endif %}>🏏 Batsman</option>
+            <option value="bowler" {% if user.role == 'bowler' %}selected{% endif %}>🎯 Bowler</option>
+            <option value="allrounder" {% if user.role == 'allrounder' %}selected{% endif %}>⭐ All-rounder</option>
+        </select>
+    </div>
+
+    <div>
+        <label class="form-label">Skill Ratings <span class="text-stone-400 font-normal text-xs">(0.0 – 5.0)</span></label>
+        <div class="grid grid-cols-3 gap-3">
+            <div>
+                <p class="text-xs text-stone-500 mb-1">🏏 Batting</p>
+                <input class="form-input text-sm" id="batting_rating" name="batting_rating"
+                       type="number" step="0.1" min="0" max="5" value="{{ user.batting_rating }}">
+            </div>
+            <div>
+                <p class="text-xs text-stone-500 mb-1">🎯 Bowling</p>
+                <input class="form-input text-sm" id="bowling_rating" name="bowling_rating"
+                       type="number" step="0.1" min="0" max="5" value="{{ user.bowling_rating }}">
+            </div>
+            <div>
+                <p class="text-xs text-stone-500 mb-1">🤸 Fielding</p>
+                <input class="form-input text-sm" id="fielding_rating" name="fielding_rating"
+                       type="number" step="0.1" min="0" max="5" value="{{ user.fielding_rating }}">
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <label class="form-label" for="wallet_amount">Wallet Balance (&euro;)</label>
+        <input class="form-input" id="wallet_amount" name="wallet_amount"
+               type="number" step="0.01" value="{{ wallet_amount }}">
+    </div>
+
+    <div>
+        <p class="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">Permissions</p>
+        <div class="flex items-center gap-5">
+            <label class="flex items-center gap-2 cursor-pointer" for="is_staff">
+                <input type="checkbox" id="is_staff" name="is_staff" value="True"
+                       class="w-4 h-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500"
+                       {% if user.is_staff %}checked{% endif %}>
+                <span class="text-sm font-medium text-stone-700">Staff</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer" for="is_superuser">
+                <input type="checkbox" id="is_superuser" name="is_superuser" value="True"
+                       class="w-4 h-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500"
+                       {% if user.is_superuser %}checked{% endif %}>
+                <span class="text-sm font-medium text-stone-700">Admin</span>
+            </label>
+        </div>
+    </div>
+
+    <div class="flex items-center gap-3 pt-2">
+        <button type="submit" class="btn btn-primary btn-md flex-1 justify-center">Save Changes</button>
+        <button type="button"
+                onclick="document.getElementById('modalOverlay').classList.add('hidden')"
+                class="btn btn-secondary btn-md">
+            Cancel
         </button>
     </div>
-
-    {% if message %}
-    <div class="mb-4 p-4 {% if success %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %} rounded">
-        {{ message }}
-    </div>
-    {% endif %}
-    
-    {% if user %}
-    <form method="post" action="{% url 'cric:edit-user' user.id %}">
-        {% csrf_token %}
-        
-        <div class="mb-4">
-            <label class="block text-gray-700 text-sm font-bold mb-2 !inline-block" for="username">Username</label>
-            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                   id="username" name="username" type="text" placeholder="Username" value="{{ user.username }}">
-        </div>
-        <div class="mb-4">
-            <label class="block text-gray-700 text-sm font-bold mb-2 !inline-block" for="email">Email</label>
-            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                   id="email" name="email" type="email" placeholder="Email" value="{{ user.email }}">
-        </div>
-        <div class="mb-4">
-            <label class="block text-gray-700 text-sm font-bold mb-2 !inline-block" for="role">Role</label>
-            <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                    id="role" name="role">
-                <option value="batsman" {% if user.role == 'batsman' %}selected{% endif %}>Batsman</option>
-                <option value="bowler" {% if user.role == 'bowler' %}selected{% endif %}>Bowler</option>
-                <option value="allrounder" {% if user.role == 'allrounder' %}selected{% endif %}>All-rounder</option>
-            </select>
-        </div>
-        
-        <!-- Player Ratings -->
-        <div class="mb-4">
-            <label class="block text-gray-700 text-sm font-bold mb-2 !inline-block">Player Ratings</label>
-            
-            <div class="grid grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-gray-700 text-xs mb-1 !inline-block" for="batting_rating">Batting (0-5)</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                           id="batting_rating" name="batting_rating" type="number" step="0.1" min="0" max="5" value="{{ user.batting_rating }}">
-                </div>
-                <div>
-                    <label class="block text-gray-700 text-xs mb-1 !inline-block" for="bowling_rating">Bowling (0-5)</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                           id="bowling_rating" name="bowling_rating" type="number" step="0.1" min="0" max="5" value="{{ user.bowling_rating }}">
-                </div>
-                <div>
-                    <label class="block text-gray-700 text-xs mb-1 !inline-block" for="fielding_rating">Fielding (0-5)</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                           id="fielding_rating" name="fielding_rating" type="number" step="0.1" min="0" max="5" value="{{ user.fielding_rating }}">
-                </div>
-            </div>
-        </div>
-        
-        <div class="mb-4">
-            <label class="block text-gray-700 text-sm font-bold mb-2 !inline-block" for="wallet_amount">Wallet Amount</label>
-            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                   id="wallet_amount" name="wallet_amount" type="number" step="0.01" placeholder="Wallet Amount" value="{{ wallet_amount }}">
-        </div>
-        
-        <div class="mb-4">
-            <div class="flex items-center">
-                <input class="mr-2" type="checkbox" id="is_staff" name="is_staff" value="True" {% if user.is_staff %}checked{% endif %}>
-                <label class="text-gray-700 text-sm !inline-block" for="is_staff">Staff User</label>
-            </div>
-        </div>
-        
-        <div class="mb-6">
-            <div class="flex items-center">
-                <input class="mr-2" type="checkbox" id="is_superuser" name="is_superuser" value="True" {% if user.is_superuser %}checked{% endif %}>
-                <label class="text-gray-700 text-sm !inline-block" for="is_superuser">Admin User</label>
-            </div>
-        </div>
-        
-        <div class="flex items-center justify-between">
-            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
-                Save Changes
-            </button>
-            <button type="button" onclick="document.getElementById('modalOverlay').classList.add('hidden');" class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800">
-                Cancel
-            </button>
-        </div>
-    </form>
-    {% endif %}
-</div>
+</form>
+{% endif %}
