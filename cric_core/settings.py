@@ -135,11 +135,13 @@ if not DEBUG and not os.getenv("CUSTOMCONNSTR_POSTGRESQL_CONNECTION_STRING"):
 DATABASE_URL = os.environ.get('CUSTOMCONNSTR_POSTGRESQL_CONNECTION_STRING')
 
 if DATABASE_URL:
-    logger.info("Using Azure connection string for database configuration")
+    logger.info("Using connection string for database configuration")
     DATABASES = {
         'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
     }
-    DATABASES['default']['OPTIONS'] = {'options': '-c search_path=django_schema,public'}
+    DATABASES['default'].setdefault('OPTIONS', {})
+    DATABASES['default']['OPTIONS']['options'] = '-c search_path=django_schema,public'
+    DATABASES['default']['OPTIONS'].setdefault('sslmode', 'require')
     
 # Fall back to individual environment variables if available
 elif os.getenv("db_hostname") and os.getenv("db_databasename") and os.getenv("db_username") and os.getenv("db_password"):
