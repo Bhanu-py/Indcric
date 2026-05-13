@@ -140,7 +140,6 @@ if DATABASE_URL:
         'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
     }
     DATABASES['default'].setdefault('OPTIONS', {})
-    DATABASES['default']['OPTIONS']['options'] = '-c search_path=django_schema,public'
     DATABASES['default']['OPTIONS'].setdefault('sslmode', 'require')
     
 # Fall back to individual environment variables if available
