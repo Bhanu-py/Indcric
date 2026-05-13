@@ -124,10 +124,11 @@ WSGI_APPLICATION = "cric_core.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-required_vars = ["db_hostname", "db_databasename", "db_username", "db_password"]
-missing = [var for var in required_vars if not os.getenv(var)]
-if missing and not DEBUG:
-    raise Exception(f"Missing environment variables: {', '.join(missing)}")
+if not DEBUG and not os.getenv("CUSTOMCONNSTR_POSTGRESQL_CONNECTION_STRING"):
+    required_vars = ["db_hostname", "db_databasename", "db_username", "db_password"]
+    missing = [var for var in required_vars if not os.getenv(var)]
+    if missing:
+        raise Exception(f"Missing environment variables: {', '.join(missing)}")
 
 
 # Check for connection string first (preferred method)
