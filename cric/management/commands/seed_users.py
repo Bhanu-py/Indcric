@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.core.management.base import BaseCommand
 from cric.models import User
 import csv
@@ -11,13 +12,17 @@ class Command(BaseCommand):
             created_count = 0
             skipped_count = 0
             for row in reader:
+                defaults = {
+                    'email': row['email'],
+                    'role': row['role'].lower(),
+                    'is_staff': bool(int(row['is_staff'])),
+                }
+                for field in ('batting_rating', 'bowling_rating', 'fielding_rating'):
+                    if row.get(field):
+                        defaults[field] = Decimal(row[field])
                 user, created = User.objects.get_or_create(
                     username=row['username'],
-                    defaults={
-                        'email': row['email'],
-                        'role': row['role'].lower(),
-                        'is_staff': bool(int(row['is_staff'])),
-                    }
+                    defaults=defaults,
                 )
                 if created:
                     user.set_password(row['password'])
