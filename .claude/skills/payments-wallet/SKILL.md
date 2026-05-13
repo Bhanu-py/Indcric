@@ -1,4 +1,9 @@
-# Skill: Payments & Wallet
+---
+name: payments-wallet
+description: Use when working on Payment, Wallet, or session cost-splitting features in the IndCric Django app. Covers per-session Payment records (status, method), Wallet transaction log (running balance from summed rows), Decimal handling for money, and atomic wallet+payment transactions. Trigger on edits to Payment/Wallet models, payment views, wallet top-up flows, or any code touching `session.cost_per_person`, `Payment.status`, or `Wallet.amount`.
+---
+
+# Payments & Wallet
 
 Use this skill when working on payment tracking, wallet balances, session cost splitting, or any money-related feature.
 
@@ -74,6 +79,14 @@ class ExpenseSplit(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     settled = models.BooleanField(default=False)
 ```
+
+See the [expense-splitting](../expense-splitting/SKILL.md) skill for the full Splitwise-style design.
+
+## Non-negotiables
+
+- **Always use `Decimal`** for money — never `float`. Import `from decimal import Decimal`.
+- **Wallet deduction + Payment status update must be atomic.** Wrap in `transaction.atomic()` so a half-write can't leave the user paid without a wallet deduction (or vice versa).
+- **Staff-only mutations.** Any view that changes a Payment or creates a Wallet row should be `@staff_member_required` unless it's the user's own self-service action.
 
 ## Testing Checklist
 - [ ] Payment created for every attending player when attendance confirmed

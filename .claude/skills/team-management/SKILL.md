@@ -1,4 +1,9 @@
-# Skill: Team Management & Scoring
+---
+name: team-management
+description: Use when working on Team assignment, smart team balancing, Match scoring, or PlayerProfile stats in the IndCric Django app. Covers the Session → Match → Team → Player chain, SessionPlayer team field, skill-rating-based auto-split algorithm, save_teams_view HTMX flow, and rating validation (0-5 Decimal). Trigger on edits to Match/Team/Player/SessionPlayer models, team assignment views/templates, or any work involving `batting_rating`/`bowling_rating`/`fielding_rating`.
+---
+
+# Team Management & Scoring
 
 Use this skill when working on team assignment, smart player splitting, match scoring, or player stats.
 

@@ -1,4 +1,9 @@
-# Skill: Group Expense Splitting (Splitwise-style)
+---
+name: expense-splitting
+description: Use when working on Splitwise-style group expense tracking in the IndCric app — beyond cricket session costs. Covers ExpenseGroup / Expense / ExpenseSplit models, equal vs custom splits, balance calculation (paid - owed), debt simplification, and wallet-based settlement (atomic credit + debit). Trigger when implementing /expenses/ URLs, expense entry forms, balance summary views, or any non-cricket group cost-sharing feature.
+---
+
+# Group Expense Splitting (Splitwise-style)
 
 Use this skill when working on the group expense tracking and splitting features — beyond just cricket session costs.
 
@@ -91,6 +96,8 @@ def settle_via_wallet(split):
 ```
 
 Option B — Cash settlement: just mark `split.settled = True`.
+
+See the [payments-wallet](../payments-wallet/SKILL.md) skill for Wallet transaction conventions.
 
 ## URL Structure (suggested)
 

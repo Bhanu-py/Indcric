@@ -1,4 +1,9 @@
-# Skill: Django + HTMX Patterns for IndCric
+---
+name: django-htmx-patterns
+description: Use when building any new view, template, form, or interactive feature in the IndCric Django app. Covers the project's HTMX 2.0 + Alpine.js + Hyperscript stack (no JS framework, no REST/JSON), the `request.htmx` partial-vs-full-page response pattern, hx-target/hx-swap conventions, @staff_member_required for mutations, named URL patterns under the `cric:` namespace, Tailwind utility classes used across the app, and the new-feature checklist (model → form → view → URL → template → nav → admin → tests).
+---
+
+# Django + HTMX Patterns for IndCric
 
 Use this skill when building new views, templates, or interactive features in this project.
 

@@ -11,7 +11,7 @@ services:
       # Use trust authentication for all connections
       - POSTGRES_HOST_AUTH_METHOD=trust
     ports:
-      - "5432:5432"
+      - "5433:5432"
     # Ensure the database is properly configured after initialization
     command: >
       postgres -c listen_addresses='*'

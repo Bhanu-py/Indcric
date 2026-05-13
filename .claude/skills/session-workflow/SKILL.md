@@ -1,4 +1,9 @@
-# Skill: Session & Attendance Workflow
+---
+name: session-workflow
+description: Use when working on Session lifecycle in the IndCric app — creation, polls, attendance confirmation, cost_per_person calculation, or the session_detail view. Covers the CREATED → POLL → TEAMS → CONFIRMED → PAID state flow, Poll/Vote one-to-one with Session, idempotent Payment creation via get_or_create, and the session_detail.html template structure (info / poll / teams / payments). Trigger on edits to Session/Poll/Vote/SessionPlayer models, views in views.py / views_polls.py, or session_detail templates.
+---
+
+# Session & Attendance Workflow
 
 Use this skill when working on session creation, attendance confirmation, cost calculation, or the session detail page.
 
@@ -128,6 +133,8 @@ context = {
     'all_players': all_players_qs,    # For team assignment form
 }
 ```
+
+Related skills: [team-management](../team-management/SKILL.md) for the Team/Match layer; [payments-wallet](../payments-wallet/SKILL.md) for the Payment creation step.
 
 ## Testing Checklist
 - [ ] Session creation saves all fields correctly

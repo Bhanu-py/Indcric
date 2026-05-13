@@ -2,15 +2,24 @@
 
 ## Available Skills
 
-Load these skills when working on specific feature areas:
+Skills auto-load by description match — you don't need to invoke them manually. They live in `.claude/skills/<name>/SKILL.md`:
 
-| Skill file | Use when |
+| Skill | Triggers on |
 |---|---|
-| `skills/payments-wallet.md` | Payment tracking, wallet balance, cost splitting, Splitwise-style expenses |
-| `skills/team-management.md` | Team assignment, smart balancing, match scoring, player stats |
-| `skills/expense-splitting.md` | Group expense tracking beyond cricket sessions |
-| `skills/session-workflow.md` | Session creation, attendance confirmation, polls, cost calculation |
-| `skills/django-htmx-patterns.md` | Any new view, template, or interactive feature |
+| [payments-wallet](skills/payments-wallet/SKILL.md) | Payment tracking, wallet balance, cost splitting |
+| [team-management](skills/team-management/SKILL.md) | Team assignment, smart balancing, match scoring, player stats |
+| [expense-splitting](skills/expense-splitting/SKILL.md) | Group expense tracking beyond cricket sessions |
+| [session-workflow](skills/session-workflow/SKILL.md) | Session creation, attendance confirmation, polls, cost calculation |
+| [django-htmx-patterns](skills/django-htmx-patterns/SKILL.md) | Any new view, template, or interactive feature |
+
+## Available Subagents
+
+Delegate via the `Agent` tool with `subagent_type`:
+
+| Subagent | Use for |
+|---|---|
+| `django-model-reviewer` | Review model/migration changes for Decimal money, atomic transactions, staff-only guards, cascade safety |
+| `htmx-partial-writer` | Build new HTMX-driven views + partial templates following project conventions |
 
 ## How to Work on This Project
 
@@ -60,9 +69,9 @@ python manage.py runserver
 
 ## What's Planned (Priority Order)
 
-1. **Group expense splitting** — Splitwise-like Expense + ExpenseSplit models and UI (see `skills/expense-splitting.md`)
+1. **Group expense splitting** — Splitwise-like Expense + ExpenseSplit models and UI (see [expense-splitting](skills/expense-splitting/SKILL.md))
 2. **Wallet transaction history UI** — show all Wallet rows with running balance on profile page
-3. **Smart team balancing** — auto-split button in session detail that uses ratings algorithm (see `skills/team-management.md`)
+3. **Smart team balancing** — auto-split button in session detail that uses ratings algorithm (see [team-management](skills/team-management/SKILL.md))
 4. **Match scorecards** — add runs/wickets fields to Team; entry form in session detail
 5. **Individual session stats** — PlayerMatchStats model linked to SessionPlayer
 6. **Mobile bottom nav** — responsive navigation for mobile users
