@@ -23,5 +23,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path('', include('cric.urls')),
     path('manage/', include('cric.urls_manage')),
-    path("accounts/", include("allauth.urls")), 
+    path("accounts/", include("allauth.urls")),
+    path('api/bot/', include('cric.urls_bot')),
 ]

@@ -4,28 +4,20 @@ from django.urls import reverse
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 class User(AbstractUser):
-    # add role field that can take value only from 'batsman', 'bowler', 'allrounder' only
     role = models.CharField(max_length=20, default='batsman')
-    # Add rating fields for batting, bowling, and fielding
     batting_rating = models.DecimalField(
-        max_digits=3, 
-        decimal_places=1, 
-        default=2.5,
+        max_digits=3, decimal_places=1, default=2.5,
         validators=[MinValueValidator(0), MaxValueValidator(5)]
     )
     bowling_rating = models.DecimalField(
-        max_digits=3, 
-        decimal_places=1, 
-        default=2.5,
+        max_digits=3, decimal_places=1, default=2.5,
         validators=[MinValueValidator(0), MaxValueValidator(5)]
     )
     fielding_rating = models.DecimalField(
-        max_digits=3, 
-        decimal_places=1, 
-        default=2.5,
+        max_digits=3, decimal_places=1, default=2.5,
         validators=[MinValueValidator(0), MaxValueValidator(5)]
     )
-    pass
+    phone = models.CharField(max_length=20, unique=True, null=True, blank=True)
 
 class Payment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -149,3 +141,23 @@ class Player(models.Model):
 
     def __str__(self):
         return self.user.username
+
+
+class BotEvent(models.Model):
+    INBOUND = 'inbound'
+    OUTBOUND = 'outbound'
+    DIRECTION_CHOICES = [(INBOUND, 'Inbound'), (OUTBOUND, 'Outbound')]
+
+    wa_message_id = models.CharField(max_length=100, unique=True)
+    phone = models.CharField(max_length=20)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='bot_events')
+    action = models.CharField(max_length=50)
+    direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES)
+    payload = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.direction} {self.action} from {self.phone} at {self.created_at:%Y-%m-%d %H:%M}"
