@@ -10,7 +10,7 @@ from django.db import transaction
 from django.db.utils import OperationalError
 from django.http import HttpResponse
 from django.contrib.auth import get_user_model
-from .forms import ProfileForm, EmailForm, UsernameForm
+from .forms import ProfileForm, EmailForm, UsernameForm, OnboardingForm
 from .models import Match, Session
 from django.utils import timezone
 
@@ -193,10 +193,17 @@ def match_detail_view(request, match_id):
     }
     return render(request, 'cric/pages/match_detail.html', context)
 
+@login_required
 def profile_onboarding_view(request):
-    """
-    View for user profile onboarding process.
-    Currently redirects to profile page but can be expanded for first-time setup.
-    """
-    # For now, just redirect to the profile page
-    return redirect('profile')
+    if request.user.phone:
+        return redirect('profile')
+
+    if request.method == 'POST':
+        form = OnboardingForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect('profile')
+    else:
+        form = OnboardingForm(instance=request.user)
+
+    return render(request, 'cric/pages/profile_onboarding.html', {'form': form})
