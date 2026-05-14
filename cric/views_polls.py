@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from .models import Session, Poll, Vote
 from .forms_polls import PollForm
+from .bot_utils import notify_poll_created
 
 @login_required
 def poll_detail_view(request, poll_id):
@@ -52,6 +53,7 @@ def create_poll_view(request, session_id):
             poll = form.save(commit=False)
             poll.session = session
             poll.save()
+            notify_poll_created(poll)
             return redirect('poll_detail', poll_id=poll.id)
     else:
         form = PollForm()
