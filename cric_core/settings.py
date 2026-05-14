@@ -86,19 +86,18 @@ LOGIN_REDIRECT_URL = '/'
 if DEBUG:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 else:
-    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-    EMAIL_HOST = "smtp-relay.brevo.com"
-    EMAIL_PORT = 587
-    EMAIL_USE_TLS = True
-    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
-    EMAIL_HOST_PASSWORD = os.getenv("BREVO_SMTP_KEY", "")
+    EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
+    _brevo_key = os.getenv("BREVO_API_KEY", "")
+    if not _brevo_key:
+        raise Exception("BREVO_API_KEY environment variable is not set")
+    ANYMAIL = {"BREVO_API_KEY": _brevo_key}
 
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "IndCric <indiancricket.ghent@gmail.com>")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 # --- allauth account behavior ---
 ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_EMAIL_VERIFICATION = "optional"
 ACCOUNT_USERNAME_REQUIRED = True
 ACCOUNT_LOGIN_METHODS = {"username", "email"}
 ACCOUNT_SIGNUP_FIELDS = ["username*", "email*", "password1*", "password2*"]
