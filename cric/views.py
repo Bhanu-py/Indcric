@@ -427,6 +427,7 @@ def session_detail_view(request, session_id):
     yes_votes = no_votes = total_votes = 0
     yes_percentage = 0
     yes_voters = []
+    no_voters = []
     if hasattr(session, 'poll'):
         poll = session.poll
         vote = Vote.objects.filter(poll=poll, user=request.user).first()
@@ -438,6 +439,7 @@ def session_detail_view(request, session_id):
             yes_percentage = (yes_votes / total_votes) * 100
         yes_voters = [{'user': v.user, 'team_assigned': False}
                       for v in poll.votes.filter(choice='yes').select_related('user')]
+        no_voters = [v.user for v in poll.votes.filter(choice='no').select_related('user')]
 
     # All matches
     matches = list(session.matches.prefetch_related('teams__players__user').order_by('id'))
@@ -471,6 +473,7 @@ def session_detail_view(request, session_id):
         'total_votes': total_votes,
         'yes_percentage': yes_percentage,
         'yes_voters': yes_voters,
+        'no_voters': no_voters,
         'matches': matches,
         'edit_match': edit_match,
         'edit_team1': edit_team1,
