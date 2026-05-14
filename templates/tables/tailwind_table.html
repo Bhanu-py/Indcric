@@ -8,7 +8,7 @@
         {% for column in table.columns %}
           <th scope="col"
               class="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b border-gray-300 cursor-pointer"
-              hx-get="{% querystring table.prefixed_order_by_field=column.order_by_alias.next %}"
+              hx-get="{% querystring sort=column.order_by_alias.next %}"
               hx-trigger="click"
               hx-target="div.table-container"
               hx-swap="outerHTML"
@@ -52,7 +52,7 @@
           <li>
             <a href="#"
                class="px-3 py-2 bg-white border border-gray-300 rounded-l hover:bg-gray-200 text-gray-600"
-               hx-get="{% querystring table.prefixed_page_field=table.page.previous_page_number %}"
+               hx-get="{% querystring page=table.page.previous_page_number %}"
                hx-trigger="click"
                hx-target="div.table-container"
                hx-swap="outerHTML">
@@ -69,7 +69,7 @@
             <li>
               <a href="#"
                  class="px-3 py-2 bg-white border border-gray-300 hover:bg-gray-200 text-gray-600"
-                 hx-get="{% querystring table.prefixed_page_field=num %}"
+                 hx-get="{% querystring page=num %}"
                  hx-trigger="click"
                  hx-target="div.table-container"
                  hx-swap="outerHTML">
@@ -82,7 +82,7 @@
           <li>
             <a href="#"
                class="px-3 py-2 bg-white border border-gray-300 rounded-r hover:bg-gray-200 text-gray-600"
-               hx-get="{% querystring table.prefixed_page_field=table.page.next_page_number %}"
+               hx-get="{% querystring page=table.page.next_page_number %}"
                hx-trigger="click"
                hx-target="div.table-container"
                hx-swap="outerHTML">
