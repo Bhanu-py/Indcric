@@ -1,11 +1,7 @@
 import django_tables2 as tables
 from django.contrib.auth import get_user_model
-from django.utils.html import format_html
 from django.utils.safestring import mark_safe
-from django.templatetags.static import static
 from .models import Wallet
-from django.conf import settings
-import os
 
 User = get_user_model()
 
@@ -38,26 +34,22 @@ class UserHTMxTable(tables.Table):
             return "€0.00"
     
     def render_role(self, value):
-        """Render role with appropriate icon using hardcoded paths"""
         if not value:
             return "-"
-            
-        value_lower = value.lower() if value else ""
-        
-        # Use absolute URLs to the static files
-        bat_icon_url = "/static/icons/bat.png"
-        ball_icon_url = "/static/icons/ball.png"
-        
-        if value_lower == 'batsman':
-            role_html = '<div><img src="{}" class="inline-block w-4 h-4 mr-1" alt="Batsman"/></div>'.format(bat_icon_url)
-        elif value_lower == 'bowler':
-            role_html = '<div><img src="{}" class="inline-block w-4 h-4 mr-1" alt="Bowler"/></div>'.format(ball_icon_url)
-        elif value_lower == 'allrounder':
-            role_html = '<div><img src="{}" class="inline-block w-4 h-4 mr-1" alt="Batsman"/><img src="{}" class="inline-block w-4 h-4 mr-1" alt="Bowler"/></div>'.format(bat_icon_url, ball_icon_url)
-        else:
-            role_html = '<div>{}</div>'.format(value)
-            
-        return mark_safe(role_html)
+
+        value_lower = value.lower()
+        badges = {
+            'batsman':    ('🏏', 'Batsman',    'bg-sky-100 text-sky-800'),
+            'bowler':     ('🎯', 'Bowler',     'bg-red-100 text-red-800'),
+            'allrounder': ('⭐', 'All-Rounder', 'bg-purple-100 text-purple-800'),
+        }
+        icon, label, classes = badges.get(
+            value_lower, ('', value, 'bg-stone-100 text-stone-700')
+        )
+        return mark_safe(
+            f'<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full '
+            f'text-xs font-medium {classes}">{icon} {label}</span>'
+        )
     
     def render_batting_rating(self, value):
         """Render batting rating with stars"""
