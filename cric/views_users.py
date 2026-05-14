@@ -10,7 +10,7 @@ from django.db import transaction
 from django.db.utils import OperationalError
 from django.http import HttpResponse
 from django.contrib.auth import get_user_model
-from .forms import ProfileForm, EmailForm, UsernameForm, OnboardingForm
+from .forms import ProfileForm, EmailForm, UsernameForm, OnboardingForm, PhoneForm
 from .models import Match, Session
 from django.utils import timezone
 
@@ -123,6 +123,32 @@ def profile_usernamechange(request):
 @login_required
 def profile_emailverify(request):
     send_email_confirmation(request, request.user)
+    return redirect('profile-settings')
+
+
+@login_required
+def profile_phonechange(request):
+    if request.htmx:
+        if request.method == 'GET':
+            form = PhoneForm(instance=request.user)
+            return render(request, 'partials/phone_form.html', {'form': form})
+
+        if request.method == 'POST':
+            form = PhoneForm(request.POST, instance=request.user)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'WhatsApp number updated.')
+                return redirect('profile-settings')
+            return render(request, 'partials/phone_form.html', {'form': form})
+
+    if request.method == 'POST':
+        form = PhoneForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'WhatsApp number updated.')
+        else:
+            messages.warning(request, 'Invalid phone number.')
+
     return redirect('profile-settings')
 
 

@@ -1,0 +1,32 @@
+<form hx-post="{% url 'profile-phonechange' %}"
+      hx-target="#phone-form"
+      hx-swap="innerHTML"
+      class="space-y-4">
+    {% csrf_token %}
+    <div>
+        <label class="form-label" for="id_phone">WhatsApp Number</label>
+        <input class="form-input {% if form.phone.errors %}!border-red-400 focus:!ring-red-400{% endif %}"
+               type="tel"
+               id="id_phone"
+               name="phone"
+               value="{{ form.phone.value|default:'' }}"
+               placeholder="+32471123456">
+        {% for error in form.phone.errors %}
+        <p class="mt-1 text-xs text-red-600 flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            {{ error }}
+        </p>
+        {% endfor %}
+        <p class="mt-1 text-xs text-stone-400">International format, e.g. +32471123456</p>
+    </div>
+    <div class="flex items-center gap-3">
+        <button type="submit" class="btn btn-primary btn-md">Save Number</button>
+        <button type="button"
+                hx-get="{% url 'profile-phonechange' %}"
+                hx-target="#phone-form"
+                hx-swap="innerHTML"
+                class="btn btn-secondary btn-md">
+            Cancel
+        </button>
+    </div>
+</form>

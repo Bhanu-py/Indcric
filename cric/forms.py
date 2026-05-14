@@ -59,3 +59,19 @@ class UsernameForm(forms.ModelForm):
         widgets = {
             'username': forms.TextInput(attrs={'class': 'w-full p-2 border rounded'})
         }
+
+class PhoneForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['phone']
+        widgets = {
+            'phone': forms.TextInput(attrs={'class': 'w-full p-2 border rounded', 'placeholder': '+32471123456'}),
+        }
+
+    def clean_phone(self):
+        phone = (self.cleaned_data.get('phone') or '').strip()
+        if phone and not phone.startswith('+'):
+            raise forms.ValidationError('Must start with + and country code, e.g. +32471123456')
+        if phone and User.objects.filter(phone=phone).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError('This number is already registered to another account.')
+        return phone or None

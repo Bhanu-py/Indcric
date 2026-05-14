@@ -45,6 +45,8 @@ urlpatterns = [
          name='profile-usernamechange'),
     path('profile/verify-email/', views_users.profile_emailverify,
          name='profile-email-verify'),
+    path('profile/phone/', views_users.profile_phonechange,
+         name='profile-phonechange'),
     path('profile/delete/', views_users.profile_delete_view, name='profile-delete'),
     path('profile/onboarding/', views_users.profile_onboarding_view,
          name='profile-onboarding'),

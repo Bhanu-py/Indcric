@@ -50,6 +50,24 @@
         </div>
     </div>
 
+    <!-- WhatsApp Number -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2 class="text-sm font-bold text-stone-800">WhatsApp Number</h2>
+            <p class="text-xs text-stone-400 mt-0.5">Current: <span class="font-medium text-stone-600">{{ request.user.phone|default:"—" }}</span></p>
+        </div>
+        <div class="card-body" id="phone-form"
+             hx-get="{% url 'profile-phonechange' %}"
+             hx-trigger="load"
+             hx-target="#phone-form"
+             hx-swap="innerHTML">
+            <div class="flex items-center gap-2 text-sm text-stone-400 py-2">
+                <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Loading...
+            </div>
+        </div>
+    </div>
+
     <!-- Change Password -->
     <div class="card mb-4">
         <div class="card-header">
