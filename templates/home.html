@@ -15,7 +15,7 @@
             <p class="text-sm text-stone-500 mt-0.5">Here's what's happening with IndCric</p>
         </div>
         {% if user.is_staff %}
-        <a href="{% url 'cric:manage-create-session' %}"
+        <a href="{% url 'create_session' %}"
            class="btn btn-primary btn-md gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             New Session
@@ -103,7 +103,7 @@
                 <svg class="w-10 h-10 text-stone-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 <p class="text-sm text-stone-500">No upcoming sessions.</p>
                 {% if user.is_staff %}
-                <a href="{% url 'cric:manage-create-session' %}" class="btn btn-primary btn-md mt-3 inline-flex">Create one</a>
+                <a href="{% url 'create_session' %}" class="btn btn-primary btn-md mt-3 inline-flex">Create one</a>
                 {% endif %}
             </div>
             {% endfor %}

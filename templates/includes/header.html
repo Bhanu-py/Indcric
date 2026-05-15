@@ -38,20 +38,20 @@
                          x-transition:leave-start="opacity-100 translate-y-0 scale-100"
                          x-transition:leave-end="opacity-0 -translate-y-2 scale-95"
                          class="absolute right-0 top-12 w-52 bg-white text-stone-800 rounded-2xl shadow-xl border border-stone-100 py-2 z-50">
-                        <a href="{% url 'cric:manage-create-session' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
+                        <a href="{% url 'create_session' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
                             <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             Create Session
                         </a>
-                        <a href="{% url 'cric:attendance_list' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
+                        <a href="{% url 'attendance_list' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
                             <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
                             Attendance
                         </a>
-                        <a href="{% url 'cric:manage-payments' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
+                        <a href="{% url 'manage-payments' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
                             <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                             Payments
                         </a>
                         <div class="my-1 border-t border-stone-100"></div>
-                        <a href="{% url 'cric:manage-users' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
+                        <a href="{% url 'manage-users' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
                             <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                             Users
                         </a>
