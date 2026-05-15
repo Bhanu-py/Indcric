@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n static %}
 {% load allauth account %}
 
 {% block title %}Sign In — IndCric{% endblock %}
@@ -41,12 +41,10 @@
         <!-- Panel content -->
         <div class="relative z-10 flex flex-col h-full px-10 xl:px-14 py-12">
 
-            <!-- Logo -->
+            <!-- Logo — canonical comet-ball mark on a soft white tile (22% radius) -->
             <a href="/" class="flex items-center gap-2.5 w-fit">
-                <div class="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.04 2.11L15.63 3.52c-.78-.3-1.6-.52-2.46-.52C9.48 3 6 6.48 6 10.17c0 2.1.94 3.98 2.42 5.27L3 21l1.41 1.41 5.27-5.27c1.25 1.42 3.07 2.32 5.09 2.32C18.52 19.46 22 15.98 22 12.27c0-3.72-3.48-6.2-4.96-10.16zm-2.87 14.35c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/>
-                    </svg>
+                <div class="w-9 h-9 rounded-[8px] bg-white/90 p-1 flex items-center justify-center shadow-sm">
+                    <img src="{% static 'icons/logo-mark.png' %}" alt="IndCric" class="w-full h-full object-contain">
                 </div>
                 <span class="text-base font-bold text-white tracking-tight">IndCric</span>
             </a>
@@ -54,62 +52,61 @@
             <!-- Hero copy — centre of panel -->
             <div class="flex-1 flex flex-col justify-center py-10">
 
-                <!-- Pill badge -->
-                <div class="inline-flex items-center gap-2 bg-white/8 border border-white/10 rounded-full px-3.5 py-1.5 mb-8 w-fit">
+                <!-- Pill badge — mono micro-label with live pulse dot -->
+                <div class="inline-flex items-center gap-2 bg-white/[0.06] border border-white/10 rounded-full px-3 py-1.5 mb-8 w-fit">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span class="text-xs font-medium text-white/70 tracking-wide">Cricket Club Manager</span>
+                    <span class="font-mono text-[11px] font-medium text-white/70 uppercase tracking-[0.08em]">Cricket Club Manager</span>
                 </div>
 
-                <h2 class="text-[2.4rem] xl:text-5xl font-extrabold text-white leading-[1.12] tracking-tight mb-5">
+                <h2 class="text-[2.4rem] xl:text-5xl font-bold text-white leading-[1.05] tracking-tight mb-5">
                     Your pitch.<br>Your play.
                     <span class="block text-pitch-400 mt-1">All in one place.</span>
                 </h2>
 
-                <p class="text-pitch-400 text-sm leading-relaxed mb-10 max-w-[280px]">
+                <p class="text-pitch-300 text-sm leading-relaxed mb-10 max-w-[300px]">
                     Manage sessions, split costs, balance teams by skill,
                     and track every match — built for the way your club really runs.
                 </p>
 
                 <!-- Feature list -->
-                <ul class="space-y-3.5">
-                    {% for item in "0,1,2,3"|make_list %}{% endfor %}
+                <ul class="space-y-3">
                     <li class="flex items-center gap-3">
-                        <div class="w-5 h-5 rounded-full bg-pitch-700 flex items-center justify-center shrink-0">
+                        <div class="w-[18px] h-[18px] rounded-full bg-pitch-700 flex items-center justify-center shrink-0">
                             <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                             </svg>
                         </div>
-                        <span class="text-sm text-pitch-200 font-medium">Smart team balancing by skill ratings</span>
+                        <span class="text-[13px] text-pitch-200 font-medium">Smart team balancing by skill ratings</span>
                     </li>
                     <li class="flex items-center gap-3">
-                        <div class="w-5 h-5 rounded-full bg-pitch-700 flex items-center justify-center shrink-0">
+                        <div class="w-[18px] h-[18px] rounded-full bg-pitch-700 flex items-center justify-center shrink-0">
                             <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                             </svg>
                         </div>
-                        <span class="text-sm text-pitch-200 font-medium">Session payments &amp; wallet balance</span>
+                        <span class="text-[13px] text-pitch-200 font-medium">Session payments &amp; settlement</span>
                     </li>
                     <li class="flex items-center gap-3">
-                        <div class="w-5 h-5 rounded-full bg-pitch-700 flex items-center justify-center shrink-0">
+                        <div class="w-[18px] h-[18px] rounded-full bg-pitch-700 flex items-center justify-center shrink-0">
                             <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                             </svg>
                         </div>
-                        <span class="text-sm text-pitch-200 font-medium">Attendance tracking &amp; match polls</span>
+                        <span class="text-[13px] text-pitch-200 font-medium">Attendance polls &amp; match history</span>
                     </li>
                     <li class="flex items-center gap-3">
-                        <div class="w-5 h-5 rounded-full bg-pitch-700 flex items-center justify-center shrink-0">
+                        <div class="w-[18px] h-[18px] rounded-full bg-pitch-700 flex items-center justify-center shrink-0">
                             <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                             </svg>
                         </div>
-                        <span class="text-sm text-pitch-200 font-medium">Group expense splitting (Splitwise-style)</span>
+                        <span class="text-[13px] text-pitch-200 font-medium">Group expense splitting (Splitwise-style)</span>
                     </li>
                 </ul>
             </div>
 
-            <!-- Bottom tagline -->
-            <p class="text-pitch-700 text-xs font-medium">© 2025 IndCric · Built for the club.</p>
+            <!-- Bottom tagline — mono uppercase -->
+            <p class="font-mono text-[11px] text-pitch-700 uppercase tracking-[0.08em]">© 2026 IndCric · Built for the club</p>
         </div>
     </div>
 
@@ -122,13 +119,11 @@
 
             <!-- Mobile-only logo -->
             <div class="lg:hidden flex flex-col items-center mb-10">
-                <div class="w-12 h-12 rounded-2xl bg-pitch-700 flex items-center justify-center shadow-lg mb-3">
-                    <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.04 2.11L15.63 3.52c-.78-.3-1.6-.52-2.46-.52C9.48 3 6 6.48 6 10.17c0 2.1.94 3.98 2.42 5.27L3 21l1.41 1.41 5.27-5.27c1.25 1.42 3.07 2.32 5.09 2.32C18.52 19.46 22 15.98 22 12.27c0-3.72-3.48-6.2-4.96-10.16zm-2.87 14.35c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/>
-                    </svg>
+                <div class="w-12 h-12 rounded-[10px] bg-white p-1.5 flex items-center justify-center shadow-lg ring-1 ring-stone-100 mb-3">
+                    <img src="{% static 'icons/logo-mark.png' %}" alt="IndCric" class="w-full h-full object-contain">
                 </div>
                 <span class="text-xl font-bold text-stone-900">IndCric</span>
-                <span class="text-xs text-stone-400 mt-0.5">Cricket Club Manager</span>
+                <span class="font-mono text-[11px] text-stone-400 uppercase tracking-[0.08em] mt-0.5">Cricket Club Manager</span>
             </div>
 
             <!-- Heading -->
@@ -139,13 +134,8 @@
 
             <!-- Non-field errors (wrong credentials etc.) -->
             {% if form.non_field_errors %}
-            <div class="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-                <svg class="w-4.5 h-4.5 text-red-500 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                </svg>
-                <p class="text-sm text-red-700 leading-snug">
-                    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
-                </p>
+            <div class="mb-5">
+                {% include "_components/alert.html" with variant="error" body=form.non_field_errors.0 %}
             </div>
             {% endif %}
 

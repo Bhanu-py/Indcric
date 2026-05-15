@@ -1,0 +1,19 @@
+{% comment %}
+Stat tile — soft-tinted KPI cell with mono label + tnum numeric.
+Usage:
+  {% include "_components/stat_tile.html" with tint="emerald" label="Wallet" value="€42.50" %}
+  {% include "_components/stat_tile.html" with tint="sky" label="Matches" value="14" delta="+2" %}
+
+Args:
+  tint     sky | red | emerald | amber | pitch | stone           (default pitch)
+  label    short uppercase label (mono)
+  value    numeric or short value
+  delta    optional secondary metric (e.g. "+2 vs last month")
+{% endcomment %}
+{% with tval=tint|default:"pitch" %}
+<div class="stat-tile stat-tile-{{ tval }}">
+    <div class="micro-label">{{ label }}</div>
+    <div class="stat-tile-num">{{ value }}</div>
+    {% if delta %}<div class="font-mono text-[10px] text-stone-500 tabular-nums">{{ delta }}</div>{% endif %}
+</div>
+{% endwith %}

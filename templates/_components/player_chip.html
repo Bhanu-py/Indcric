@@ -1,0 +1,24 @@
+{% comment %}
+Player chip — avatar + name (+ optional role glyph + captain pip).
+Usage:
+  {% include "_components/player_chip.html" with user=player %}
+  {% include "_components/player_chip.html" with user=player is_captain=True show_role=True %}
+
+Args:
+  user        User object (uses username, get_full_name, role)
+  is_captain  if True, shows amber captain pip on the right
+  show_role   if True, shows trailing role-emoji glyph
+{% endcomment %}
+{% load custom_filters %}
+<div class="player-chip">
+    <img class="h-6 w-6 rounded-full object-cover ring-1 ring-stone-200"
+         src="https://ui-avatars.com/api/?name={{ user.username }}&background=166534&color=fff&bold=true"
+         alt="{{ user.username }}"/>
+    <span class="truncate">{{ user.get_full_name|default:user.username }}</span>
+    {% if show_role and user.role %}
+        <span class="text-sm" title="{{ user.role }}">{{ user.role|role_emoji }}</span>
+    {% endif %}
+    {% if is_captain %}
+        <span class="captain-badge" title="Captain">C</span>
+    {% endif %}
+</div>

@@ -1,0 +1,14 @@
+{% comment %}
+Section eyebrow — short accent bar + UPPERCASE label.
+Usage:
+  {% include "_components/eyebrow.html" with label="Upcoming Sessions" %}
+  {% include "_components/eyebrow.html" with label="Previous Sessions" past=True %}
+
+Args:
+  label   eyebrow text (will be uppercased by class)
+  past    if True, uses muted stone-300 accent bar (for past/inactive sections)
+{% endcomment %}
+<div class="section-eyebrow">
+    <div class="{% if past %}section-eyebrow-bar-past{% else %}section-eyebrow-bar{% endif %}"></div>
+    <h2 class="eyebrow{% if past %} text-stone-500{% else %} text-stone-800{% endif %} !mb-0">{{ label }}</h2>
+</div>

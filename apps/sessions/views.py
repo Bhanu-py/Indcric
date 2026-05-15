@@ -1,7 +1,10 @@
+from datetime import timedelta
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.contrib import messages
+from django.db.models import Sum
 from django.urls import reverse
 from django.utils import timezone
 from decimal import Decimal
@@ -33,10 +36,34 @@ def home(request):
                 'yes_percentage': yes_percentage,
             }
 
+    next_session = upcoming_sessions.first()
+    next_session_votes = (
+        session_vote_counts.get(next_session.id) if next_session else None
+    )
+    sessions_30d = Session.objects.filter(
+        date__gte=today - timedelta(days=30), date__lte=today
+    ).count()
+
+    outstanding_total = Decimal('0')
+    if request.user.is_authenticated:
+        outstanding_total = (
+            Payment.objects.filter(user=request.user, status='pending')
+            .aggregate(total=Sum('amount'))
+            .get('total')
+            or Decimal('0')
+        )
+
+    active_members = User.objects.filter(is_active=True).count()
+
     context = {
         'upcoming_sessions': upcoming_sessions,
         'previous_sessions': previous_sessions,
         'vote_counts': session_vote_counts,
+        'next_session': next_session,
+        'next_session_votes': next_session_votes,
+        'sessions_30d': sessions_30d,
+        'outstanding_total': outstanding_total,
+        'active_members': active_members,
     }
     return render(request, 'home.html', context)
 

@@ -1,0 +1,29 @@
+{% comment %}
+Button partial.
+Usage:
+  {% include "_components/button.html" with variant="primary" size="md" label="New Session" url="/session/new/" icon_svg=icon_plus %}
+  {% include "_components/button.html" with variant="secondary" label="Cancel" type="button" %}
+
+Args:
+  variant  primary | secondary | amber | success | danger | ghost   (default primary)
+  size     sm | md | lg | xl                                         (default md)
+  label    button text
+  url      if set, renders as <a>; otherwise renders as <button>
+  type     submit | button | reset                                   (default submit, only if no url)
+  icon_svg raw SVG markup for leading icon (optional)
+  extra    additional class names (optional)
+  attrs    additional raw HTML attribute string (optional, e.g. 'hx-post="..." hx-target="#x"')
+{% endcomment %}
+{% with bvariant=variant|default:"primary" bsize=size|default:"md" btype=type|default:"submit" %}
+{% if url %}
+<a href="{{ url }}" class="btn btn-{{ bvariant }} btn-{{ bsize }} {{ extra|default:'' }}" {{ attrs|default:'' }}>
+    {% if icon_svg %}{{ icon_svg|safe }}{% endif %}
+    {{ label }}
+</a>
+{% else %}
+<button type="{{ btype }}" class="btn btn-{{ bvariant }} btn-{{ bsize }} {{ extra|default:'' }}" {{ attrs|default:'' }}>
+    {% if icon_svg %}{{ icon_svg|safe }}{% endif %}
+    {{ label }}
+</button>
+{% endif %}
+{% endwith %}

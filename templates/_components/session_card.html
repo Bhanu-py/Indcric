@@ -1,0 +1,83 @@
+{% comment %}
+Session card — date pill, name, location/time meta, optional poll bar.
+Used on dashboard and any session list.
+
+Usage:
+  {% include "_components/session_card.html" with session=s vote_count=vote_counts|get_item:s.id is_staff=user.is_staff %}
+  {% include "_components/session_card.html" with session=s past=True is_staff=user.is_staff %}
+
+Args:
+  session     Session instance (uses .id .name .date .time .duration .location .poll .matches)
+  vote_count  optional dict with keys yes_votes, no_votes, yes_percentage, total_votes
+  past        if True, render in dimmed past-session style
+  is_staff    if True, show staff-only delete affordance on hover
+{% endcomment %}
+{% load custom_filters %}
+<div class="card hover:shadow-md transition-shadow group relative{% if past %} opacity-80 hover:opacity-100{% endif %}">
+    <div class="card-accent {% if past %}card-accent-stone{% else %}card-accent-pitch{% endif %}"></div>
+
+    <div class="p-5">
+        <div class="flex items-start justify-between mb-3">
+            {% include "_components/date_pill.html" with date=session.date past=past format=past|yesno:"j M Y,j M" %}
+            {% if is_staff %}
+            <form method="POST" action="{% url 'delete_session' session.id %}"
+                  onsubmit="return confirm('Delete this session?')">
+                {% csrf_token %}
+                <button type="submit" class="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-red-50 text-stone-400 hover:text-red-500">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+            </form>
+            {% endif %}
+        </div>
+
+        <a href="{% url 'session_detail' session.id %}">
+            <h3 class="text-base font-bold {% if past %}text-stone-700 group-hover:text-stone-900{% else %}text-stone-900 group-hover:text-pitch-700{% endif %} transition-colors mb-1">
+                {{ session.name }}
+            </h3>
+            <div class="flex items-center gap-1.5 text-xs {% if past %}text-stone-400{% else %}text-stone-500{% endif %} mb-0.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                {{ session.location }}
+            </div>
+            {% if not past %}
+            <div class="flex items-center gap-1.5 text-xs text-stone-500">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                {{ session.time }} &middot; {{ session.duration }}h
+            </div>
+            {% endif %}
+        </a>
+
+        {% if not past and session.poll and vote_count %}
+        <div class="mt-4 pt-4 border-t border-stone-100">
+            <div class="flex items-center justify-between text-xs mb-2">
+                <span class="font-medium text-stone-600">Availability poll</span>
+                <div class="flex items-center gap-1.5">
+                    {% include "_components/badge.html" with variant="green" label=vote_count.yes_votes|stringformat:"s"|add:" Yes" %}
+                    {% include "_components/badge.html" with variant="red" label=vote_count.no_votes|stringformat:"s"|add:" No" %}
+                    {% if not session.poll.is_open %}
+                        {% include "_components/badge.html" with variant="stone" label="Closed" %}
+                    {% endif %}
+                </div>
+            </div>
+            {% if vote_count.total_votes > 0 %}
+            <div class="vote-bar">
+                <div class="vote-fill-yes" style="width:{{ vote_count.yes_percentage }}%"></div>
+            </div>
+            {% else %}
+            <div class="vote-bar"><div class="vote-fill-yes w-0"></div></div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if past and session.matches.exists %}
+        {% with match=session.matches.first %}
+        <div class="mt-3 pt-3 border-t border-stone-100 flex items-center gap-2">
+            <svg class="w-3.5 h-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"/></svg>
+            <span class="text-xs text-stone-500">
+                {{ match.name }}
+                {% if match.winner %} &middot; <span class="font-semibold text-amber-600">{{ match.winner.name }} won</span>{% endif %}
+            </span>
+        </div>
+        {% endwith %}
+        {% endif %}
+    </div>
+</div>

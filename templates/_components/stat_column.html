@@ -1,0 +1,21 @@
+{% comment %}
+Stat column — mono UPPERCASE label with leading colour-dot, tnum numeric.
+Usage:
+  {% include "_components/stat_column.html" with label="Sessions · 30d" value="6" dot="pitch" %}
+  {% include "_components/stat_column.html" with label="Outstanding" value="€48" dot="amber" first=True %}
+
+Args:
+  label    micro label text (rendered uppercase, mono)
+  value    numeric or short value
+  dot      pitch | sky | amber | red | emerald | purple | stone   (default pitch)
+  first    if True, no left border (use on the first stat in a row)
+{% endcomment %}
+{% with dotc=dot|default:"pitch" %}
+<div class="stat-col{% if first %} !border-l-0 !pl-0{% endif %}">
+    <div class="micro-label flex items-center gap-1.5">
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-{{ dotc }}-500"></span>
+        {{ label }}
+    </div>
+    <div class="stat-col-num">{{ value }}</div>
+</div>
+{% endwith %}

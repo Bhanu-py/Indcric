@@ -1,0 +1,15 @@
+{% comment %}
+Date pill — calendar icon + short date.
+Usage:
+  {% include "_components/date_pill.html" with date=session.date %}
+  {% include "_components/date_pill.html" with date=session.date past=True format="j M Y" %}
+
+Args:
+  date    date or datetime
+  past    if True, uses stone tint (past sessions)
+  format  Django date format string (default "j M")
+{% endcomment %}
+<span class="{% if past %}date-pill-past{% else %}date-pill{% endif %}">
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+    {{ date|date:format|default:date|date:"j M" }}
+</span>

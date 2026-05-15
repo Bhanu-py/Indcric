@@ -1,0 +1,94 @@
+/* Shared styles for design-system preview cards.
+   Each card is 700×~150 px, white card on stone-50 page.
+   Inter via colors_and_type.css. */
+@import url("../colors_and_type.css");
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-page);
+  font-family: var(--font-sans);
+  color: var(--fg-1);
+  -webkit-font-smoothing: antialiased;
+}
+
+.card {
+  box-sizing: border-box;
+  width: 700px;
+  padding: 24px 28px;
+  background: #fff;
+  border: 1px solid var(--border-1);
+  border-radius: 16px;
+}
+
+.row { display: flex; align-items: center; gap: 14px; }
+.col { display: flex; flex-direction: column; gap: 6px; }
+
+.swatch {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.06);
+  position: relative;
+  flex-shrink: 0;
+}
+.swatch-sm { width: 40px; height: 40px; border-radius: 10px; }
+
+.swatch-label { font-size: 11px; font-weight: 600; color: var(--stone-500); margin-top: 4px; }
+.swatch-hex { font-size: 10px; font-family: var(--font-mono); color: var(--stone-400); }
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--stone-400);
+}
+
+.token {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--stone-600);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0.005em;
+  border-radius: 8px;
+  padding: 7px 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.btn-primary { background: var(--pitch-700); color: #fff; }
+.btn-primary:hover { background: var(--pitch-800); }
+.btn-secondary { background: #fff; color: var(--stone-700); border-color: var(--stone-300); }
+.btn-amber { background: var(--amber-500); color: #fff; }
+.btn-danger { background: var(--red-600); color: #fff; }
+.btn-ghost { background: transparent; color: var(--stone-600); }
+.btn-success { background: var(--emerald-600); color: #fff; }
+.btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 7px; }
+.btn-lg { padding: 9px 18px; font-size: 13px; border-radius: 9px; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge-green  { background: var(--emerald-100); color: var(--emerald-800); }
+.badge-pitch  { background: var(--pitch-100);   color: var(--pitch-800); }
+.badge-red    { background: var(--red-100);     color: var(--red-700); }
+.badge-amber  { background: var(--amber-100);   color: var(--amber-800); }
+.badge-sky    { background: var(--sky-100);     color: var(--sky-800); }
+.badge-purple { background: var(--purple-100);  color: var(--purple-800); }
+.badge-stone  { background: var(--stone-100);   color: var(--stone-700); }

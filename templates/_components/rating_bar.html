@@ -1,0 +1,24 @@
+{% comment %}
+5-segment skill rating bar — stone-800 filled / stone-100 empty, rounded to halves.
+Usage:
+  {% include "_components/rating_bar.html" with value=user.batting_rating %}
+
+Args:
+  value   Decimal 0..5; will be rounded down to halves (0, 0.5, 1, 1.5, ... 5).
+{% endcomment %}
+{% load custom_filters %}
+{% with rv=value|default:0 %}
+<div class="skill-bar" aria-label="Rating {{ rv }} of 5">
+    {% for i in "12345" %}
+        {% with seg=forloop.counter %}
+            <div class="skill-seg">
+                {% if rv >= seg %}
+                    <div class="skill-seg-fill" style="width:100%"></div>
+                {% elif rv >= seg|add:"-0.5" %}
+                    <div class="skill-seg-fill" style="width:50%"></div>
+                {% endif %}
+            </div>
+        {% endwith %}
+    {% endfor %}
+</div>
+{% endwith %}

@@ -1,0 +1,15 @@
+{% comment %}
+Badge partial.
+Usage:
+  {% include "_components/badge.html" with variant="green" label="3 Yes" %}
+  {% include "_components/badge.html" with variant="stone" label="Closed" %}
+
+Args:
+  variant   green | pitch | red | amber | sky | purple | stone   (default stone)
+  label     pill text
+  icon_svg  raw SVG markup for leading icon (optional)
+{% endcomment %}
+<span class="badge badge-{{ variant|default:'stone' }}">
+    {% if icon_svg %}{{ icon_svg|safe }}{% endif %}
+    {{ label }}
+</span>

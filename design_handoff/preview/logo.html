@@ -1,0 +1,195 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+  .tile-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--stone-700);
+    margin-top: 12px;
+  }
+  .tile-sub {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--stone-400);
+    margin-top: 2px;
+  }
+  .sub-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--stone-400);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 14px;
+  }
+  .group { margin-top: 22px; padding-top: 18px; border-top: 1px dashed var(--stone-200); }
+  .group:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+  .light-tile {
+    background: var(--stone-50);
+    border: 1px solid var(--stone-100);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+  }
+  .dark-tile {
+    background: var(--pitch-900);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+  }
+  /* Mark wrapper: square; image fills */
+  .mark { display:block; }
+</style>
+</head>
+<body>
+<div class="card" style="padding:26px 28px;">
+  <div class="eyebrow" style="margin-bottom:18px;">Logo · ICG — Comet ball mark</div>
+
+  <!-- ═════════════ A · The mark at multiple sizes ═════════════ -->
+  <div class="group">
+    <div class="sub-eyebrow">A · Mark at three sizes</div>
+    <div style="display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap;">
+
+      <div>
+        <div class="light-tile">
+          <img class="mark" src="../assets/logo-mark.png" alt="ICG comet ball mark"
+               width="128" height="128" style="image-rendering: -webkit-optimize-contrast;">
+        </div>
+        <div class="tile-label">Large · 128 px</div>
+        <div class="tile-sub">app launch · marketing hero</div>
+      </div>
+
+      <div>
+        <div class="light-tile">
+          <img class="mark" src="../assets/logo-mark.png" alt="ICG comet ball mark"
+               width="64" height="64">
+        </div>
+        <div class="tile-label">Medium · 64 px</div>
+        <div class="tile-sub">app icon · share cards</div>
+      </div>
+
+      <div>
+        <div class="light-tile">
+          <img class="mark" src="../assets/logo-mark.png" alt="ICG comet ball mark"
+               width="32" height="32">
+        </div>
+        <div class="tile-label">Small · 32 px</div>
+        <div class="tile-sub">header · favicon</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════ Backgrounds the mark sits well on ═════════════ -->
+  <div class="group">
+    <div class="sub-eyebrow">Backgrounds · mark has a soft white card behind the artwork</div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div class="light-tile" style="background:#ffffff;">
+        <img class="mark" src="../assets/logo-mark.png" width="80" height="80" alt="">
+      </div>
+      <div class="light-tile">
+        <img class="mark" src="../assets/logo-mark.png" width="80" height="80" alt="">
+      </div>
+      <!-- on dark we wrap in a soft white card to keep contrast -->
+      <div class="dark-tile">
+        <div style="background:#fff; border-radius:12px; padding:6px; display:flex;">
+          <img class="mark" src="../assets/logo-mark.png" width="74" height="74" alt="">
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--stone-500); max-width:320px;">
+        On dark surfaces (the app header / sign-in hero) the mark sits on a soft white tile so the cricket ball stays legible. Don't reverse-knock the artwork — the flame's warm orange is the brand signal.
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════ In context — header, hero, share-card ═════════════ -->
+  <div class="group">
+    <div class="sub-eyebrow">In context · header · hero · share-card</div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+
+      <!-- App header mock -->
+      <div style="background:var(--pitch-900); padding:12px 18px; border-radius:14px;
+                  display:flex; align-items:center; justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:10px; color:#fff;">
+          <div style="background:#fff; border-radius:9px; padding:4px; display:flex;">
+            <img src="../assets/logo-mark.png" width="28" height="28" alt="">
+          </div>
+          <span style="font-weight:600; font-size:14px; letter-spacing:-0.005em;">ICG</span>
+        </div>
+        <div style="display:flex; gap:18px;">
+          <span style="font-size:12px; color:rgba(255,255,255,.85);">Dashboard</span>
+          <span style="font-size:12px; color:rgba(255,255,255,.55);">Teams</span>
+          <span style="font-size:12px; color:rgba(255,255,255,.55);">Payments</span>
+        </div>
+      </div>
+
+      <!-- Hero strip (light) -->
+      <div style="background:#fff; border:1px solid var(--stone-100); padding:18px 22px; border-radius:14px;
+                  display:flex; align-items:center; gap:18px;">
+        <img src="../assets/logo-mark.png" width="56" height="56" alt="">
+        <div>
+          <div style="font-size:18px; font-weight:600; color:var(--stone-900); letter-spacing:-0.015em;">
+            Indian Cricket Ghent
+          </div>
+          <div style="font-size:12px; color:var(--stone-500); margin-top:2px;">
+            Cricket club · Ghent, Belgium
+          </div>
+        </div>
+      </div>
+
+      <!-- WhatsApp share card preview -->
+      <div style="background:#fff; border:1px solid var(--stone-100); border-radius:14px; padding:18px;
+                  display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:14px;">
+        <img src="../assets/logo-mark.png" width="40" height="40" alt="">
+        <div>
+          <div style="font-size:13px; font-weight:600; color:var(--stone-900);">Sunday Nets · 14 Jun</div>
+          <div style="font-family:var(--font-mono); font-size:10px; color:var(--stone-500); margin-top:2px;
+                      letter-spacing:0.04em;">SPORTHAL WATERSPORTBAAN · 18:00</div>
+        </div>
+        <div style="font-size:11px; color:var(--stone-400); font-family:var(--font-mono); letter-spacing:0.04em;">
+          7 IN · 2 OUT
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════ B & C — wordmark + horizontal lockup ═════════════ -->
+  <div class="group">
+    <div class="sub-eyebrow">B &amp; C · wordmark + horizontal lockup</div>
+    <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:24px;align-items:start;">
+
+      <!-- B · Stacked wordmark -->
+      <div style="display:flex;flex-direction:column;align-items:flex-start;">
+        <span style="font-size:40px;font-weight:700;letter-spacing:-0.05em;
+                     color:var(--stone-900);line-height:0.95;font-family:var(--font-sans);">ICG</span>
+        <span style="font-size:9px;font-weight:600;letter-spacing:0.22em;
+                     color:var(--stone-500);text-transform:uppercase;margin-top:8px;
+                     font-family:var(--font-sans);">Indian Cricket Ghent</span>
+        <div class="tile-label">B · Stacked wordmark</div>
+        <div class="tile-sub">primary lockup · letterhead · sign-in</div>
+      </div>
+
+      <!-- C · Horizontal lockup -->
+      <div style="display:flex;flex-direction:column;align-items:flex-start;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <img src="../assets/logo-mark.png" width="40" height="40" alt="">
+          <span style="font-size:24px;font-weight:700;letter-spacing:-0.04em;
+                       color:var(--stone-900);line-height:1;font-family:var(--font-sans);">ICG</span>
+          <span style="font-size:12px;font-weight:500;color:var(--stone-500);
+                       font-family:var(--font-sans);">· Cricket Club, Ghent</span>
+        </div>
+        <div class="tile-label">C · Horizontal lockup</div>
+        <div class="tile-sub">nav bar · share cards · footers</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;font-size:12px;color:var(--stone-500);">
+    The comet ball mark from the reference image, used as-is. Lives at <code style="font-family:var(--font-mono);font-size:11px;">assets/logo-mark.png</code>. Sits on a white tile on the dark app header so the cricket ball and the warm flame both stay legible. Pair with the wordmark for B and with the mark + wordmark for the horizontal lockup C.
+  </div>
+</div>
+</body></html>

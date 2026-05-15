@@ -1,0 +1,40 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+  .alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid;
+  }
+  .alert svg { flex-shrink: 0; }
+  .alert-success { background: var(--pitch-50);  color: var(--pitch-800);  border-color: var(--pitch-100); }
+  .alert-info    { background: var(--sky-100);   color: var(--sky-800);    border-color: #bae6fd; }
+  .alert-warn    { background: var(--amber-50);  color: var(--amber-800);  border-color: var(--amber-100); }
+  .alert-danger  { background: var(--red-50);    color: var(--red-800);    border-color: var(--red-100); }
+</style>
+</head>
+<body>
+<div class="card" style="display:flex;flex-direction:column;gap:8px;padding:18px;">
+  <div class="alert alert-success">
+    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+    Teams saved. Players notified.
+  </div>
+  <div class="alert alert-info">
+    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-.01V10a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+    Poll closes in 4 hours.
+  </div>
+  <div class="alert alert-warn">
+    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a1 1 0 011 1v3a1 1 0 11-2 0V7a1 1 0 011-1zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+    Heads-up: 3 players haven't voted yet.
+  </div>
+  <div class="alert alert-danger">
+    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+    Could not load attendance. Try again.
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,22 @@
+{% comment %}
+Role badge — emoji glyph + role label inside a tinted outline pill.
+Usage:
+  {% include "_components/role_badge.html" with role=user.role %}
+  {% include "_components/role_badge.html" with role="batsman" compact=True %}
+
+Args:
+  role     batsman | bowler | allrounder | keeper | fielding
+  compact  if True, glyph-only icon pill (no label)
+{% endcomment %}
+{% load custom_filters %}
+{% with rkey=role|default:""|lower %}
+{% if rkey == "bowler" or rkey == "bowling" %}
+    <span class="role-badge role-badge-ball">{{ rkey|role_emoji }}{% if not compact %}<span class="ml-0.5">Bowler</span>{% endif %}</span>
+{% elif rkey == "allrounder" or rkey == "all-rounder" %}
+    <span class="role-badge role-badge-allr">{{ rkey|role_emoji }}{% if not compact %}<span class="ml-0.5">All-rounder</span>{% endif %}</span>
+{% elif rkey == "keeper" or rkey == "wicketkeeper" %}
+    <span class="role-badge role-badge-keeper">{{ rkey|role_emoji }}{% if not compact %}<span class="ml-0.5">Keeper</span>{% endif %}</span>
+{% else %}
+    <span class="role-badge role-badge-bat">{{ rkey|role_emoji }}{% if not compact %}<span class="ml-0.5">Batsman</span>{% endif %}</span>
+{% endif %}
+{% endwith %}

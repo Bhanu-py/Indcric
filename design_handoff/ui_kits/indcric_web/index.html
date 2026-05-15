@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>IndCric — UI Kit</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../../colors_and_type.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--stone-50); font-family: var(--font-sans);
+               color: var(--stone-900); -webkit-font-smoothing: antialiased; }
+  a { text-decoration: none; color: inherit; cursor: pointer; }
+  button { font-family: inherit; }
+
+  .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 900px) { .grid-3 { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media (max-width: 640px) { .grid-3 { grid-template-columns: 1fr; } }
+
+  .login-hero { display: none; }
+  @media (min-width: 1024px) { .login-hero { display: flex; } }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.4); }
+  }
+
+  /* Floating screen switcher (visible until Tweaks panel surfaces) */
+  .screen-pills {
+    position: fixed; left: 16px; bottom: 16px; z-index: 60;
+    display: flex; flex-wrap: wrap; gap: 6px; max-width: 600px;
+    background: rgba(255,255,255,0.92); backdrop-filter: blur(6px);
+    border: 1px solid var(--stone-100); border-radius: 9999px; padding: 4px;
+    box-shadow: var(--shadow-md);
+  }
+  .screen-pill {
+    padding: 5px 11px; border-radius: 9999px; border: none; cursor: pointer;
+    font-size: 11px; font-weight: 500; font-family: inherit; color: var(--stone-600);
+    background: transparent; letter-spacing: 0.005em;
+  }
+  .screen-pill.on { background: var(--stone-900); color: #fff; }
+  .screen-pill:hover { color: var(--stone-900); }
+  .screen-pill.on:hover { color: #fff; }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="Icons.jsx"></script>
+<script type="text/babel" src="Primitives.jsx"></script>
+<script type="text/babel" src="Header.jsx"></script>
+<script type="text/babel" src="SessionCard.jsx"></script>
+<script type="text/babel" src="LoginScreen.jsx"></script>
+<script type="text/babel" src="DashboardScreen.jsx"></script>
+<script type="text/babel" src="SessionDetailScreen.jsx"></script>
+<script type="text/babel" src="ProfileScreen.jsx"></script>
+<script type="text/babel" src="PaymentsScreen.jsx"></script>
+<script type="text/babel" src="TeamBalanceScreen.jsx"></script>
+<script type="text/babel" src="NotificationsScreen.jsx"></script>
+<script type="text/babel" src="OnboardingScreen.jsx"></script>
+<script type="text/babel" src="MatchResultScreen.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+</head>
+<body data-screen-label="00 IndCric UI Kit">
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// ───────── Sample data ─────────
+const ALL_PLAYERS = [
+  { username:'bhanu',  name:'Bhanu Tej',   role:'allrounder', batting:4.2, bowling:3.5, fielding:4.5, avatarColor:'var(--pitch-700)' },
+  { username:'anand',  name:'Anand R.',    role:'batsman',    batting:4.5, bowling:2.0, fielding:3.5, avatarColor:'var(--sky-500)' },
+  { username:'rohan',  name:'Rohan K.',    role:'bowler',     batting:2.5, bowling:4.5, fielding:3.0, avatarColor:'var(--red-500)' },
+  { username:'kiran',  name:'Kiran D.',    role:'batsman',    batting:4.0, bowling:2.5, fielding:4.0, avatarColor:'var(--amber-600)' },
+  { username:'sai',    name:'Sai Prabhu',  role:'allrounder', batting:3.8, bowling:3.8, fielding:4.2, avatarColor:'var(--purple-800)' },
+  { username:'arjun',  name:'Arjun M.',    role:'bowler',     batting:2.0, bowling:4.0, fielding:3.5, avatarColor:'var(--emerald-600)' },
+  { username:'vikram', name:'Vikram S.',   role:'batsman',    batting:3.8, bowling:2.5, fielding:3.0, avatarColor:'var(--sky-500)' },
+  { username:'deepak', name:'Deepak G.',   role:'allrounder', batting:3.5, bowling:3.5, fielding:3.5, avatarColor:'var(--pitch-600)' },
+  { username:'pranav', name:'Pranav N.',   role:'bowler',     batting:2.5, bowling:4.2, fielding:3.0, avatarColor:'var(--red-600)' },
+  { username:'ritesh', name:'Ritesh L.',   role:'batsman',    batting:4.5, bowling:2.0, fielding:3.0, avatarColor:'var(--amber-500)' },
+  { username:'manish', name:'Manish T.',   role:'keeper',     batting:3.5, bowling:1.5, fielding:4.5, avatarColor:'var(--stone-600)' },
+  { username:'vinay',  name:'Vinay R.',    role:'allrounder', batting:3.5, bowling:3.2, fielding:3.8, avatarColor:'var(--sky-600)' },
+  { username:'karthik',name:'Karthik P.',  role:'bowler',     batting:2.5, bowling:4.0, fielding:3.0, avatarColor:'var(--red-700)' },
+  { username:'arvind', name:'Arvind S.',   role:'batsman',    batting:4.2, bowling:1.8, fielding:2.8, avatarColor:'var(--amber-700)' },
+];
+
+const initialSessions = [
+  { id:1, name:'Sunday Nets', location:'Sporthal Watersportbaan', time:'18:00', duration:2,
+    dateLabel:'14 Jun', dateDay:'14', dateMonth:'JUN', past:false,
+    poll:{ yes:7, no:2, closed:false } },
+  { id:2, name:'Friday Hall Knockout', location:'Topsporthal Gent', time:'19:30', duration:1.5,
+    dateLabel:'19 Jun', dateDay:'19', dateMonth:'JUN', past:false,
+    poll:{ yes:4, no:1, closed:false } },
+  { id:3, name:'Weekend League — Round 3', location:'Cricket Pitch Drongen', time:'14:00', duration:3,
+    dateLabel:'22 Jun', dateDay:'22', dateMonth:'JUN', past:false,
+    poll:{ yes:9, no:0, closed:true } },
+  { id:101, name:'Sunday Nets', location:'Sporthal Watersportbaan', dateLabel:'7 Jun 2026', past:true, winner:'Team A' },
+  { id:102, name:'Mid-week Tape-Ball', location:'Topsporthal Gent', dateLabel:'4 Jun 2026', past:true, winner:'Team B' },
+  { id:103, name:'May Day Match', location:'Cricket Pitch Drongen', dateLabel:'1 May 2026', past:true, winner:'Team A' },
+];
+
+const PAYMENT_MATCHES = [
+  { id:'p1', name:'Sunday Nets',     dateDay:'14', dateMonth:'JUN', dateFull:'14 Jun 2026', perPlayer:7.2, paid:['bhanu','anand','sai','arjun','kiran','vikram'] },
+  { id:'p2', name:'Friday Knockout', dateDay:'7',  dateMonth:'JUN', dateFull:'7 Jun 2026',  perPlayer:9.5, paid:['bhanu','anand','rohan','kiran','sai','arjun','vikram','deepak','manish','vinay'] },
+  { id:'p3', name:'May Day Match',   dateDay:'1',  dateMonth:'MAY', dateFull:'1 May 2026',  perPlayer:6.0, paid:['bhanu','rohan','sai','manish'] },
+];
+
+const MATCH = {
+  id:'m102',
+  dateLabel:'4 Jun 2026 · 18:00',
+  location:'Topsporthal Gent',
+  format:'T10 · indoor hall',
+  teamA: { name:'Team A · bhanu XI', accent:'var(--pitch-600)' },
+  teamB: { name:'Team B · sai XI',   accent:'var(--amber-500)' },
+  winner: 'A',
+  resultLine: 'Team A won by 3 wkts',
+  motm: { name:'Bhanu Tej', username:'bhanu', role:'allrounder',
+          line:'58 (32) including 4 sixes · 2/14 with the ball' },
+  innings: [
+    { battingTeam:'Team B · sai XI', runs:124, wickets:8, overs:10, rr:'12.4',
+      extras:{ total:9, desc:'4 wd, 3 b, 2 lb' },
+      batting:[
+        { name:'sai',     captain:true, r:42, balls:24, fours:3, sixes:2, sr:'175.0', out:'c bhanu b arjun' },
+        { name:'kiran',                  r:18, balls:11, fours:2, sixes:0, sr:'163.6', out:'b rohan' },
+        { name:'vikram',                 r:8,  balls:7,  fours:1, sixes:0, sr:'114.3', out:'lbw b bhanu' },
+        { name:'manish',                 r:21, balls:18, fours:1, sixes:1, sr:'116.7', out:'c arvind b bhanu' },
+        { name:'karthik',                r:5,  balls:6,  fours:0, sixes:0, sr:'83.3',  out:'run out' },
+        { name:'arvind',                 r:14, balls:9,  fours:1, sixes:1, sr:'155.6', out:'c rohan b deepak' },
+        { name:'ritesh',                 r:3,  balls:4,  fours:0, sixes:0, sr:'75.0',  out:'b deepak' },
+        { name:'pranav',                 r:4,  balls:3,  fours:0, sixes:0, sr:'133.3', out:'not out' },
+      ],
+      bowling:[
+        { name:'bhanu',  o:2, m:0, r:14, w:2, econ:'7.0' },
+        { name:'arjun',  o:2, m:0, r:22, w:1, econ:'11.0' },
+        { name:'rohan',  o:2, m:0, r:28, w:1, econ:'14.0' },
+        { name:'deepak', o:2, m:0, r:24, w:2, econ:'12.0' },
+        { name:'anand',  o:2, m:0, r:27, w:0, econ:'13.5' },
+      ],
+      fow:[
+        { score:'34/1',  batter:'kiran',   over:'2.4' },
+        { score:'48/2',  batter:'vikram',  over:'3.5' },
+        { score:'76/3',  batter:'sai',     over:'6.1' },
+        { score:'94/4',  batter:'karthik', over:'7.4' },
+        { score:'104/5', batter:'manish',  over:'8.2' },
+      ],
+    },
+    { battingTeam:'Team A · bhanu XI', runs:127, wickets:7, overs:9.4, rr:'13.1',
+      extras:{ total:6, desc:'3 wd, 2 b, 1 nb' },
+      batting:[
+        { name:'bhanu',  captain:true, r:58, balls:32, fours:5, sixes:4, sr:'181.3', out:'b pranav' },
+        { name:'anand',                r:22, balls:14, fours:3, sixes:0, sr:'157.1', out:'c sai b pranav' },
+        { name:'rohan',                r:14, balls:11, fours:1, sixes:1, sr:'127.3', out:'lbw b karthik' },
+        { name:'arjun',                r:9,  balls:6,  fours:1, sixes:0, sr:'150.0', out:'run out' },
+        { name:'deepak',               r:5,  balls:4,  fours:0, sixes:0, sr:'125.0', out:'b karthik' },
+        { name:'vinay',                r:6,  balls:3,  fours:1, sixes:0, sr:'200.0', out:'c manish b sai' },
+        { name:'arvind',               r:4,  balls:5,  fours:0, sixes:0, sr:'80.0',  out:'b pranav' },
+        { name:'ritesh',               r:3,  balls:2,  fours:0, sixes:0, sr:'150.0', out:'not out' },
+      ],
+      bowling:[
+        { name:'pranav',  o:2,   m:0, r:18, w:3, econ:'9.0' },
+        { name:'karthik', o:2,   m:0, r:22, w:2, econ:'11.0' },
+        { name:'sai',     o:2,   m:0, r:26, w:1, econ:'13.0' },
+        { name:'manish',  o:1.4, m:0, r:32, w:0, econ:'19.2' },
+        { name:'vikram',  o:2,   m:0, r:27, w:0, econ:'13.5' },
+      ],
+      fow:[
+        { score:'42/1',  batter:'anand',  over:'2.5' },
+        { score:'78/2',  batter:'rohan',  over:'5.3' },
+        { score:'88/3',  batter:'arjun',  over:'6.4' },
+        { score:'96/4',  batter:'deepak', over:'7.2' },
+        { score:'118/5', batter:'bhanu',  over:'8.5' },
+      ],
+    },
+  ],
+  highlights:[
+    { kind:'six',    over:'8.3', body:'bhanu hammered pranav over long-on to all but seal it', byTeam:'Team A' },
+    { kind:'wicket', over:'3.5', body:'arjun took out vikram with a back-of-a-length seamer', byTeam:'Team A' },
+    { kind:'fifty',  over:'8.1', body:'bhanu reached 50 off 28 — second of the season',         byTeam:'Team A' },
+    { kind:'catch',  over:'6.1', body:'rohan held a screamer at deep midwicket to dismiss sai', byTeam:'Team A' },
+    { kind:'four',   over:'1.4', body:'sai dispatched bhanu through the covers for the first four', byTeam:'Team B' },
+  ],
+};
+
+const NOTIFICATIONS = [
+  { id:'n1', kind:'rsvp',    when:'2 min ago',  body:<><b>anand</b> RSVP'd yes to <b>Sunday Nets</b></>, context:'14 Jun · 18:00', read:false },
+  { id:'n2', kind:'payment', when:'18 min ago', body:<><b>kiran</b> marked <b>€9.50</b> as paid for Friday Knockout</>, context:'@you confirmed', read:false, action:'Receipt' },
+  { id:'n3', kind:'session', when:'1 h ago',    body:<>New session: <b>Weekend League — Round 3</b></>, context:'22 Jun · Drongen', read:false, action:'Open' },
+  { id:'n4', kind:'mention', when:'3 h ago',    body:<><b>sai</b> mentioned you: "@bhanu rate me as allrounder this season"</>, read:true, action:'Reply' },
+  { id:'n5', kind:'team',    when:'Yesterday',  body:<>You were drafted to <b>Team A</b> for Sunday Nets</>, context:'4.2 avg vs 4.0 avg', read:true },
+  { id:'n6', kind:'match',   when:'Yesterday',  body:<><b>Team A</b> won by 3 wickets in Mid-week Tape-Ball</>, context:'MVP: bhanu', read:true, action:'Scorecard' },
+  { id:'n7', kind:'payment', when:'2 days ago', body:<>Payment reminder: <b>€6.00</b> outstanding from May Day Match</>, read:true, action:'Pay' },
+  { id:'n8', kind:'ping',    when:'3 days ago', body:<><b>arjun</b> pinged you on WhatsApp about session balance</>, read:true },
+];
+
+function App() {
+  // ── Tweaks ──
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "showOnboarding": false,
+    "unreadBell": 3,
+    "skipLogin": false,
+    "showScreenSwitcher": true,
+    "panelOpen": false
+  }/*EDITMODE-END*/;
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  const [user, setUser] = useState(null);
+  const [route, setRoute] = useState('home');
+  const [openSession, setOpenSession] = useState(null);
+  const [sessions, setSessions] = useState(initialSessions);
+  const [showOnboarding, setShowOnboarding] = useState(t.showOnboarding);
+
+  // Sync state when tweaks change
+  useEffect(() => {
+    setShowOnboarding(t.showOnboarding);
+    if (t.skipLogin && !user) {
+      setUser({ name:'Bhanu Tej', username:'bhanu', email:'bhanu@indcric.club', is_staff: true,
+        batting:4.2, bowling:3.5, fielding:4.5, role:'allrounder',
+        stats:{matches:12, runs:284, wickets:9, catches:6, stumpings:1 }});
+    }
+  }, [t.showOnboarding, t.skipLogin]);
+
+  if (showOnboarding) {
+    return (
+      <OnboardingScreen
+        onDone={(u) => { setShowOnboarding(false); setTweak('showOnboarding', false);
+          setUser({...u, is_staff: false, name: u.name || 'New Member'}); setRoute('home'); }}
+        onSkip={() => { setShowOnboarding(false); setTweak('showOnboarding', false); }}
+      />
+    );
+  }
+
+  if (!user) return (
+    <LoginScreen onLogin={u => { setUser({...u, batting:4.2, bowling:3.5, fielding:4.5,
+      role:'allrounder', stats:{matches:12, runs:284, wickets:9, catches:6, stumpings:1 }}); setRoute('home'); }}/>
+  );
+
+  const detailSession = openSession && {
+    ...openSession,
+    dateDay: openSession.dateDay || '14',
+    dateMonth: openSession.dateMonth || 'JUN',
+    teamA: ALL_PLAYERS.slice(0, 5),
+    teamB: ALL_PLAYERS.slice(5, 10),
+    userVote: 'yes',
+  };
+
+  const SCREENS = [
+    { id:'home',          label:'Dashboard' },
+    { id:'session',       label:'Session detail' },
+    { id:'balance',       label:'Team balance' },
+    { id:'match',         label:'Match result' },
+    { id:'payments',      label:'Payments + settle' },
+    { id:'profile',       label:'Profile' },
+    { id:'notifications', label:'Notifications' },
+    { id:'users',         label:'Members' },
+    { id:'create-session',label:'Create session' },
+  ];
+
+  return (
+    <>
+      <Header user={user} route={route} unread={t.unreadBell}
+              onLogout={() => setUser(null)}
+              onNavigate={r => {
+                setOpenSession(null);
+                // session-detail needs a target
+                if (r === 'session') setOpenSession(sessions.find(s => !s.past));
+                setRoute(r);
+              }}/>
+
+      {route === 'home' && (
+        <DashboardScreen user={user} sessions={sessions}
+          onOpenSession={s => { setOpenSession(s); setRoute('session'); }}
+          onDelete={s => setSessions(sessions.filter(x => x.id !== s.id))}
+          onCreate={() => setRoute('create-session')}
+          onNavigate={setRoute}/>
+      )}
+      {route === 'session' && (detailSession || openSession) && (
+        <SessionDetailScreen session={detailSession || openSession} players={ALL_PLAYERS.slice(0,10)}
+          currentUser={user} onBack={() => { setOpenSession(null); setRoute('home'); }}/>
+      )}
+      {route === 'balance' && (
+        <TeamBalanceScreen session={openSession || sessions[0]} allPlayers={ALL_PLAYERS}
+          onBack={() => setRoute('home')}/>
+      )}
+      {route === 'profile' && (
+        <ProfileScreen user={user} onBack={() => setRoute('home')}/>
+      )}
+      {route === 'payments' && (
+        <PaymentsScreen matches={PAYMENT_MATCHES} allPlayers={ALL_PLAYERS.slice(0,10)}
+          onBack={() => setRoute('home')}/>
+      )}
+      {route === 'notifications' && (
+        <NotificationsScreen items={NOTIFICATIONS} onBack={() => setRoute('home')}/>
+      )}
+      {route === 'match' && (
+        <MatchResultScreen match={MATCH} onBack={() => setRoute('home')}/>
+      )}
+      {route === 'users' && <UsersScreen onBack={() => setRoute('home')}/>}
+      {route === 'create-session' && <CreateSessionScreen onCancel={() => setRoute('home')}/>}
+
+      {/* Floating screen switcher */}
+      {t.showScreenSwitcher && (
+        <div className="screen-pills">
+          {SCREENS.map(s => (
+            <button key={s.id} className={`screen-pill ${route === s.id ? 'on' : ''}`}
+              onClick={() => {
+                if (s.id === 'session') setOpenSession(sessions.find(x => !x.past));
+                setRoute(s.id);
+              }}>{s.label}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Tweaks panel */}
+      <TweaksPanel title="Tweaks" defaultOpen={t.panelOpen}>
+        <TweakSection title="Prototype state">
+          <TweakToggle label="Skip login (signed in)" value={t.skipLogin}
+                       onChange={v => { setTweak('skipLogin', v); if (!v) setUser(null); }}/>
+          <TweakToggle label="Show onboarding flow" value={t.showOnboarding}
+                       onChange={v => { setTweak('showOnboarding', v); setShowOnboarding(v); }}/>
+          <TweakToggle label="Floating screen switcher" value={t.showScreenSwitcher}
+                       onChange={v => setTweak('showScreenSwitcher', v)}/>
+        </TweakSection>
+        <TweakSection title="Header">
+          <TweakNumber label="Bell unread count" value={t.unreadBell} min={0} max={9}
+                       onChange={v => setTweak('unreadBell', v)}/>
+        </TweakSection>
+        <TweakSection title="Jump to screen">
+          <TweakSelect label="Screen" value={route}
+                       options={[
+                         {value:'home',          label:'Dashboard'},
+                         {value:'session',       label:'Session detail'},
+                         {value:'balance',       label:'Team balance / draft'},
+                         {value:'match',         label:'Match result + scorecard'},
+                         {value:'payments',      label:'Payments + settle'},
+                         {value:'profile',       label:'Profile'},
+                         {value:'notifications', label:'Notifications'},
+                         {value:'users',         label:'Members'},
+                         {value:'create-session',label:'Create session'},
+                       ]}
+                       onChange={v => {
+                         if (v === 'session') setOpenSession(sessions.find(s => !s.past));
+                         setRoute(v);
+                       }}/>
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+
+function UsersScreen({ onBack }) {
+  return (
+    <div style={{maxWidth:1024, margin:'0 auto', padding:'28px 24px'}}>
+      <a onClick={onBack} style={{
+        display:'inline-flex', alignItems:'center', gap:6, fontSize:13, color:'var(--stone-500)',
+        marginBottom:12, textDecoration:'none',
+      }}>← Back</a>
+      <h1 style={{fontSize:22, fontWeight:600, color:'var(--stone-900)', margin:'0 0 4px',
+                  letterSpacing:'-0.02em'}}>Members</h1>
+      <p style={{fontSize:13, color:'var(--stone-500)', margin:'0 0 22px'}}>
+        {ALL_PLAYERS.length} club members
+      </p>
+      <div className="grid-3">
+        {ALL_PLAYERS.map(p => (
+          <Card key={p.username}>
+            <div style={{padding:14, display:'flex', alignItems:'center', gap:12}}>
+              <Avatar user={p} size={36}/>
+              <div style={{minWidth:0, flex:1}}>
+                <p style={{fontSize:13, fontWeight:600, color:'var(--stone-900)', margin:0,
+                           overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                           letterSpacing:'-0.005em'}}>{p.name}</p>
+                <p style={{fontFamily:'var(--font-mono)', fontSize:10, color:'var(--stone-400)',
+                           margin:'2px 0 0'}}>@{p.username}</p>
+              </div>
+              <RoleBadge role={p.role} iconOnly/>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CreateSessionScreen({ onCancel }) {
+  return (
+    <div style={{maxWidth:560, margin:'0 auto', padding:'28px 24px'}}>
+      <a onClick={onCancel} style={{fontSize:13, color:'var(--stone-500)', cursor:'pointer'}}>← Back</a>
+      <h1 style={{fontSize:22, fontWeight:600, color:'var(--stone-900)', margin:'10px 0 4px',
+                  letterSpacing:'-0.02em'}}>Create Session</h1>
+      <p style={{fontSize:13, color:'var(--stone-500)', margin:'0 0 20px'}}>
+        Pick a date, location, and the cost — IndCric will calculate per-player.
+      </p>
+      <Card>
+        <div style={{padding:20, display:'flex', flexDirection:'column', gap:14}}>
+          <Input label="Session name" placeholder="Sunday Nets"/>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>
+            <Input label="Date" placeholder="YYYY-MM-DD"/>
+            <Input label="Time" placeholder="18:00"/>
+          </div>
+          <Input label="Location" placeholder="Sporthal Watersportbaan"/>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>
+            <Input label="Hall cost (€)" placeholder="72"/>
+            <Input label="Duration (h)" placeholder="2"/>
+          </div>
+          <div style={{display:'flex', gap:8, paddingTop:4}}>
+            <Button variant="primary" onClick={onCancel}>Create &amp; open poll</Button>
+            <Button variant="secondary" onClick={onCancel}>Cancel</Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

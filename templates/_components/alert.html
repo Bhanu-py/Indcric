@@ -1,0 +1,22 @@
+{% comment %}
+Alert box — info / success / warn / error.
+Usage:
+  {% include "_components/alert.html" with variant="success" title="Saved" body="Your changes are live." %}
+
+Args:
+  variant   info | success | warn | error   (default info)
+  title     short heading (optional)
+  body      message body
+{% endcomment %}
+{% with av=variant|default:"info" %}
+<div class="alert
+    {% if av == 'success' %}alert-success-box
+    {% elif av == 'warn' %}alert-warn-box
+    {% elif av == 'error' %}alert-error-box
+    {% else %}alert-info-box{% endif %}">
+    <div class="flex-1">
+        {% if title %}<div class="font-semibold mb-0.5">{{ title }}</div>{% endif %}
+        <div>{{ body }}</div>
+    </div>
+</div>
+{% endwith %}

@@ -1,0 +1,264 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+  /* ---------- Player chip · slim tag w/ role tint ---------- */
+  .pchip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border-radius: 8px;
+    padding: 3px 9px 3px 4px;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.005em;
+    line-height: 1;
+    border: 1px solid;
+  }
+  .pchip__avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .pchip__role {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+  }
+  .pchip__cap {
+    margin-left: 1px;
+    width: 14px;
+    height: 14px;
+    background: var(--amber-100);
+    color: var(--amber-800);
+    border-radius: 9999px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0;
+  }
+
+  /* role-tinted chip variants */
+  .pchip.bat   { background: var(--sky-100);     border-color: #bae6fd;            color: var(--sky-800); }
+  .pchip.bat   .pchip__avatar { background: #bae6fd; color: var(--sky-800); }
+  .pchip.bat   .pchip__role   { color: var(--sky-800); }
+
+  .pchip.bowl  { background: var(--red-50);      border-color: var(--red-100);     color: var(--red-800); }
+  .pchip.bowl  .pchip__avatar { background: var(--red-100); color: var(--red-800); }
+  .pchip.bowl  .pchip__role   { color: var(--red-700); }
+
+  .pchip.all   { background: var(--purple-100);  border-color: #e9d5ff;            color: var(--purple-800); }
+  .pchip.all   .pchip__avatar { background: #e9d5ff; color: var(--purple-800); }
+  .pchip.all   .pchip__role   { color: var(--purple-800); }
+
+  .pchip.neutral { background: #fff;              border-color: var(--stone-200);   color: var(--stone-800); }
+  .pchip.neutral .pchip__avatar { background: var(--stone-100); color: var(--stone-700); }
+
+  /* ---------- Stat block · typographic columns w/ tinted accent ---------- */
+  .stat-block {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+  }
+  .stat-col {
+    padding: 4px 12px;
+    border-left: 1px solid var(--stone-100);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .stat-col:first-child { border-left: 0; padding-left: 0; }
+  .stat-col__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 500;
+    color: var(--stone-500);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .stat-col__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    flex-shrink: 0;
+  }
+  .stat-col__value {
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--stone-900);
+    line-height: 1;
+    letter-spacing: -0.015em;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* dot tints */
+  .dot-pitch   { background: var(--pitch-500); }
+  .dot-sky     { background: var(--sky-500); }
+  .dot-red     { background: var(--red-500); }
+  .dot-amber   { background: var(--amber-500); }
+  .dot-purple  { background: #a855f7; }
+
+  /* ---------- Stat tile · single metric w/ tinted label ---------- */
+  .stat-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    background: var(--bg, transparent);
+    border-radius: 10px;
+    min-width: 110px;
+  }
+  .stat-tile__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--fg-label, var(--stone-500));
+  }
+  .stat-tile__row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .stat-tile__value {
+    font-size: 26px;
+    font-weight: 500;
+    color: var(--stone-900);
+    line-height: 1;
+    letter-spacing: -0.015em;
+    font-feature-settings: "tnum" 1;
+  }
+  .stat-tile__delta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+  .stat-tile__delta.pos { color: var(--pitch-800); }
+  .stat-tile__delta.neg { color: var(--red-700); }
+
+  .tile-sky     { --bg: var(--sky-100);     --fg-label: var(--sky-800); }
+  .tile-red     { --bg: var(--red-50);      --fg-label: var(--red-800); }
+  .tile-emerald { --bg: var(--emerald-100); --fg-label: var(--emerald-800); }
+
+  .sub-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--stone-400);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+  .group { margin-top: 20px; padding-top: 16px; border-top: 1px dashed var(--stone-200); }
+  .group:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="eyebrow" style="margin-bottom:14px;">Player Chip · Stat Tile</div>
+
+  <!-- Player chip · slim tag, role tint -->
+  <div class="group">
+    <div class="sub-eyebrow">Chip · 8 px radius, soft role tint</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+      <span class="pchip bat">
+        <span class="pchip__avatar">B</span>
+        bhanu
+        <svg class="pchip__role" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3v5"/><path d="M10 5.5h4"/><rect x="9" y="8.5" width="6" height="12.5" rx="1.5"/>
+        </svg>
+        <span class="pchip__cap" title="Captain">C</span>
+      </span>
+      <span class="pchip bowl">
+        <span class="pchip__avatar">A</span>
+        anand
+        <svg class="pchip__role" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.5"/>
+          <path d="M5 14c3.5 2.5 10.5 2.5 14 0"/>
+          <path d="M8 14.6v1.4M11 15.4v1.4M14 15.4v1.4M16.8 14.6v1.4"/>
+        </svg>
+      </span>
+      <span class="pchip all">
+        <span class="pchip__avatar">R</span>
+        raj
+        <svg class="pchip__role" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 4l4 4"/><path d="M7 7l9 9"/><path d="M14 14l3 3"/><circle cx="6.5" cy="17.5" r="3"/>
+        </svg>
+      </span>
+      <span class="pchip neutral">
+        <span class="pchip__avatar">S</span>
+        sara
+      </span>
+    </div>
+  </div>
+
+  <!-- Stat block · typographic columns + colour dot accents -->
+  <div class="group">
+    <div class="sub-eyebrow">Stat block · category dot · typographic column</div>
+    <div class="stat-block">
+      <div class="stat-col">
+        <span class="stat-col__label"><span class="stat-col__dot dot-pitch"></span>Matches</span>
+        <span class="stat-col__value">12</span>
+      </div>
+      <div class="stat-col">
+        <span class="stat-col__label"><span class="stat-col__dot dot-sky"></span>Runs</span>
+        <span class="stat-col__value">284</span>
+      </div>
+      <div class="stat-col">
+        <span class="stat-col__label"><span class="stat-col__dot dot-red"></span>Wickets</span>
+        <span class="stat-col__value">9</span>
+      </div>
+      <div class="stat-col">
+        <span class="stat-col__label"><span class="stat-col__dot dot-purple"></span>Catches</span>
+        <span class="stat-col__value">6</span>
+      </div>
+      <div class="stat-col">
+        <span class="stat-col__label"><span class="stat-col__dot dot-amber"></span>Stumps</span>
+        <span class="stat-col__value">1</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Single stat tile · soft tint -->
+  <div class="group">
+    <div class="sub-eyebrow">Stat tile · single metric · soft tint</div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;">
+      <div class="stat-tile tile-sky">
+        <span class="stat-tile__label">Runs · 30d</span>
+        <div class="stat-tile__row">
+          <span class="stat-tile__value">284</span>
+          <span class="stat-tile__delta pos">+42</span>
+        </div>
+      </div>
+      <div class="stat-tile tile-red">
+        <span class="stat-tile__label">Strike rate</span>
+        <div class="stat-tile__row">
+          <span class="stat-tile__value">128.4</span>
+          <span class="stat-tile__delta neg">−6.1</span>
+        </div>
+      </div>
+      <div class="stat-tile tile-emerald">
+        <span class="stat-tile__label">Economy</span>
+        <div class="stat-tile__row">
+          <span class="stat-tile__value">6.7</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px;font-size:12px;color:var(--stone-500);">
+    Chip picks up a soft 100-shade fill + 100-shade border tinted by role, avatar disc and glyph stay in the matching darker shade. Stat columns get a 6-px category dot next to the mono label, and the single-metric tile sits on a soft sky / red / emerald wash so the metric tone is unmistakable at a glance.
+  </div>
+</div>
+</body></html>

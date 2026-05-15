@@ -1,0 +1,31 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+.fi { width: 100%; box-sizing:border-box; padding: 10px 14px; font-size: 14px; border-radius: 12px;
+      border: 1px solid var(--stone-200); background: #fff; color: var(--stone-900);
+      font-family: var(--font-sans); }
+.fi:focus { outline: none; border-color: transparent; box-shadow: 0 0 0 2px var(--pitch-500); }
+.fi.is-error { border-color: #fda4af; }
+.lbl { display:block; font-size: 13px; font-weight: 600; color: var(--stone-700); margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="eyebrow" style="margin-bottom:14px;">Form Inputs</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
+    <div>
+      <label class="lbl">Default</label>
+      <input class="fi" placeholder="your_username">
+    </div>
+    <div>
+      <label class="lbl">Focused</label>
+      <input class="fi" value="bhanu" style="border-color:transparent;box-shadow:0 0 0 2px var(--pitch-500);">
+    </div>
+    <div>
+      <label class="lbl">Error</label>
+      <input class="fi is-error" value="bad">
+      <div style="font-size:11px;color:var(--red-600);margin-top:4px;">Username already taken</div>
+    </div>
+  </div>
+</div>
+</body></html>
