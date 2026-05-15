@@ -55,7 +55,6 @@
 <script type="text/babel" src="SessionDetailScreen.jsx"></script>
 <script type="text/babel" src="ProfileScreen.jsx"></script>
 <script type="text/babel" src="PaymentsScreen.jsx"></script>
-<script type="text/babel" src="TeamBalanceScreen.jsx"></script>
 <script type="text/babel" src="NotificationsScreen.jsx"></script>
 <script type="text/babel" src="OnboardingScreen.jsx"></script>
 <script type="text/babel" src="MatchResultScreen.jsx"></script>
@@ -196,9 +195,9 @@ const NOTIFICATIONS = [
 function App() {
   // ── Tweaks ──
   const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "viewMode": "staff",
     "showOnboarding": false,
     "unreadBell": 3,
-    "skipLogin": false,
     "showScreenSwitcher": true,
     "panelOpen": false
   }/*EDITMODE-END*/;
@@ -210,29 +209,38 @@ function App() {
   const [sessions, setSessions] = useState(initialSessions);
   const [showOnboarding, setShowOnboarding] = useState(t.showOnboarding);
 
-  // Sync state when tweaks change
+  const STAFF_USER = { name:'Bhanu Tej', username:'bhanu', email:'bhanu@indcric.club', is_staff: true,
+    batting:4.2, bowling:3.5, fielding:4.5, role:'allrounder',
+    stats:{matches:12, runs:284, wickets:9, catches:6, stumpings:1 }};
+  const MEMBER_USER = { name:'Anand R.', username:'anand', email:'anand@indcric.club', is_staff: false,
+    batting:4.5, bowling:2.0, fielding:3.5, role:'batsman',
+    stats:{matches:8, runs:194, wickets:1, catches:3, stumpings:0 }};
+
+  // Sync user with viewMode tweak
   useEffect(() => {
     setShowOnboarding(t.showOnboarding);
-    if (t.skipLogin && !user) {
-      setUser({ name:'Bhanu Tej', username:'bhanu', email:'bhanu@indcric.club', is_staff: true,
-        batting:4.2, bowling:3.5, fielding:4.5, role:'allrounder',
-        stats:{matches:12, runs:284, wickets:9, catches:6, stumpings:1 }});
-    }
-  }, [t.showOnboarding, t.skipLogin]);
+    if (t.viewMode === 'staff')       setUser(STAFF_USER);
+    else if (t.viewMode === 'member') setUser(MEMBER_USER);
+    else                              setUser(null); // guest
+  }, [t.viewMode, t.showOnboarding]);
 
   if (showOnboarding) {
     return (
       <OnboardingScreen
         onDone={(u) => { setShowOnboarding(false); setTweak('showOnboarding', false);
-          setUser({...u, is_staff: false, name: u.name || 'New Member'}); setRoute('home'); }}
+          setUser({...u, is_staff: false, name: u.name || 'New Member'}); setTweak('viewMode', 'member'); setRoute('home'); }}
         onSkip={() => { setShowOnboarding(false); setTweak('showOnboarding', false); }}
       />
     );
   }
 
-  if (!user) return (
-    <LoginScreen onLogin={u => { setUser({...u, batting:4.2, bowling:3.5, fielding:4.5,
-      role:'allrounder', stats:{matches:12, runs:284, wickets:9, catches:6, stumpings:1 }}); setRoute('home'); }}/>
+  // Explicit login screen — only when user opens it ("Sign in" CTA on guest dashboard).
+  if (route === 'login') return (
+    <LoginScreen onLogin={u => {
+      setUser({...u, ...STAFF_USER, username:u.username || 'bhanu'});
+      setTweak('viewMode', 'staff');
+      setRoute('home');
+    }}/>
   );
 
   const detailSession = openSession && {
@@ -247,7 +255,6 @@ function App() {
   const SCREENS = [
     { id:'home',          label:'Dashboard' },
     { id:'session',       label:'Session detail' },
-    { id:'balance',       label:'Team balance' },
     { id:'match',         label:'Match result' },
     { id:'payments',      label:'Payments + settle' },
     { id:'profile',       label:'Profile' },
@@ -258,29 +265,29 @@ function App() {
 
   return (
     <>
-      <Header user={user} route={route} unread={t.unreadBell}
-              onLogout={() => setUser(null)}
-              onNavigate={r => {
-                setOpenSession(null);
-                // session-detail needs a target
-                if (r === 'session') setOpenSession(sessions.find(s => !s.past));
-                setRoute(r);
-              }}/>
+      {user ? (
+        <Header user={user} route={route} unread={t.unreadBell}
+                onLogout={() => { setUser(null); setTweak('viewMode', 'guest'); }}
+                onNavigate={r => {
+                  setOpenSession(null);
+                  if (r === 'session') setOpenSession(sessions.find(s => !s.past));
+                  setRoute(r);
+                }}/>
+      ) : (
+        <PublicHeader onSignIn={() => setRoute('login')}/>
+      )}
 
       {route === 'home' && (
         <DashboardScreen user={user} sessions={sessions}
           onOpenSession={s => { setOpenSession(s); setRoute('session'); }}
           onDelete={s => setSessions(sessions.filter(x => x.id !== s.id))}
           onCreate={() => setRoute('create-session')}
+          onSignIn={() => setRoute('login')}
           onNavigate={setRoute}/>
       )}
       {route === 'session' && (detailSession || openSession) && (
-        <SessionDetailScreen session={detailSession || openSession} players={ALL_PLAYERS.slice(0,10)}
+        <SessionDetailScreen session={detailSession || openSession} players={ALL_PLAYERS}
           currentUser={user} onBack={() => { setOpenSession(null); setRoute('home'); }}/>
-      )}
-      {route === 'balance' && (
-        <TeamBalanceScreen session={openSession || sessions[0]} allPlayers={ALL_PLAYERS}
-          onBack={() => setRoute('home')}/>
       )}
       {route === 'profile' && (
         <ProfileScreen user={user} onBack={() => setRoute('home')}/>
@@ -314,8 +321,13 @@ function App() {
       {/* Tweaks panel */}
       <TweaksPanel title="Tweaks" defaultOpen={t.panelOpen}>
         <TweakSection title="Prototype state">
-          <TweakToggle label="Skip login (signed in)" value={t.skipLogin}
-                       onChange={v => { setTweak('skipLogin', v); if (!v) setUser(null); }}/>
+          <TweakRadio label="View as" value={t.viewMode}
+                      options={[
+                        {value:'guest',  label:'Guest'},
+                        {value:'member', label:'Member'},
+                        {value:'staff',  label:'Staff'},
+                      ]}
+                      onChange={v => setTweak('viewMode', v)}/>
           <TweakToggle label="Show onboarding flow" value={t.showOnboarding}
                        onChange={v => { setTweak('showOnboarding', v); setShowOnboarding(v); }}/>
           <TweakToggle label="Floating screen switcher" value={t.showScreenSwitcher}
@@ -329,8 +341,7 @@ function App() {
           <TweakSelect label="Screen" value={route}
                        options={[
                          {value:'home',          label:'Dashboard'},
-                         {value:'session',       label:'Session detail'},
-                         {value:'balance',       label:'Team balance / draft'},
+                         {value:'session',       label:'Session detail (+ draft)'},
                          {value:'match',         label:'Match result + scorecard'},
                          {value:'payments',      label:'Payments + settle'},
                          {value:'profile',       label:'Profile'},
@@ -345,6 +356,31 @@ function App() {
         </TweakSection>
       </TweaksPanel>
     </>
+  );
+}
+
+/* ────────── Public header ──────────
+   Minimal app bar for guest mode — roundel + Sign in CTA. */
+function PublicHeader({ onSignIn }) {
+  return (
+    <header style={{
+      background:'var(--pitch-900)', color:'#fff',
+      boxShadow:'var(--shadow-header)', position:'sticky', top:0, zIndex:40,
+    }}>
+      <div style={{maxWidth:1280, margin:'0 auto', padding:'0 24px',
+                   display:'flex', alignItems:'center', justifyContent:'space-between', height:60}}>
+        <div style={{display:'flex', alignItems:'center', gap:10}}>
+          <Icons.Roundel size={34}/>
+        </div>
+        <div style={{display:'flex', alignItems:'center', gap:8}}>
+          <span style={{
+            fontFamily:'var(--font-mono)', fontSize:10, color:'rgba(255,255,255,0.65)',
+            letterSpacing:'0.04em', textTransform:'uppercase', marginRight:6,
+          }}>Public view</span>
+          <Button variant="amber" size="sm" onClick={onSignIn}>Sign in</Button>
+        </div>
+      </div>
+    </header>
   );
 }
 

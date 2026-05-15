@@ -1,0 +1,30 @@
+{% comment %}
+Pool chip — role-tinted pill in the Team Balance available-pool.
+Spec: SessionDetailScreen.jsx PoolChip (sky/red/purple/stone tint, name, rating mono, A/B add buttons).
+
+Args:
+  voter   dict with keys: user (User), rating (float 0-5)
+{% endcomment %}
+{% with role=voter.user.role|default:""|lower %}
+{# Role tint: batsman→sky, bowler→red, allrounder→purple, default→stone (keeper) #}
+<div class="player-chip cursor-move select-none !inline-flex !w-auto !flex-row !items-center !gap-1.5 !py-[3px] !pl-2 !pr-[3px] !rounded-lg !text-[12px] !shadow-none
+            {% if role == 'batsman' %}!bg-sky-50 !border-sky-200 !text-sky-800
+            {% elif role == 'bowler' or role == 'bowling' %}!bg-red-50 !border-red-100 !text-red-800
+            {% elif role == 'allrounder' or role == 'all-rounder' %}!bg-purple-100 !border-purple-200 !text-purple-800
+            {% else %}!bg-white !border-stone-200 !text-stone-800{% endif %}"
+     draggable="true" ondragstart="drag(event)"
+     id="user-{{ voter.user.id }}"
+     data-user-id="{{ voter.user.id }}"
+     data-username="{{ voter.user.username }}"
+     data-role="{{ voter.user.role|default:'' }}"
+     data-rating="{{ voter.rating }}">
+    <span class="font-medium">{{ voter.user.username }}</span>
+    <span class="font-mono text-[10px] opacity-70 tracking-[0.02em]">· <span class="rating-text">{{ voter.rating }}</span></span>
+    <span class="inline-flex gap-0.5 ml-1">
+        <button type="button" onclick="addToTeam(this, 'team1')" title="Send to Team 1"
+                class="w-[18px] h-[18px] rounded-[5px] bg-pitch-700 hover:bg-pitch-800 text-white text-[10px] font-bold leading-none">A</button>
+        <button type="button" onclick="addToTeam(this, 'team2')" title="Send to Team 2"
+                class="w-[18px] h-[18px] rounded-[5px] bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold leading-none">B</button>
+    </span>
+</div>
+{% endwith %}

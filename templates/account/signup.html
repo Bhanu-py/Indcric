@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n static %}
 {% load allauth account %}
 
 {% block title %}Create Account — IndCric{% endblock %}
@@ -8,127 +8,40 @@
 {% block content %}
 <div class="flex min-h-screen bg-white">
 
-    <!-- ═══════════════════════════════════════════
-         LEFT PANEL  — brand
-    ═══════════════════════════════════════════ -->
-    <div class="hidden lg:flex lg:w-[46%] xl:w-5/12 bg-pitch-950 relative overflow-hidden flex-col">
-
-        <!-- Cricket ground watermark -->
-        <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 480 780"
-             fill="none" preserveAspectRatio="xMidYMid slice">
-            <ellipse cx="240" cy="420" rx="240" ry="360" stroke="white" stroke-width="1" opacity="0.05"/>
-            <ellipse cx="240" cy="420" rx="148" ry="220" stroke="white" stroke-width="1" opacity="0.05"/>
-            <rect x="222" y="280" width="36" height="280" stroke="white" stroke-width="1.5" opacity="0.08" rx="2"/>
-            <line x1="210" y1="308" x2="270" y2="308" stroke="white" stroke-width="1" opacity="0.12"/>
-            <line x1="210" y1="532" x2="270" y2="532" stroke="white" stroke-width="1" opacity="0.12"/>
-            <line x1="231" y1="294" x2="231" y2="308" stroke="white" stroke-width="1.5" opacity="0.18"/>
-            <line x1="240" y1="292" x2="240" y2="308" stroke="white" stroke-width="1.5" opacity="0.18"/>
-            <line x1="249" y1="294" x2="249" y2="308" stroke="white" stroke-width="1.5" opacity="0.18"/>
-            <line x1="231" y1="532" x2="231" y2="546" stroke="white" stroke-width="1.5" opacity="0.18"/>
-            <line x1="240" y1="532" x2="240" y2="548" stroke="white" stroke-width="1.5" opacity="0.18"/>
-            <line x1="249" y1="532" x2="249" y2="546" stroke="white" stroke-width="1.5" opacity="0.18"/>
-            <circle cx="420" cy="80" r="160" stroke="white" stroke-width="1" opacity="0.03"/>
-            <circle cx="60" cy="700" r="120" stroke="white" stroke-width="1" opacity="0.03"/>
-        </svg>
-
-        <div class="relative z-10 flex flex-col h-full px-10 xl:px-14 py-12">
-
-            <a href="/" class="flex items-center gap-2.5 w-fit">
-                <div class="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.04 2.11L15.63 3.52c-.78-.3-1.6-.52-2.46-.52C9.48 3 6 6.48 6 10.17c0 2.1.94 3.98 2.42 5.27L3 21l1.41 1.41 5.27-5.27c1.25 1.42 3.07 2.32 5.09 2.32C18.52 19.46 22 15.98 22 12.27c0-3.72-3.48-6.2-4.96-10.16zm-2.87 14.35c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/>
-                    </svg>
-                </div>
-                <span class="text-base font-bold text-white tracking-tight">IndCric</span>
-            </a>
-
-            <div class="flex-1 flex flex-col justify-center py-10">
-
-                <div class="inline-flex items-center gap-2 bg-white/8 border border-white/10 rounded-full px-3.5 py-1.5 mb-8 w-fit">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-                    <span class="text-xs font-medium text-white/70 tracking-wide">Join the club</span>
-                </div>
-
-                <h2 class="text-[2.4rem] xl:text-5xl font-extrabold text-white leading-[1.12] tracking-tight mb-5">
-                    Ready to play?
-                    <span class="block text-pitch-400 mt-1">Let's get started.</span>
-                </h2>
-
-                <p class="text-pitch-400 text-sm leading-relaxed mb-10 max-w-[280px]">
-                    Create your account and join your club's IndCric workspace to start tracking sessions, payments, and more.
-                </p>
-
-                <!-- Steps/onboarding hints -->
-                <ol class="space-y-5">
-                    <li class="flex items-start gap-3.5">
-                        <div class="w-6 h-6 rounded-full bg-pitch-700 flex items-center justify-center shrink-0 mt-0.5">
-                            <span class="text-[11px] font-bold text-white">1</span>
-                        </div>
-                        <div>
-                            <p class="text-sm font-semibold text-pitch-100">Create your account</p>
-                            <p class="text-xs text-pitch-500 mt-0.5">Choose a username and secure password</p>
-                        </div>
-                    </li>
-                    <li class="flex items-start gap-3.5">
-                        <div class="w-6 h-6 rounded-full bg-pitch-800 border border-pitch-700 flex items-center justify-center shrink-0 mt-0.5">
-                            <span class="text-[11px] font-bold text-pitch-400">2</span>
-                        </div>
-                        <div>
-                            <p class="text-sm font-semibold text-pitch-400">Set your playing role</p>
-                            <p class="text-xs text-pitch-600 mt-0.5">Batsman, bowler, or all-rounder</p>
-                        </div>
-                    </li>
-                    <li class="flex items-start gap-3.5">
-                        <div class="w-6 h-6 rounded-full bg-pitch-800 border border-pitch-700 flex items-center justify-center shrink-0 mt-0.5">
-                            <span class="text-[11px] font-bold text-pitch-400">3</span>
-                        </div>
-                        <div>
-                            <p class="text-sm font-semibold text-pitch-400">Join your first session</p>
-                            <p class="text-xs text-pitch-600 mt-0.5">Vote, play, and track your matches</p>
-                        </div>
-                    </li>
-                </ol>
-            </div>
-
-            <p class="text-pitch-700 text-xs font-medium">© 2025 IndCric · Built for the club.</p>
-        </div>
-    </div>
+    {% include "account/_entrance_hero.html" %}
 
     <!-- ═══════════════════════════════════════════
-         RIGHT PANEL  — sign-up form
+         RIGHT PANEL — sign-up form
     ═══════════════════════════════════════════ -->
     <div class="flex-1 flex flex-col items-center justify-center px-6 sm:px-12 py-12 bg-white"
          x-data="{ showPass: false, showPass2: false }">
 
         <div class="w-full max-w-[380px]">
 
-            <!-- Mobile logo -->
+            <!-- Mobile-only logo -->
             <div class="lg:hidden flex flex-col items-center mb-10">
-                <div class="w-12 h-12 rounded-2xl bg-pitch-700 flex items-center justify-center shadow-lg mb-3">
-                    <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.04 2.11L15.63 3.52c-.78-.3-1.6-.52-2.46-.52C9.48 3 6 6.48 6 10.17c0 2.1.94 3.98 2.42 5.27L3 21l1.41 1.41 5.27-5.27c1.25 1.42 3.07 2.32 5.09 2.32C18.52 19.46 22 15.98 22 12.27c0-3.72-3.48-6.2-4.96-10.16zm-2.87 14.35c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/>
-                    </svg>
+                <div class="w-12 h-12 rounded-[10px] bg-white p-1.5 flex items-center justify-center shadow-lg ring-1 ring-stone-100 mb-3">
+                    <img src="{% static 'icons/logo-mark.png' %}" alt="IndCric" class="w-full h-full object-contain">
                 </div>
                 <span class="text-xl font-bold text-stone-900">IndCric</span>
-                <span class="text-xs text-stone-400 mt-0.5">Cricket Club Manager</span>
+                <span class="font-mono text-[11px] text-stone-400 uppercase tracking-[0.08em] mt-0.5">Cricket Club Manager</span>
             </div>
 
+            <!-- Heading -->
             <div class="mb-8">
-                <h1 class="text-2xl font-extrabold text-stone-900 !mb-1.5">Create your account</h1>
-                <p class="text-sm text-stone-500">Join IndCric and manage your club</p>
+                <h1 class="text-2xl font-extrabold text-stone-900 mb-1.5 !mb-1.5">Create your account</h1>
+                <p class="text-sm text-stone-500">Join your club's session board</p>
             </div>
 
-            <!-- Form errors -->
+            <!-- Non-field errors -->
             {% if form.non_field_errors %}
-            <div class="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-                <svg class="w-4 h-4 text-red-500 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                </svg>
-                <p class="text-sm text-red-700">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</p>
+            <div class="mb-5">
+                {% include "_components/alert.html" with variant="error" body=form.non_field_errors.0 %}
             </div>
             {% endif %}
 
-            <form method="post" action="{% url 'account_signup' %}?next={% url 'profile-onboarding' %}" class="space-y-4">
+            <!-- Form -->
+            <form method="post" action="{% url 'account_signup' %}?next={% url 'profile-onboarding' %}" class="space-y-5">
                 {% csrf_token %}
 
                 <!-- ── Username ── -->
@@ -145,9 +58,11 @@
                                value="{{ form.username.value|default:'' }}"
                                placeholder="e.g. ravi_cricket" autocomplete="username" autofocus>
                     </div>
-                    {% for e in form.username.errors %}
+                    {% for error in form.username.errors %}
                     <p class="mt-1.5 flex items-center gap-1.5 text-xs text-red-600">
-                        <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>{{ e }}
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>{{ error }}
                     </p>
                     {% endfor %}
                 </div>
@@ -169,9 +84,11 @@
                                value="{{ form.email.value|default:'' }}"
                                placeholder="you@example.com" autocomplete="email">
                     </div>
-                    {% for e in form.email.errors %}
+                    {% for error in form.email.errors %}
                     <p class="mt-1.5 flex items-center gap-1.5 text-xs text-red-600">
-                        <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>{{ e }}
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>{{ error }}
                     </p>
                     {% endfor %}
                 </div>
@@ -200,9 +117,11 @@
                             </svg>
                         </button>
                     </div>
-                    {% for e in form.password1.errors %}
+                    {% for error in form.password1.errors %}
                     <p class="mt-1.5 flex items-center gap-1.5 text-xs text-red-600">
-                        <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>{{ e }}
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>{{ error }}
                     </p>
                     {% endfor %}
                 </div>
@@ -231,9 +150,11 @@
                             </svg>
                         </button>
                     </div>
-                    {% for e in form.password2.errors %}
+                    {% for error in form.password2.errors %}
                     <p class="mt-1.5 flex items-center gap-1.5 text-xs text-red-600">
-                        <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>{{ e }}
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>{{ error }}
                     </p>
                     {% endfor %}
                 </div>
@@ -245,15 +166,15 @@
                                focus:outline-none focus:ring-2 focus:ring-pitch-500 focus:ring-offset-2 shadow-sm mt-1">
                     Create Account
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                     </svg>
                 </button>
             </form>
 
-            <!-- Sign in link -->
+            <!-- ── Sign in link ── -->
             <div class="mt-8 pt-6 border-t border-stone-100 text-center">
                 <p class="text-sm text-stone-500">
-                    Already have an account?
+                    Already a member?
                     <a href="{% url 'account_login' %}"
                        class="ml-1 font-semibold text-pitch-700 hover:text-pitch-900 transition-colors">
                         Sign in →

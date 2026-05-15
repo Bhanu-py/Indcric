@@ -6,6 +6,67 @@
 {% block content %}
 <div class="page-content">
 
+    {% if not user.is_authenticated %}
+    <!-- ═══════════════════════════════════════════
+         Anonymous landing — locked sessions + sign-in prompt
+    ═══════════════════════════════════════════ -->
+
+    <!-- Welcome row with inline sign-in CTA -->
+    <div class="flex items-end justify-between gap-4 mb-6 flex-wrap">
+        <div>
+            <h1 class="text-2xl font-bold text-stone-900 -tracking-[0.02em]">What's on at the club</h1>
+            <p class="text-sm text-stone-500 mt-1">
+                Browse upcoming and past sessions.
+                <span class="font-mono text-[11px] uppercase tracking-[0.08em] text-stone-400 ml-1">Sign in to vote, view details &amp; track payments.</span>
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'account_signup' %}" class="text-sm font-semibold text-pitch-700 hover:text-pitch-900 transition-colors">
+                Create an account →
+            </a>
+            <a href="{% url 'account_login' %}" class="btn btn-primary btn-md gap-2">
+                Sign In
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </a>
+        </div>
+    </div>
+
+    <!-- ── Upcoming Sessions (locked for anon) ── -->
+    <section class="mb-10">
+        {% include "_components/eyebrow.html" with label="Upcoming Sessions" %}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for session in upcoming_sessions %}
+                {% include "_components/session_card.html" with session=session past=False locked=True %}
+            {% empty %}
+                <div class="col-span-3 card p-10 text-center">
+                    <svg class="w-10 h-10 text-stone-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <p class="text-sm text-stone-500">No upcoming sessions.</p>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- ── Previous Sessions (locked for anon) ── -->
+    <section id="previous-sessions">
+        {% include "_components/eyebrow.html" with label="Previous Sessions" past=True %}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for session in previous_sessions %}
+                {% include "_components/session_card.html" with session=session past=True locked=True %}
+            {% empty %}
+                <div class="col-span-3 py-8 text-center">
+                    <p class="text-sm text-stone-400">No previous sessions yet.</p>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    {% else %}
+    <!-- ═══════════════════════════════════════════
+         Authenticated dashboard
+    ═══════════════════════════════════════════ -->
+
     <!-- Welcome row -->
     <div class="flex items-end justify-between gap-4 mb-6 flex-wrap">
         <div>
@@ -22,7 +83,8 @@
         {% endif %}
     </div>
 
-    <!-- ── Snapshot strip ── -->
+    {% if user.is_staff %}
+    <!-- ── Snapshot strip — STAFF ONLY per DESIGN_SYSTEM.md audience matrix ── -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr] gap-3.5 mb-6">
 
         <!-- Next-up highlight card -->
@@ -32,7 +94,7 @@
             <div class="p-4">
                 <div class="micro-label mb-2">Next up · {{ next_session.date|date:"D j M" }}</div>
                 <div class="text-lg font-semibold text-stone-900 leading-tight mb-1.5 group-hover:text-pitch-700 transition-colors">
-                    {{ next_session.name }}
+                    {{ next_session.name|default:"Untitled session" }}
                 </div>
                 <div class="text-xs text-stone-500">
                     {{ next_session.location }} · {{ next_session.time }}
@@ -57,28 +119,30 @@
         </div>
         {% endif %}
 
-        <!-- Stat columns -->
-        <div class="card">
-            <div class="p-4">
-                {% include "_components/stat_column.html" with label="Sessions · 30d" value=sessions_30d dot="pitch" first=True %}
-            </div>
-        </div>
-        <div class="card">
-            <div class="p-4">
-                {% with outstanding_label="€"|add:outstanding_total|stringformat:"s" %}
-                    {% include "_components/stat_column.html" with label="Outstanding" value=outstanding_label dot="amber" first=True %}
-                {% endwith %}
-            </div>
-        </div>
-        <div class="card">
-            <div class="p-4">
-                {% include "_components/stat_column.html" with label="Active members" value=active_members dot="sky" first=True %}
-            </div>
-        </div>
+        <div class="card"><div class="p-4">
+            {% include "_components/stat_column.html" with label="Sessions · 30d" value=sessions_30d dot="pitch" first=True %}
+        </div></div>
+        <div class="card"><div class="p-4">
+            {% with outstanding_str=outstanding_total|stringformat:"s" %}
+            {% with outstanding_label="€"|add:outstanding_str %}
+                {% include "_components/stat_column.html" with label="Outstanding" value=outstanding_label dot="amber" first=True %}
+            {% endwith %}
+            {% endwith %}
+        </div></div>
+        <div class="card"><div class="p-4">
+            {% include "_components/stat_column.html" with label="Active members" value=active_members dot="sky" first=True %}
+        </div></div>
     </div>
+    {% endif %}
 
     <!-- ── Inline action shortcuts ── -->
     <div class="flex gap-2 mb-8 flex-wrap">
+        {% if next_session %}
+        <a href="{% url 'session_detail' next_session.id %}#team-editor" class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-stone-700 hover:bg-stone-50 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 8.5a3.5 3.5 0 117 0 3.5 3.5 0 01-7 0z M4 20a8 8 0 0116 0 M16 7a3 3 0 100 6 M18 20a6 6 0 014-5.7"/></svg>
+            Balance teams
+        </a>
+        {% endif %}
         {% if user.is_staff %}
         <a href="{% url 'manage-payments' %}" class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-stone-700 hover:bg-stone-50 transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
@@ -128,6 +192,7 @@
             {% endfor %}
         </div>
     </section>
+    {% endif %}
 
 </div>
 {% endblock %}

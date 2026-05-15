@@ -1,7 +1,7 @@
 /* global React, Card, Badge, VoteBar, Icons */
-const { Calendar, Pin, Clock, Trash, ArrowRt } = Icons;
+const { Calendar, Pin, Clock, Trash, ArrowRt, Lock } = Icons;
 
-function SessionCard({ session, onClick, onDelete, isStaff, dimmed }) {
+function SessionCard({ session, onClick, onDelete, isStaff, dimmed, locked, lockedHint }) {
   const [hover, setHover] = React.useState(false);
   const past = !!dimmed;
   const accent = past ? 'var(--stone-200)' : 'var(--pitch-600)';
@@ -85,6 +85,27 @@ function SessionCard({ session, onClick, onDelete, isStaff, dimmed }) {
           </div>
         )}
       </div>
+
+      {/* Locked overlay — sign-in gate for guests */}
+      {locked && (
+        <div style={{
+          position:'absolute', inset:0,
+          background:'rgba(255,255,255,0.55)', backdropFilter:'blur(2px)',
+          WebkitBackdropFilter:'blur(2px)',
+          display:'flex', alignItems:'center', justifyContent:'center',
+        }}>
+          <div style={{
+            display:'inline-flex', alignItems:'center', gap:7,
+            background:'rgba(255,255,255,0.96)', border:'1px solid var(--stone-200)',
+            borderRadius:9999, padding:'5px 12px',
+            fontSize:12, fontWeight:500, color:'var(--stone-700)',
+            boxShadow:'var(--shadow-sm)',
+          }}>
+            <Lock size={12} sw={1.75}/>
+            {lockedHint || 'Sign in to view'}
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

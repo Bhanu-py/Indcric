@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}{{ session.name }} — IndCric{% endblock %}
 
@@ -16,98 +16,92 @@
     </a>
 
     <!-- ═══════════════════════════════════
-         SESSION HEADER CARD
+         HERO CARD — gradient strip + date tile + name + meta
     ═══════════════════════════════════ -->
-    <div class="card overflow-hidden mb-6">
-        <div class="h-1.5 bg-gradient-to-r from-pitch-700 via-pitch-500 to-emerald-400"></div>
-        <div class="p-5 sm:p-6">
+    <div class="card overflow-hidden mb-4">
+        <!-- Gradient strip — pitch-800 → pitch-600 -->
+        <div class="h-14 bg-gradient-to-r from-pitch-800 to-pitch-600"></div>
 
-            <!-- Name + badge row -->
-            <div class="flex items-start justify-between gap-4 mb-5">
-                <div class="min-w-0">
-                    <h1 class="text-xl font-extrabold text-stone-900 leading-tight truncate !mb-0.5">
-                        {{ session.name }}
-                    </h1>
-                    <p class="text-xs text-stone-400">Organised by
-                        <span class="font-medium text-stone-500">{{ session.created_by.username }}</span>
-                    </p>
+        <div class="px-5 sm:px-6 pb-5 -mt-6">
+            <!-- Top row: date tile (overlapping gradient) + badges/cost on the right -->
+            <div class="flex items-end justify-between gap-4 mb-4">
+                <!-- Floating date tile -->
+                <div class="w-14 h-14 rounded-2xl bg-white border border-stone-100 shadow-md flex flex-col items-center justify-center shrink-0">
+                    <span class="text-xl font-semibold text-stone-900 leading-none -tracking-[0.02em]">{{ session.date|date:"j" }}</span>
+                    <span class="font-mono text-[9px] font-medium text-stone-500 uppercase tracking-[0.06em] mt-0.5">{{ session.date|date:"M Y" }}</span>
                 </div>
-                {% if session.attendance_confirmed %}
-                <span class="badge badge-green shrink-0 mt-0.5 px-2.5 py-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                    </svg>
-                    Confirmed
-                </span>
-                {% endif %}
+
+                <!-- Poll status / Confirmed pill -->
+                <div class="flex items-center gap-2">
+                    {% if session.poll %}
+                        {% if session.poll.is_open %}
+                        <span class="badge badge-green shrink-0">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Poll open
+                        </span>
+                        {% else %}
+                        <span class="badge badge-stone shrink-0">Poll closed</span>
+                        {% endif %}
+                    {% endif %}
+                    {% if session.attendance_confirmed %}
+                    <span class="badge badge-green shrink-0">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                        Confirmed
+                    </span>
+                    {% endif %}
+                </div>
             </div>
 
-            <!-- Info tiles: 2×2 on mobile, 4-col on sm+ -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <!-- Session name -->
+            <h1 class="text-xl font-semibold text-stone-900 leading-tight -tracking-[0.015em] !mb-1.5">
+                {{ session.name|default:"Untitled session" }}
+            </h1>
 
-                <!-- Date -->
-                <div class="flex items-center gap-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-pitch-50 flex items-center justify-center shrink-0">
-                        <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                        </svg>
-                    </div>
-                    <div class="min-w-0">
-                        <p class="text-[10px] font-semibold text-stone-400 uppercase tracking-wide">Date</p>
-                        <p class="text-sm font-bold text-stone-800 truncate">{{ session.date|date:"j M Y" }}</p>
-                    </div>
-                </div>
+            <!-- Meta row — location · time · organiser -->
+            <div class="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-stone-500">
+                <span class="inline-flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    {{ session.location }}
+                </span>
+                <span class="inline-flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    {{ session.time }} · {{ session.duration }}h
+                </span>
+                <span class="inline-flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    Organised by <span class="font-medium text-stone-700 ml-0.5">{{ session.created_by.username }}</span>
+                </span>
+            </div>
+        </div>
+    </div>
 
-                <!-- Time -->
-                <div class="flex items-center gap-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-pitch-50 flex items-center justify-center shrink-0">
-                        <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </div>
-                    <div class="min-w-0">
-                        <p class="text-[10px] font-semibold text-stone-400 uppercase tracking-wide">Time</p>
-                        <p class="text-sm font-bold text-stone-800 truncate">{{ session.time }} · {{ session.duration }}h</p>
-                    </div>
-                </div>
-
-                <!-- Location -->
-                <div class="flex items-center gap-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-pitch-50 flex items-center justify-center shrink-0">
-                        <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
-                    </div>
-                    <div class="min-w-0">
-                        <p class="text-[10px] font-semibold text-stone-400 uppercase tracking-wide">Location</p>
-                        <p class="text-sm font-bold text-stone-800 truncate">{{ session.location }}</p>
-                    </div>
-                </div>
-
-                <!-- Cost -->
-                <div class="flex items-center gap-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-                        </svg>
-                    </div>
-                    <div class="min-w-0">
-                        <p class="text-[10px] font-semibold text-stone-400 uppercase tracking-wide">Cost</p>
-                        <p class="text-sm font-bold text-stone-800">
-                            &euro;{{ session.cost }}
-                            {% if session.cost_per_person %}
-                            <span class="text-xs font-normal text-stone-400">/ &euro;{{ session.cost_per_person }}pp</span>
-                            {% endif %}
-                        </p>
-                    </div>
-                </div>
-
+    <!-- ═══════════════════════════════════
+         COST SPLIT — 3 stat tiles
+    ═══════════════════════════════════ -->
+    <div class="card overflow-hidden mb-6">
+        <div class="card-header">
+            {% include "_components/eyebrow.html" with label="Cost split" %}
+        </div>
+        <div class="card-body">
+            <div class="grid grid-cols-3">
+                {% with cost_str=session.cost|stringformat:"s" %}
+                    {% include "_components/stat_column.html" with dot="stone" label="Hall fee" value="€"|add:cost_str first=True %}
+                {% endwith %}
+                {% include "_components/stat_column.html" with dot="sky" label="Voted in" value=yes_votes %}
+                {% if session.cost_per_person %}
+                    {% with pp_str=session.cost_per_person|stringformat:"s" %}
+                        {% include "_components/stat_column.html" with dot="pitch" label="Per player" value="€"|add:pp_str %}
+                    {% endwith %}
+                {% elif cost_per_person_est %}
+                    {% with pp_str=cost_per_person_est|stringformat:"s" %}
+                        {% include "_components/stat_column.html" with dot="pitch" label="Per player (est.)" value="€"|add:pp_str %}
+                    {% endwith %}
+                {% else %}
+                    {% include "_components/stat_column.html" with dot="pitch" label="Per player" value="—" %}
+                {% endif %}
             </div>
         </div>
     </div>
@@ -405,34 +399,32 @@
                         {% endfor %}
                     </div>
 
-                    <!-- Action row -->
-                    <div class="flex items-center gap-3 mt-2.5 pt-2.5 border-t border-stone-100">
-                        <button type="button" @click="open = !open"
-                                class="text-xs text-stone-400 hover:text-stone-700 flex items-center gap-1 transition-colors">
-                            <svg class="w-3.5 h-3.5 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                            <span x-text="open ? 'Hide players' : 'Show players'"></span>
-                        </button>
-                        {% if user.is_staff and mteams|length >= 2 %}
-                        <button type="button" @click="score = !score; if(score) open = false"
+                    <!-- Action row — only the score toggle remains (player list is always-visible) -->
+                    {% if user.is_staff and mteams|length >= 2 %}
+                    <div class="flex items-center mt-2.5 pt-2.5 border-t border-stone-100">
+                        <button type="button" @click="score = !score"
                                 class="text-xs text-stone-400 hover:text-stone-700 flex items-center gap-1 transition-colors ml-auto">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                             <span x-text="score ? 'Cancel' : 'Score'"></span>
                         </button>
-                        {% endif %}
                     </div>
+                    {% endif %}
 
-                    <!-- Expandable: player lists -->
-                    <div x-show="open" x-transition class="mt-3 grid grid-cols-2 gap-3">
+                    <!-- Player lists — always visible, sorted batsmen → all-rounders → bowlers -->
+                    <div class="mt-3 grid grid-cols-2 gap-3">
                         {% for team in mteams %}
                         <div>
-                            <p class="text-[10px] font-bold {% if forloop.first %}text-pitch-700{% else %}text-amber-700{% endif %} uppercase tracking-wide mb-1.5">{{ team.name }}</p>
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full {% if forloop.first %}bg-pitch-600{% else %}bg-amber-500{% endif %} shrink-0"></span>
+                                <p class="font-mono text-[10px] font-medium uppercase tracking-[0.08em] {% if forloop.first %}text-pitch-700{% else %}text-amber-700{% endif %} truncate">{{ team.name }}</p>
+                            </div>
                             <div class="{% if forloop.first %}bg-pitch-50 border-pitch-100{% else %}bg-amber-50 border-amber-100{% endif %} rounded-xl p-2 space-y-1 border">
-                                {% for player in team.players.all %}
-                                <div class="flex items-center gap-1.5">
-                                    <span class="w-5 h-5 rounded-full {% if forloop.parentloop.first %}bg-pitch-200 text-pitch-800{% else %}bg-amber-200 text-amber-800{% endif %} flex items-center justify-center text-[10px] font-bold shrink-0">{{ player.user.username|first|upper }}</span>
-                                    <span class="text-xs text-stone-700 truncate">{{ player.user.username }}</span>
-                                    {% if team.captain and player.user.id == team.captain.id %}<span class="captain-badge">C</span>{% endif %}
-                                </div>
+                                {% for player in team.players.all|sort_by_role %}
+                                    {% if team.captain and player.user.id == team.captain.id %}
+                                        {% include "_components/player_chip.html" with user=player.user is_captain=True show_role=True %}
+                                    {% else %}
+                                        {% include "_components/player_chip.html" with user=player.user show_role=True %}
+                                    {% endif %}
                                 {% empty %}
                                 <p class="text-xs text-stone-400 text-center py-1">No players</p>
                                 {% endfor %}
@@ -486,149 +478,159 @@
             </form>
             {% endif %}
 
-            <!-- ── Team Editor (staff, when editing or no matches yet) ── -->
+            <!-- ═══════════════════════════════════
+                 TEAM BALANCE — staff drafts, members see read-only
+                 Per SessionDetailScreen.jsx + DESIGN_SYSTEM.md audience gating.
+            ═══════════════════════════════════ -->
             {% if user.is_staff %}
             {% if edit_match or not matches %}
             <div class="card overflow-hidden" id="team-editor">
                 <div class="h-1 bg-pitch-500"></div>
-                <div class="card-header flex items-center justify-between">
+
+                <!-- Section header -->
+                <div class="card-header flex items-center justify-between flex-wrap gap-2.5">
                     <div class="flex items-center gap-2 min-w-0 flex-1">
-                        <svg class="w-4 h-4 text-pitch-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        <span class="font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-stone-500">
+                            Team balance · Draft
+                        </span>
                         <input type="text" id="match-name-display"
-                               class="form-input text-sm font-bold py-0.5 px-2 h-7 flex-1 min-w-0 max-w-[180px]"
+                               class="form-input !text-[12px] !font-medium !py-0.5 !px-2 h-7 flex-1 min-w-0 max-w-[160px]"
                                value="{% if edit_match %}{{ edit_match.name }}{% else %}Match 1{% endif %}"
                                placeholder="Match name"
                                oninput="document.getElementById('match_name_input').value = this.value">
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 shrink-0">
                         {% if edit_match %}
                         <a href="{% url 'session_detail' session.id %}"
                            class="btn btn-ghost btn-sm text-stone-400">Cancel</a>
                         {% endif %}
-                        <button id="shuffle-teams-btn" class="btn btn-secondary btn-sm">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        <button id="shuffle-teams-btn" type="button" class="btn btn-secondary btn-sm">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                <path d="M21 12a8 8 0 11-3-6.2L21 4v5h-5"/>
                             </svg>
-                            Shuffle
+                            Auto-balance
                         </button>
                     </div>
                 </div>
-                <div class="card-body">
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
 
-                        <!-- Available pool -->
-                        <div class="col-span-2 md:col-span-1">
-                            <div class="h-8 flex items-center justify-between mb-2">
-                                <p class="text-xs font-bold text-stone-500 uppercase tracking-wide">Available</p>
-                                <span class="badge badge-stone text-[10px]" id="available-count">{{ yes_voters|length }}</span>
+                <!-- Skill-gap meter row -->
+                <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-6 py-3.5 border-b border-stone-100">
+                    <!-- Team A meter -->
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-2 h-2 rounded-full bg-pitch-600 shrink-0"></span>
+                        <div class="min-w-0">
+                            <div class="text-[13px] font-semibold text-stone-900 -tracking-[0.005em] truncate">
+                                <span id="meter-team1-name">{% if edit_team1 %}{{ edit_team1.name }}{% else %}Team 1{% endif %}</span>
                             </div>
-                            <div id="available-users"
-                                 class="bg-stone-50 rounded-xl p-3 min-h-[180px] max-h-[420px] overflow-y-auto
-                                        space-y-1.5 border-2 border-dashed border-stone-200 transition-colors"
-                                 ondrop="drop(event)" ondragover="allowDrop(event)">
-                                {% for voter in yes_voters %}
-                                {% if not voter.team_assigned %}
-                                <div class="player-chip cursor-move select-none"
-                                     draggable="true" ondragstart="drag(event)"
-                                     id="user-{{ voter.user.id }}" data-user-id="{{ voter.user.id }}">
-                                    <span class="w-6 h-6 rounded-full bg-stone-200 text-stone-700 flex items-center justify-center text-xs font-bold shrink-0">
-                                        {{ voter.user.username|first|upper }}
-                                    </span>
-                                    <span class="flex-1 truncate text-sm text-stone-700">{{ voter.user.username }}</span>
-                                    <span class="text-sm shrink-0">
-                                        {% if voter.user.role == 'batsman' %}🏏
-                                        {% elif voter.user.role == 'bowler' %}🎯
-                                        {% else %}⭐{% endif %}
-                                    </span>
-                                </div>
-                                {% endif %}
-                                {% endfor %}
+                            <div class="font-mono text-[10px] text-stone-500 tabular-nums tracking-[0.04em]">
+                                <span id="meter-team1-count">0</span> players · avg <span id="meter-team1-avg">—</span>
                             </div>
                         </div>
+                    </div>
+                    <!-- Skill gap badge -->
+                    <div class="flex flex-col items-center gap-1 min-w-[110px]">
+                        <span class="font-mono text-[9px] uppercase tracking-[0.08em] text-stone-400">Skill gap</span>
+                        <span id="meter-gap-num" class="text-xl font-semibold tabular-nums leading-none -tracking-[0.01em] text-stone-900">—</span>
+                        <span id="meter-gap-badge" class="badge badge-stone">—</span>
+                    </div>
+                    <!-- Team B meter -->
+                    <div class="flex items-center gap-2.5 min-w-0 justify-end text-right">
+                        <div class="min-w-0">
+                            <div class="text-[13px] font-semibold text-stone-900 -tracking-[0.005em] truncate">
+                                <span id="meter-team2-name">{% if edit_team2 %}{{ edit_team2.name }}{% else %}Team 2{% endif %}</span>
+                            </div>
+                            <div class="font-mono text-[10px] text-stone-500 tabular-nums tracking-[0.04em]">
+                                <span id="meter-team2-count">0</span> players · avg <span id="meter-team2-avg">—</span>
+                            </div>
+                        </div>
+                        <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                    </div>
+                </div>
 
-                        <!-- Team 1 -->
-                        <div class="col-span-1">
-                            <div class="h-8 flex items-center justify-between mb-2" id="team1-header">
+                <div class="card-body">
+                    <!-- Two-team slot grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        <!-- Team 1 slot -->
+                        <div class="rounded-[10px] border border-stone-100 overflow-hidden bg-white">
+                            <div class="flex items-center justify-between gap-2 px-3.5 py-2 border-b border-stone-100" id="team1-header">
                                 <div class="flex items-center gap-1.5 min-w-0">
-                                    <span class="w-2 h-2 rounded-full bg-pitch-500 shrink-0"></span>
+                                    <span class="w-1.5 h-1.5 rounded-full bg-pitch-600 shrink-0"></span>
                                     <span id="team1-name"
-                                          class="text-xs font-bold text-pitch-800 uppercase tracking-wide truncate">
+                                          class="text-[13px] font-semibold text-stone-800 -tracking-[0.005em] truncate">
                                         {% if edit_team1 %}{{ edit_team1.name }}{% else %}Team 1{% endif %}
                                     </span>
                                 </div>
                                 <button type="button" onclick="editTeamName('team1')"
-                                        class="shrink-0 text-[10px] font-semibold text-stone-400 hover:text-stone-700
+                                        class="shrink-0 font-mono text-[10px] uppercase tracking-[0.06em] text-stone-400 hover:text-stone-700
                                                px-1.5 py-0.5 rounded-md hover:bg-stone-100 transition-colors">
                                     Edit
                                 </button>
                             </div>
                             <div id="team1-players"
-                                 class="bg-pitch-50 rounded-xl p-3 min-h-[180px] max-h-[420px] overflow-y-auto
-                                        space-y-1.5 border-2 border-dashed border-pitch-200 transition-colors"
+                                 class="p-2.5 min-h-[180px] max-h-[420px] overflow-y-auto space-y-1.5 transition-colors"
+                                 data-team="team1"
                                  ondrop="drop(event)" ondragover="allowDrop(event)">
                                 {% for player in edit_team1_players %}
-                                <div class="player-chip cursor-move select-none"
-                                     draggable="true" ondragstart="drag(event)"
-                                     id="user-{{ player.user.id }}" data-user-id="{{ player.user.id }}">
-                                    <span class="w-6 h-6 rounded-full bg-pitch-200 text-pitch-800 flex items-center justify-center text-xs font-bold shrink-0">
-                                        {{ player.user.username|first|upper }}
-                                    </span>
-                                    <span class="flex-1 truncate text-sm text-stone-700">{{ player.user.username }}</span>
-                                    <span class="text-sm shrink-0">
-                                        {% if player.user.role == 'batsman' %}🏏
-                                        {% elif player.user.role == 'bowler' %}🎯
-                                        {% else %}⭐{% endif %}
-                                    </span>
                                     {% if edit_team1.captain and player.user.id == edit_team1.captain.id %}
-                                    <span class="captain-badge">C</span>
+                                        {% include "cric/partials/_team_slot_row.html" with player=player team_tone="pitch" is_captain=True %}
+                                    {% else %}
+                                        {% include "cric/partials/_team_slot_row.html" with player=player team_tone="pitch" %}
                                     {% endif %}
-                                </div>
                                 {% endfor %}
                             </div>
                         </div>
 
-                        <!-- Team 2 -->
-                        <div class="col-span-1">
-                            <div class="h-8 flex items-center justify-between mb-2" id="team2-header">
+                        <!-- Team 2 slot -->
+                        <div class="rounded-[10px] border border-stone-100 overflow-hidden bg-white">
+                            <div class="flex items-center justify-between gap-2 px-3.5 py-2 border-b border-stone-100" id="team2-header">
                                 <div class="flex items-center gap-1.5 min-w-0">
-                                    <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
                                     <span id="team2-name"
-                                          class="text-xs font-bold text-amber-700 uppercase tracking-wide truncate">
+                                          class="text-[13px] font-semibold text-stone-800 -tracking-[0.005em] truncate">
                                         {% if edit_team2 %}{{ edit_team2.name }}{% else %}Team 2{% endif %}
                                     </span>
                                 </div>
                                 <button type="button" onclick="editTeamName('team2')"
-                                        class="shrink-0 text-[10px] font-semibold text-stone-400 hover:text-stone-700
+                                        class="shrink-0 font-mono text-[10px] uppercase tracking-[0.06em] text-stone-400 hover:text-stone-700
                                                px-1.5 py-0.5 rounded-md hover:bg-stone-100 transition-colors">
                                     Edit
                                 </button>
                             </div>
                             <div id="team2-players"
-                                 class="bg-amber-50 rounded-xl p-3 min-h-[180px] max-h-[420px] overflow-y-auto
-                                        space-y-1.5 border-2 border-dashed border-amber-200 transition-colors"
+                                 class="p-2.5 min-h-[180px] max-h-[420px] overflow-y-auto space-y-1.5 transition-colors"
+                                 data-team="team2"
                                  ondrop="drop(event)" ondragover="allowDrop(event)">
                                 {% for player in edit_team2_players %}
-                                <div class="player-chip cursor-move select-none"
-                                     draggable="true" ondragstart="drag(event)"
-                                     id="user-{{ player.user.id }}" data-user-id="{{ player.user.id }}">
-                                    <span class="w-6 h-6 rounded-full bg-amber-200 text-amber-800 flex items-center justify-center text-xs font-bold shrink-0">
-                                        {{ player.user.username|first|upper }}
-                                    </span>
-                                    <span class="flex-1 truncate text-sm text-stone-700">{{ player.user.username }}</span>
-                                    <span class="text-sm shrink-0">
-                                        {% if player.user.role == 'batsman' %}🏏
-                                        {% elif player.user.role == 'bowler' %}🎯
-                                        {% else %}⭐{% endif %}
-                                    </span>
                                     {% if edit_team2.captain and player.user.id == edit_team2.captain.id %}
-                                    <span class="captain-badge">C</span>
+                                        {% include "cric/partials/_team_slot_row.html" with player=player team_tone="amber" is_captain=True %}
+                                    {% else %}
+                                        {% include "cric/partials/_team_slot_row.html" with player=player team_tone="amber" %}
                                     {% endif %}
-                                </div>
                                 {% endfor %}
                             </div>
                         </div>
+                    </div>
 
+                    <!-- Available pool -->
+                    <div class="mt-5">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-mono text-[10px] uppercase tracking-[0.08em] text-stone-400">
+                                Available pool · <span id="available-count">0</span>
+                            </span>
+                        </div>
+                        <div id="available-users"
+                             class="rounded-[10px] border border-dashed border-stone-200 bg-stone-50 px-3 py-2.5 min-h-[60px]
+                                    flex flex-wrap gap-1.5 transition-colors"
+                             data-team="pool"
+                             ondrop="drop(event)" ondragover="allowDrop(event)">
+                            {% for voter in yes_voters %}
+                            {% if not voter.team_assigned %}
+                            {% include "cric/partials/_pool_chip.html" with voter=voter %}
+                            {% endif %}
+                            {% endfor %}
+                            <span id="pool-empty" class="hidden font-mono text-[10px] text-stone-400 italic">Everyone assigned.</span>
+                        </div>
                     </div>
 
                     <!-- Save teams form -->
@@ -678,6 +680,8 @@
         </div>
 
     </div>
+
+    {# Going card removed — yes-voters are now visible in the Team Balance pool below #}
 </div>
 
 <!-- ── Staff JavaScript ── -->
@@ -688,14 +692,14 @@
     let team2Name = '{% if edit_team2 %}{{ edit_team2.name }}{% else %}Team 2{% endif %}';
 
     function editTeamName(team) {
-        const span = document.getElementById(team + '-name');
         const currentName = team === 'team1' ? team1Name : team2Name;
         const header = document.getElementById(team + '-header');
+        const leftDiv = header.querySelector('div.flex');
 
         const input = document.createElement('input');
         input.type = 'text';
         input.value = currentName;
-        input.className = 'form-input text-xs py-0.5 px-2 h-6 flex-1 min-w-0';
+        input.className = 'form-input !text-[12px] !font-medium !py-0.5 !px-2 h-6 flex-1 min-w-0';
 
         const save = () => {
             const val = input.value.trim() || (team === 'team1' ? 'Team 1' : 'Team 2');
@@ -711,8 +715,7 @@
         input.addEventListener('blur', save);
         input.addEventListener('keypress', e => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } });
 
-        const dot = header.querySelector('span.rounded-full');
-        const leftDiv = header.querySelector('div.flex');
+        const dot = leftDiv.querySelector('span.rounded-full');
         leftDiv.innerHTML = '';
         if (dot) leftDiv.appendChild(dot);
         leftDiv.appendChild(input);
@@ -728,52 +731,150 @@
         const header = document.getElementById(team + '-header');
         const isTeam1 = team === 'team1';
         const name = isTeam1 ? team1Name : team2Name;
-        const colorClass = isTeam1 ? 'text-pitch-800' : 'text-amber-700';
 
         const leftDiv = header.querySelector('div.flex');
         const editBtn = header.querySelector('button');
 
         leftDiv.innerHTML = `
-            <span class="w-2 h-2 rounded-full ${isTeam1 ? 'bg-pitch-500' : 'bg-amber-400'} shrink-0"></span>
-            <span id="${team}-name" class="text-xs font-bold ${colorClass} uppercase tracking-wide truncate">${name}</span>
+            <span class="w-1.5 h-1.5 rounded-full ${isTeam1 ? 'bg-pitch-600' : 'bg-amber-500'} shrink-0"></span>
+            <span id="${team}-name" class="text-[13px] font-semibold text-stone-800 -tracking-[0.005em] truncate">${name}</span>
         `;
-
         if (editBtn) {
             editBtn.style.display = '';
             editBtn.onclick = e => { e.preventDefault(); editTeamName(team); };
         }
+        // sync meter labels
+        const meterLabel = document.getElementById(`meter-${team}-name`);
+        if (meterLabel) meterLabel.textContent = name;
     }
 
     function allowDrop(e) { e.preventDefault(); }
-    function drag(e) { e.dataTransfer.setData('user_id', e.target.id); }
+    function drag(e) { e.dataTransfer.setData('user_id', e.currentTarget.id); }
 
     function drop(e) {
         e.preventDefault();
         const userId = e.dataTransfer.getData('user_id');
         const el = document.getElementById(userId);
         if (!el || !el.dataset.userId) return;
-
-        const badge = el.querySelector('.captain-badge');
-        if (badge) el.removeChild(badge);
-
         const target = e.currentTarget;
-        target.appendChild(el);
-
-        if ((target.id === 'team1-players' || target.id === 'team2-players') && target.children.length === 1) {
-            const cap = document.createElement('span');
-            cap.className = 'captain-badge';
-            cap.textContent = 'C';
-            el.appendChild(cap);
-        }
-        updateHiddenFields();
+        moveChip(el, target);
     }
 
-    function updateHiddenFields() {
-        const t1 = Array.from(document.getElementById('team1-players').children)
-            .filter(e => e.dataset && e.dataset.userId).map(e => e.dataset.userId);
-        const t2 = Array.from(document.getElementById('team2-players').children)
-            .filter(e => e.dataset && e.dataset.userId).map(e => e.dataset.userId);
+    /* ───────── Chip-shape renderer (rebuilds inner HTML + outer classes
+                 so a chip looks right whether it's in pool or in a team) ───────── */
+    const PLAYER_CHIP_BASE = 'player-chip cursor-move select-none';
+    const ROLE_TINT = {
+        batsman:    '!bg-sky-50 !border-sky-200 !text-sky-800',
+        bowler:     '!bg-red-50 !border-red-100 !text-red-800',
+        bowling:    '!bg-red-50 !border-red-100 !text-red-800',
+        allrounder: '!bg-purple-100 !border-purple-200 !text-purple-800',
+        'all-rounder': '!bg-purple-100 !border-purple-200 !text-purple-800',
+    };
+    function poolTintFor(role) {
+        return ROLE_TINT[(role || '').toLowerCase()] || '!bg-white !border-stone-200 !text-stone-800';
+    }
+    function ratingSegHtml(rv) {
+        let html = '<div class="skill-bar" aria-label="Rating ' + rv + ' of 5">';
+        for (let i = 1; i <= 5; i++) {
+            html += '<div class="skill-seg">';
+            if (rv >= i)             html += '<div class="skill-seg-fill" style="width:100%"></div>';
+            else if (rv >= i - 0.5)  html += '<div class="skill-seg-fill" style="width:50%"></div>';
+            html += '</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+    function renderAsTeamRow(el, tone) {
+        const u  = el.dataset.username;
+        const ro = el.dataset.role || '–';
+        const rv = parseFloat(el.dataset.rating || '0');
+        const initial = u ? u[0].toUpperCase() : '?';
+        const avatarTint = tone === 'amber' ? 'bg-amber-200 text-amber-800' : 'bg-pitch-200 text-pitch-800';
+        el.className = PLAYER_CHIP_BASE + ' flex items-center justify-between gap-2 !py-1.5 !px-2 !rounded-lg';
+        el.innerHTML = `
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+              <span class="w-6 h-6 rounded-full ${avatarTint} flex items-center justify-center text-[11px] font-bold shrink-0">${initial}</span>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[12px] font-medium text-stone-800 truncate leading-tight">${u}</span>
+                  <span class="captain-badge-slot" data-cap-slot></span>
+                </div>
+                <div class="font-mono text-[9px] text-stone-400 tracking-[0.04em]">${ro} · <span class="rating-text">${rv}</span></div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              ${ratingSegHtml(rv)}
+              <button type="button" onclick="moveToOther(this)" title="Swap to other team"
+                      class="w-5 h-5 rounded-[5px] border border-stone-200 bg-white flex items-center justify-center text-stone-500 hover:bg-stone-50">
+                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+              </button>
+              <button type="button" onclick="moveToPool(this)" title="Back to pool"
+                      class="w-5 h-5 rounded-[5px] border border-stone-200 bg-white flex items-center justify-center text-stone-400 hover:text-red-500 hover:bg-red-50">
+                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
+              </button>
+            </div>
+        `;
+    }
+    function renderAsPoolChip(el) {
+        const u  = el.dataset.username;
+        const rv = parseFloat(el.dataset.rating || '0');
+        el.className = PLAYER_CHIP_BASE +
+            ' !inline-flex !w-auto !flex-row !items-center !gap-1.5 !py-[3px] !pl-2 !pr-[3px] !rounded-lg !text-[12px] !shadow-none ' +
+            poolTintFor(el.dataset.role);
+        el.innerHTML = `
+            <span class="font-medium">${u}</span>
+            <span class="font-mono text-[10px] opacity-70 tracking-[0.02em]">· <span class="rating-text">${rv}</span></span>
+            <span class="inline-flex gap-0.5 ml-1">
+              <button type="button" onclick="addToTeam(this, 'team1')" title="Send to Team 1"
+                      class="w-[18px] h-[18px] rounded-[5px] bg-pitch-700 hover:bg-pitch-800 text-white text-[10px] font-bold leading-none">A</button>
+              <button type="button" onclick="addToTeam(this, 'team2')" title="Send to Team 2"
+                      class="w-[18px] h-[18px] rounded-[5px] bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold leading-none">B</button>
+            </span>
+        `;
+    }
 
+    /* ───────── Move helpers used by drag+drop and button clicks ───────── */
+    function moveChip(el, targetContainer) {
+        if (!el || !targetContainer) return;
+        targetContainer.appendChild(el);
+        // Re-shape chip to fit its new home
+        if (targetContainer.id === 'team1-players')      renderAsTeamRow(el, 'pitch');
+        else if (targetContainer.id === 'team2-players') renderAsTeamRow(el, 'amber');
+        else                                              renderAsPoolChip(el);
+        // Sort teams by role so layout reads batsmen → all-rounders → bowlers
+        sortTeamByRole('team1-players');
+        sortTeamByRole('team2-players');
+        assignCaptains();
+        updateHiddenFields();
+        updateMeter();
+        updatePoolDisplay();
+    }
+
+    // Button click handlers — get the chip from the button's closest [data-user-id] ancestor
+    function moveToOther(btn) {
+        const el = btn.closest('[data-user-id]');
+        if (!el) return;
+        const inTeam1 = el.closest('#team1-players') !== null;
+        const dest = document.getElementById(inTeam1 ? 'team2-players' : 'team1-players');
+        moveChip(el, dest);
+    }
+    function moveToPool(btn) {
+        const el = btn.closest('[data-user-id]');
+        if (!el) return;
+        moveChip(el, document.getElementById('available-users'));
+    }
+    function addToTeam(btn, teamSlug) {
+        const el = btn.closest('[data-user-id]');
+        if (!el) return;
+        moveChip(el, document.getElementById(teamSlug + '-players'));
+    }
+
+    /* ───────── Hidden fields for form submit ───────── */
+    function updateHiddenFields() {
+        const t1 = Array.from(document.getElementById('team1-players').querySelectorAll('[data-user-id]'))
+            .map(e => e.dataset.userId);
+        const t2 = Array.from(document.getElementById('team2-players').querySelectorAll('[data-user-id]'))
+            .map(e => e.dataset.userId);
         document.getElementById('team1_users').value = t1.join(',');
         document.getElementById('team2_users').value = t2.join(',');
         if (t1.length) document.getElementById('team1_captain').value = t1[0];
@@ -795,41 +896,134 @@
         return true;
     }
 
-    function shuffleUsers() {
+    /* ───────── Skill-gap meter ───────── */
+    function updateMeter() {
+        const mean = id => {
+            const rows = Array.from(document.querySelectorAll(`#${id} [data-rating]`));
+            if (!rows.length) return null;
+            const sum = rows.reduce((acc, r) => acc + parseFloat(r.dataset.rating || '0'), 0);
+            return sum / rows.length;
+        };
+        const a = mean('team1-players');
+        const b = mean('team2-players');
+        const ac = document.querySelectorAll('#team1-players [data-user-id]').length;
+        const bc = document.querySelectorAll('#team2-players [data-user-id]').length;
+        document.getElementById('meter-team1-count').textContent = ac;
+        document.getElementById('meter-team2-count').textContent = bc;
+        document.getElementById('meter-team1-avg').textContent = a === null ? '—' : a.toFixed(2);
+        document.getElementById('meter-team2-avg').textContent = b === null ? '—' : b.toFixed(2);
+
+        const numEl = document.getElementById('meter-gap-num');
+        const bdgEl = document.getElementById('meter-gap-badge');
+        if (a === null || b === null) {
+            numEl.textContent = '—';
+            bdgEl.textContent = '—';
+            bdgEl.className = 'badge badge-stone';
+            return;
+        }
+        const gap = Math.abs(a - b);
+        numEl.textContent = gap.toFixed(2);
+        let label, klass;
+        if (gap < 0.15)      { label = 'Balanced'; klass = 'badge badge-green'; numEl.classList.add('text-emerald-700'); }
+        else if (gap < 0.50) { label = 'Close';    klass = 'badge badge-amber'; numEl.classList.remove('text-emerald-700'); }
+        else                 { label = 'Uneven';   klass = 'badge badge-red';   numEl.classList.remove('text-emerald-700'); }
+        bdgEl.textContent = label;
+        bdgEl.className = klass;
+    }
+
+    function updatePoolDisplay() {
+        const pool = document.getElementById('available-users');
+        const count = pool.querySelectorAll('[data-user-id]').length;
+        document.getElementById('available-count').textContent = count;
+        const empty = document.getElementById('pool-empty');
+        if (empty) empty.classList.toggle('hidden', count > 0);
+    }
+
+    /* ───────── Snake-draft auto-balance ─────────
+       Sort by combined rating desc, then alternate-pick A B B A A B B A ... */
+    function snakeBalance() {
         const avail = document.getElementById('available-users');
         const t1 = document.getElementById('team1-players');
         const t2 = document.getElementById('team2-players');
+        const all = [
+            ...avail.querySelectorAll('[data-user-id]'),
+            ...t1.querySelectorAll('[data-user-id]'),
+            ...t2.querySelectorAll('[data-user-id]'),
+        ];
+        all.sort((a, b) => parseFloat(b.dataset.rating || '0') - parseFloat(a.dataset.rating || '0'));
 
-        const all = [...avail.children, ...t1.children, ...t2.children]
-            .filter(c => c.id && c.id.startsWith('user-'));
+        // Clear containers (preserve pool-empty placeholder)
+        t1.innerHTML = ''; t2.innerHTML = '';
+        avail.querySelectorAll('[data-user-id]').forEach(c => c.remove());
 
-        all.forEach(u => { const b = u.querySelector('.captain-badge'); if (b) u.removeChild(b); });
-        avail.innerHTML = ''; t1.innerHTML = ''; t2.innerHTML = '';
-
-        for (let i = all.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [all[i], all[j]] = [all[j], all[i]];
-        }
-
-        const half = Math.floor(all.length / 2);
-        all.forEach((u, i) => {
-            if (i < half) {
-                if (i === 0) { const c = document.createElement('span'); c.className = 'captain-badge'; c.textContent = 'C'; u.appendChild(c); }
-                t1.appendChild(u);
-            } else if (i < half * 2) {
-                if (i === half) { const c = document.createElement('span'); c.className = 'captain-badge'; c.textContent = 'C'; u.appendChild(c); }
-                t2.appendChild(u);
-            } else {
-                avail.appendChild(u);
-            }
+        all.forEach((el, i) => {
+            // Snake: 0→A, 1→B, 2→B, 3→A, 4→A, 5→B, 6→B, 7→A …
+            const round = Math.floor(i / 2);
+            const aTurn = round % 2 === 0 ? (i % 2 === 0) : (i % 2 === 1);
+            const dest = aTurn ? t1 : t2;
+            dest.appendChild(el);
+            renderAsTeamRow(el, dest === t1 ? 'pitch' : 'amber');
         });
+        // Sort each team batsmen → all-rounders → bowlers, then mark first as captain
+        sortTeamByRole('team1-players');
+        sortTeamByRole('team2-players');
+        assignCaptains();
         updateHiddenFields();
+        updateMeter();
+        updatePoolDisplay();
+    }
+
+    /* Sort a team container by role: batsmen → all-rounders → bowlers → other. */
+    const ROLE_RANK = { batsman: 0, allrounder: 1, 'all-rounder': 1, bowler: 2 };
+    function sortTeamByRole(boxId) {
+        const box = document.getElementById(boxId);
+        if (!box) return;
+        const rows = Array.from(box.querySelectorAll('[data-user-id]'));
+        rows.sort((a, b) => {
+            const ra = ROLE_RANK[(a.dataset.role || '').toLowerCase()] ?? 3;
+            const rb = ROLE_RANK[(b.dataset.role || '').toLowerCase()] ?? 3;
+            if (ra !== rb) return ra - rb;
+            // Tie-break: higher combined rating first within the same role
+            return parseFloat(b.dataset.rating || '0') - parseFloat(a.dataset.rating || '0');
+        });
+        rows.forEach(r => box.appendChild(r));
+    }
+
+    function assignCaptains() {
+        ['team1-players', 'team2-players'].forEach(id => {
+            const box = document.getElementById(id);
+            box.querySelectorAll('[data-user-id]').forEach((row, i) => {
+                row.querySelectorAll('.captain-badge').forEach(b => b.remove());
+                if (i === 0) {
+                    const c = document.createElement('span');
+                    c.className = 'captain-badge';
+                    c.textContent = 'C';
+                    c.title = 'Captain';
+                    const slot = row.querySelector('[data-cap-slot]');
+                    if (slot) slot.replaceWith(c);
+                    else {
+                        const nameRow = row.querySelector('.flex.items-center.gap-1\\.5');
+                        if (nameRow) nameRow.appendChild(c);
+                        else row.appendChild(c);
+                    }
+                } else {
+                    const slot = row.querySelector('[data-cap-slot]');
+                    if (slot) slot.remove();
+                }
+            });
+        });
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         const btn = document.getElementById('shuffle-teams-btn');
-        if (btn) btn.addEventListener('click', shuffleUsers);
+        if (btn) btn.addEventListener('click', snakeBalance);
+        // Sort + meter + hidden fields based on whatever the server initially rendered
+        sortTeamByRole('team1-players');
+        sortTeamByRole('team2-players');
+        assignCaptains();
         updateHiddenFields();
+        updateMeter();
+        updatePoolDisplay();
     });
 </script>
 {% endif %}

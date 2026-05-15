@@ -18,8 +18,9 @@ function Header({ user, route, onNavigate, onLogout, unread=0 }) {
 
         <nav style={{display:'flex', alignItems:'center', gap:2}}>
           <NavLink active={route==='home'} onClick={() => onNavigate('home')} icon={<Home size={16}/>}>Dashboard</NavLink>
-          <NavLink active={route==='balance'} onClick={() => onNavigate('balance')} icon={<Icons.Users size={16}/>}>Teams</NavLink>
-          <NavLink active={route==='payments'} onClick={() => onNavigate('payments')} icon={<Wallet size={16}/>}>Payments</NavLink>
+          {user.is_staff && (
+            <NavLink active={route==='payments'} onClick={() => onNavigate('payments')} icon={<Wallet size={16}/>}>Payments</NavLink>
+          )}
 
           {user.is_staff && (
             <div style={{position:'relative'}} onMouseLeave={() => setManageOpen(false)}>

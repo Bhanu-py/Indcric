@@ -1,0 +1,43 @@
+{% comment %}
+Team-slot player row — used inside the Team Balance "Team 1" / "Team 2" slot grids.
+Spec: SessionDetailScreen.jsx TeamSlot rows (avatar · name · role+rating mono · compact rating-bar · swap & remove buttons).
+
+Args:
+  player       dict with keys: user (User), rating (float 0-5)
+  team_tone    'pitch' or 'amber' (matches the parent team's accent)
+  is_captain   truthy if this player.user is the team's captain
+{% endcomment %}
+{% load custom_filters %}
+<div class="player-chip cursor-move select-none flex items-center justify-between gap-2 !py-1.5 !px-2 !rounded-lg"
+     draggable="true" ondragstart="drag(event)"
+     id="user-{{ player.user.id }}"
+     data-user-id="{{ player.user.id }}"
+     data-username="{{ player.user.username }}"
+     data-role="{{ player.user.role|default:'' }}"
+     data-rating="{{ player.rating }}">
+    <div class="flex items-center gap-2 min-w-0 flex-1">
+        <span class="w-6 h-6 rounded-full {% if team_tone == 'amber' %}bg-amber-200 text-amber-800{% else %}bg-pitch-200 text-pitch-800{% endif %} flex items-center justify-center text-[11px] font-bold shrink-0">
+            {{ player.user.username|first|upper }}
+        </span>
+        <div class="min-w-0">
+            <div class="flex items-center gap-1.5">
+                <span class="text-[12px] font-medium text-stone-800 truncate leading-tight">{{ player.user.username }}</span>
+                {% if is_captain %}<span class="captain-badge" title="Captain">C</span>{% endif %}
+            </div>
+            <div class="font-mono text-[9px] text-stone-400 tracking-[0.04em]">
+                {{ player.user.role|default:"–" }} · <span class="rating-text">{{ player.rating }}</span>
+            </div>
+        </div>
+    </div>
+    <div class="flex items-center gap-1.5 shrink-0">
+        {% include "_components/rating_bar.html" with value=player.rating %}
+        <button type="button" onclick="moveToOther(this)" title="Swap to other team"
+                class="w-5 h-5 rounded-[5px] border border-stone-200 bg-white flex items-center justify-center text-stone-500 hover:bg-stone-50">
+            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+        <button type="button" onclick="moveToPool(this)" title="Back to pool"
+                class="w-5 h-5 rounded-[5px] border border-stone-200 bg-white flex items-center justify-center text-stone-400 hover:text-red-500 hover:bg-red-50">
+            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
+        </button>
+    </div>
+</div>

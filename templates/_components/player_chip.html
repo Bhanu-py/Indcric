@@ -1,24 +1,49 @@
 {% comment %}
-Player chip — avatar + name (+ optional role glyph + captain pip).
+Player chip — avatar + name (+ optional role SVG glyph + captain pip).
 Usage:
   {% include "_components/player_chip.html" with user=player %}
   {% include "_components/player_chip.html" with user=player is_captain=True show_role=True %}
 
 Args:
   user        User object (uses username, get_full_name, role)
-  is_captain  if True, shows amber captain pip on the right
-  show_role   if True, shows trailing role-emoji glyph
+  is_captain  if True, shows amber captain pip inline with name
+  show_role   if True, shows trailing SVG role glyph (tinted by role)
+
+Role icons (Heroicons-outline 24x24, 1.75 stroke, currentColor) come from
+design_handoff/ui_kits/indcric_web/Icons.jsx (Bat / Ball / AllRounder).
 {% endcomment %}
 {% load custom_filters %}
+{% with role=user.role|default:""|lower %}
 <div class="player-chip">
     <img class="h-6 w-6 rounded-full object-cover ring-1 ring-stone-200"
          src="https://ui-avatars.com/api/?name={{ user.username }}&background=166534&color=fff&bold=true"
          alt="{{ user.username }}"/>
     <span class="truncate">{{ user.get_full_name|default:user.username }}</span>
-    {% if show_role and user.role %}
-        <span class="text-sm" title="{{ user.role }}">{{ user.role|role_emoji }}</span>
-    {% endif %}
     {% if is_captain %}
         <span class="captain-badge" title="Captain">C</span>
     {% endif %}
+    {% if show_role and role %}
+        <span class="shrink-0 ml-auto" title="{{ role|capfirst }}">
+            {% if role == "batsman" %}
+                <svg class="w-4 h-4 text-sky-700" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M12 3v5"/><path d="M10 5.5h4"/><path d="M9 8.5h6v11a1.5 1.5 0 01-1.5 1.5h-3A1.5 1.5 0 019 19.5v-11z"/>
+                </svg>
+            {% elif role == "bowler" or role == "bowling" %}
+                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="8.5"/>
+                    <path d="M5 14c3.5 2.5 10.5 2.5 14 0"/>
+                    <path d="M8 14.6v1.4M11 15.4v1.4M14 15.4v1.4M16.8 14.6v1.4"/>
+                </svg>
+            {% elif role == "allrounder" or role == "all-rounder" %}
+                <svg class="w-4 h-4 text-purple-700" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M4 4l4 4"/><path d="M7 7l9 9"/><path d="M14 14l3 3"/><path d="M9.5 17.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+            {% else %}
+                <svg class="w-4 h-4 text-stone-500" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M8 8a4 4 0 118 0 4 4 0 01-8 0z"/><path d="M4 21a8 8 0 0116 0"/>
+                </svg>
+            {% endif %}
+        </span>
+    {% endif %}
 </div>
+{% endwith %}

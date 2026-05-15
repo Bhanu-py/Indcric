@@ -135,6 +135,26 @@ Friendly captain, light banter, never corporate. We celebrate small wins
 ("Team A won") without exclamation marks. We never gamify aggressively — no
 streaks, no levels, no XP.
 
+**Audience-gated surfaces (staff vs member vs guest):**
+
+| Surface / element | Guest (logged out) | Member | Staff / admin |
+|---|---|---|---|
+| Dashboard upcoming cards | ✓ (click → sign in) | ✓ | ✓ |
+| Dashboard previous cards | ✓ **locked** (click → sign in) | ✓ | ✓ |
+| Dashboard **stats strip** (Sessions · 30d, Outstanding, Active members) | ✗ | ✗ | ✓ |
+| Dashboard shortcut "Settle payments" | ✗ | ✗ | ✓ |
+| Dashboard shortcut "Balance teams" | ✗ | ✓ (opens next session) | ✓ (opens next session) |
+| Header "Payments" nav | ✗ | ✗ | ✓ |
+| Session detail · view teams + pool | ✗ | ✓ read-only | ✓ |
+| Session detail · **draft controls** (move player, auto-balance, share line-ups) | ✗ | ✗ | ✓ |
+| Payments **Who-owes-whom** settlement tab | ✗ | ✗ | ✓ |
+| Profile, Session detail, Notifications | ✗ | ✓ | ✓ |
+| New Session CTA | ✗ | ✗ | ✓ |
+
+When a guest clicks a locked card, route to Sign-in. Locked previous-session cards show a small **🔒 Sign in to see line-ups** pill on a soft white-blur overlay.
+
+**Team balance lives inside Session detail** — it is not a separate route. The session detail page contains: hero → cost split → availability poll → **team balance + draft + available pool** → end. Staff get edit controls; members see the same teams read-only.
+
 ---
 
 ## VISUAL FOUNDATIONS

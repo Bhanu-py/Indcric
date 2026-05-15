@@ -144,6 +144,17 @@ def delete_session_view(request, session_id):
 def session_detail_view(request, session_id):
     session = get_object_or_404(Session, id=session_id)
 
+    def _combined_rating(u):
+        """Avg of batting/bowling/fielding ratings, rounded to 2dp. Defaults each None to 2.5."""
+        bat  = u.batting_rating  if u.batting_rating  is not None else Decimal('2.5')
+        bowl = u.bowling_rating  if u.bowling_rating  is not None else Decimal('2.5')
+        fld  = u.fielding_rating if u.fielding_rating is not None else Decimal('2.5')
+        return float(((bat + bowl + fld) / Decimal('3')).quantize(Decimal('0.01')))
+
+    _ROLE_ORDER = {'batsman': 0, 'allrounder': 1, 'all-rounder': 1, 'bowler': 2}
+    def _role_sort_key(p):
+        return _ROLE_ORDER.get((p['user'].role or '').lower(), 3)
+
     user_vote = None
     yes_votes = no_votes = total_votes = 0
     yes_percentage = 0
@@ -158,7 +169,7 @@ def session_detail_view(request, session_id):
         total_votes = yes_votes + no_votes
         if total_votes > 0:
             yes_percentage = (yes_votes / total_votes) * 100
-        yes_voters = [{'user': v.user, 'team_assigned': False}
+        yes_voters = [{'user': v.user, 'team_assigned': False, 'rating': _combined_rating(v.user)}
                       for v in poll.votes.filter(choice='yes').select_related('user')]
         no_voters = [v.user for v in poll.votes.filter(choice='no').select_related('user')]
 
@@ -174,14 +185,24 @@ def session_detail_view(request, session_id):
         teams = list(edit_match.teams.order_by('id'))
         if len(teams) >= 1:
             edit_team1 = teams[0]
-            edit_team1_players = list(edit_team1.players.select_related('user').all())
+            edit_team1_players = sorted([
+                {'user': p.user, 'rating': _combined_rating(p.user)}
+                for p in edit_team1.players.select_related('user').all()
+            ], key=_role_sort_key)
         if len(teams) >= 2:
             edit_team2 = teams[1]
-            edit_team2_players = list(edit_team2.players.select_related('user').all())
+            edit_team2_players = sorted([
+                {'user': p.user, 'rating': _combined_rating(p.user)}
+                for p in edit_team2.players.select_related('user').all()
+            ], key=_role_sort_key)
 
-    assigned_ids = {p.user.id for p in edit_team1_players + edit_team2_players}
+    assigned_ids = {p['user'].id for p in edit_team1_players + edit_team2_players}
     for voter in yes_voters:
         voter['team_assigned'] = voter['user'].id in assigned_ids
+
+    cost_per_person_est = None
+    if not session.cost_per_person and yes_votes > 0 and session.cost:
+        cost_per_person_est = (session.cost / Decimal(yes_votes)).quantize(Decimal('0.01'))
 
     context = {
         'session': session,
@@ -192,6 +213,7 @@ def session_detail_view(request, session_id):
         'yes_percentage': yes_percentage,
         'yes_voters': yes_voters,
         'no_voters': no_voters,
+        'cost_per_person_est': cost_per_person_est,
         'matches': matches,
         'edit_match': edit_match,
         'edit_team1': edit_team1,
