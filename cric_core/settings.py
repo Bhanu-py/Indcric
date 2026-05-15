@@ -75,8 +75,14 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     # 'allauth.socialaccount',
-    
-    "cric",
+
+    # New multi-app structure
+    "apps.accounts",
+    "apps.sessions",
+    "apps.matches",
+    "apps.polls",
+    "apps.payments",
+    "apps.notifications",
 ]
 SITE_ID = 1
 
@@ -134,7 +140,7 @@ ROOT_URLCONF = "cric_core.urls"
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],  # include your custom templates folder if needed
+        'DIRS': [BASE_DIR / "templates", BASE_DIR / "cric" / "templates"],  # include custom + legacy cric templates
         'APP_DIRS': True,  # ensures app templates (like cric_manage) are detected
         'OPTIONS': {
             'context_processors': [
@@ -259,7 +265,7 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-AUTH_USER_MODEL = 'cric.User'
+AUTH_USER_MODEL = 'accounts.User'
 
 LOGGING = {
     'version': 1,
