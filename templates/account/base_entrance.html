@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block header %}{% endblock %}
 
 {% block content %}
@@ -8,10 +9,8 @@
         <!-- Logo -->
         <div class="text-center mb-8">
             <a href="/" class="inline-flex flex-col items-center gap-2">
-                <div class="w-12 h-12 rounded-2xl bg-pitch-700 flex items-center justify-center shadow-lg">
-                    <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.04 2.11L15.63 3.52c-.78-.3-1.6-.52-2.46-.52C9.48 3 6 6.48 6 10.17c0 2.1.94 3.98 2.42 5.27L3 21l1.41 1.41 5.27-5.27c1.25 1.42 3.07 2.32 5.09 2.32C18.52 19.46 22 15.98 22 12.27c0-3.72-3.48-6.2-4.96-10.16zm-2.87 14.35c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/>
-                    </svg>
+                <div class="w-12 h-12 rounded-2xl bg-white border border-stone-200 flex items-center justify-center shadow-lg overflow-hidden">
+                    <img src="{% static 'icons/logo-mark.png' %}" alt="ICG" class="w-full h-full object-contain">
                 </div>
                 <div>
                     <p class="text-lg font-bold text-stone-900 leading-tight">ICG</p>
