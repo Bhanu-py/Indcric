@@ -35,8 +35,8 @@
     <div>
         <label class="form-label" for="role">Playing Role</label>
         <select class="form-select" id="role" name="role">
-            <option value="batsman" {% if user.role == 'batsman' %}selected{% endif %}>🏏 Batsman</option>
-            <option value="bowler" {% if user.role == 'bowler' %}selected{% endif %}>🎯 Bowler</option>
+            <option value="batsman" {% if user.role == 'batsman' %}selected{% endif %}>Batsman</option>
+            <option value="bowler" {% if user.role == 'bowler' %}selected{% endif %}>Bowler</option>
             <option value="allrounder" {% if user.role == 'allrounder' %}selected{% endif %}>⭐ All-rounder</option>
         </select>
     </div>
@@ -45,17 +45,17 @@
         <label class="form-label">Skill Ratings <span class="text-stone-400 font-normal text-xs">(0.0 – 5.0)</span></label>
         <div class="grid grid-cols-3 gap-3">
             <div>
-                <p class="text-xs text-stone-500 mb-1">🏏 Batting</p>
+                <p class="text-xs text-stone-500 mb-1">Batting</p>
                 <input class="form-input text-sm" id="batting_rating" name="batting_rating"
                        type="number" step="0.1" min="0" max="5" value="{{ user.batting_rating }}">
             </div>
             <div>
-                <p class="text-xs text-stone-500 mb-1">🎯 Bowling</p>
+                <p class="text-xs text-stone-500 mb-1">Bowling</p>
                 <input class="form-input text-sm" id="bowling_rating" name="bowling_rating"
                        type="number" step="0.1" min="0" max="5" value="{{ user.bowling_rating }}">
             </div>
             <div>
-                <p class="text-xs text-stone-500 mb-1">🤸 Fielding</p>
+                <p class="text-xs text-stone-500 mb-1">Fielding</p>
                 <input class="form-input text-sm" id="fielding_rating" name="fielding_rating"
                        type="number" step="0.1" min="0" max="5" value="{{ user.fielding_rating }}">
             </div>

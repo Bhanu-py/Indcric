@@ -38,14 +38,14 @@ class UserHTMxTable(tables.Table):
             return "-"
         value_lower = value.lower()
         badges = {
-            'batsman':    ('🏏', 'Batsman',    'bg-sky-100 text-sky-800'),
-            'bowler':     ('🎯', 'Bowler',     'bg-red-100 text-red-800'),
-            'allrounder': ('⭐', 'All-Rounder', 'bg-purple-100 text-purple-800'),
+            'batsman':    ('Batsman',    'bg-sky-100 text-sky-800'),
+            'bowler':     ('Bowler',     'bg-red-100 text-red-800'),
+            'allrounder': ('All-Rounder', 'bg-purple-100 text-purple-800'),
         }
-        icon, label, classes = badges.get(value_lower, ('', value, 'bg-stone-100 text-stone-700'))
+        label, classes = badges.get(value_lower, (value, 'bg-stone-100 text-stone-700'))
         return mark_safe(
-            f'<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full '
-            f'text-xs font-medium {classes}">{icon} {label}</span>'
+            f'<span class="inline-flex items-center px-2 py-0.5 rounded-full '
+            f'text-xs font-medium {classes}">{label}</span>'
         )
 
     def render_batting_rating(self, value):

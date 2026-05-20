@@ -51,9 +51,6 @@
                                 {% if u.role == 'batsman' %}badge-sky
                                 {% elif u.role == 'bowler' %}badge-red
                                 {% else %}badge-purple{% endif %}">
-                                {% if u.role == 'batsman' %}🏏
-                                {% elif u.role == 'bowler' %}🎯
-                                {% else %}⭐{% endif %}
                                 {{ u.role|title|default:"—" }}
                             </span>
                         </td>
@@ -62,13 +59,13 @@
                         <td>
                             <div class="flex items-center gap-3 text-xs text-stone-600">
                                 <span title="Batting" class="flex items-center gap-1">
-                                    🏏 <span class="font-semibold">{{ u.batting_rating|default:"—" }}</span>
+                                    <span class="text-stone-400">Bat</span> <span class="font-semibold">{{ u.batting_rating|default:"—" }}</span>
                                 </span>
                                 <span title="Bowling" class="flex items-center gap-1">
-                                    🎯 <span class="font-semibold">{{ u.bowling_rating|default:"—" }}</span>
+                                    <span class="text-stone-400">Bowl</span> <span class="font-semibold">{{ u.bowling_rating|default:"—" }}</span>
                                 </span>
                                 <span title="Fielding" class="flex items-center gap-1">
-                                    🤸 <span class="font-semibold">{{ u.fielding_rating|default:"—" }}</span>
+                                    <span class="text-stone-400">Field</span> <span class="font-semibold">{{ u.fielding_rating|default:"—" }}</span>
                                 </span>
                             </div>
                         </td>
