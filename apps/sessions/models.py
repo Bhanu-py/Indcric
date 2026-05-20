@@ -27,10 +27,23 @@ class Session(models.Model):
 
 
 class SessionPlayer(models.Model):
+    """A user's attendance record for a session.
+
+    Rows are auto-created when someone votes Yes on the session's availability
+    poll. Team assignment is optional — a user can be on the attendance roster
+    without yet being placed on a team. Teams come from the Match layer later.
+    """
+
     session = models.ForeignKey(Session, on_delete=models.CASCADE)
     user = models.ForeignKey('accounts.User', on_delete=models.CASCADE)
-    # String ref avoids circular import: sessions → matches
-    team = models.ForeignKey('matches.Team', on_delete=models.CASCADE)
+    # String ref avoids circular import: sessions → matches.
+    # Nullable: attendance/payments live at session level; team is informational.
+    team = models.ForeignKey(
+        'matches.Team',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     paid = models.BooleanField(default=False)
 
     class Meta:

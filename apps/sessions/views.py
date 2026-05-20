@@ -4,6 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.contrib import messages
+from django.db import models, transaction
 from django.db.models import Sum
 from django.urls import reverse
 from django.utils import timezone
@@ -143,6 +144,7 @@ def delete_session_view(request, session_id):
 @login_required
 def session_detail_view(request, session_id):
     session = get_object_or_404(Session, id=session_id)
+    is_past = session.date < timezone.now().date()
 
     def _combined_rating(u):
         """Avg of batting/bowling/fielding ratings, rounded to 2dp. Defaults each None to 2.5."""
@@ -204,8 +206,32 @@ def session_detail_view(request, session_id):
     if not session.cost_per_person and yes_votes > 0 and session.cost:
         cost_per_person_est = (session.cost / Decimal(yes_votes)).quantize(Decimal('0.01'))
 
+    # ── Attendance roster (only used by the embedded attendance card on past sessions) ──
+    attendance_roster = []
+    attendance_present_ids = []
+    if is_past and hasattr(session, 'poll'):
+        # Auto-create SessionPlayer rows for yes-voters so the roster is populated.
+        # Default each new attendee to attended=True — the optimistic assumption is that
+        # whoever voted Yes showed up. Staff unchecks no-shows and saves.
+        yes_user_ids = list(session.poll.votes.filter(choice='yes').values_list('user_id', flat=True))
+        for uid in yes_user_ids:
+            sp, _ = SessionPlayer.objects.get_or_create(session=session, user_id=uid)
+            Attendance.objects.get_or_create(match_player=sp, defaults={'attended': True})
+        attendance_roster = list(
+            SessionPlayer.objects.filter(session=session)
+            .select_related('user')
+            .order_by('user__username')
+        )
+        attendance_present_ids = list(
+            Attendance.objects.filter(match_player__session=session, attended=True)
+            .values_list('match_player_id', flat=True)
+        )
+
     context = {
         'session': session,
+        'is_past': is_past,
+        'attendance_roster': attendance_roster,
+        'attendance_present_ids': attendance_present_ids,
         'user_vote': user_vote,
         'yes_votes': yes_votes,
         'no_votes': no_votes,
@@ -232,6 +258,9 @@ def vote_session_view(request, poll_id):
     if request.method == 'POST':
         if not poll.is_open:
             messages.error(request, "This poll is closed.")
+            return redirect('session_detail', session_id=session.id)
+        if session.date < timezone.now().date():
+            messages.error(request, "This session has already ended.")
             return redirect('session_detail', session_id=session.id)
 
         choice = request.POST.get('choice')
@@ -297,6 +326,9 @@ def save_teams_view(request, session_id):
                 match.name = match_name
                 match.save(update_fields=['name'])
         else:
+            if session.date < timezone.now().date():
+                messages.error(request, "This session has already ended — new matches can't be added.")
+                return redirect('session_detail', session_id=session_id)
             match_number = session.matches.count() + 1
             match = Match.objects.create(
                 session=session,
@@ -335,6 +367,10 @@ def add_match_view(request, session_id):
         return redirect('session_detail', session_id=session_id)
 
     session = get_object_or_404(Session, id=session_id)
+
+    if session.date < timezone.now().date():
+        messages.error(request, "This session has already ended — new matches can't be added.")
+        return redirect('session_detail', session_id=session_id)
 
     if request.method == 'POST':
         last_match = session.matches.order_by('-id').first()
@@ -401,135 +437,213 @@ def delete_match_view(request, match_id):
 
 
 @login_required
-def attendance_view(request):
-    all_matches = Match.objects.filter(session__isnull=False).select_related(
-        'session').order_by('-session__date', '-session__time')
-
-    for match in all_matches:
-        attended_mps = Attendance.objects.filter(
-            match_player__session=match.session, attended=True)
-        count = attended_mps.count()
-        cost = None
-        if match.session and match.session.attendance_confirmed and match.session.cost_per_person:
-            cost = match.session.cost_per_person
-        elif count > 0 and match.session and match.session.cost > 0:
-            cost = round(match.session.cost / Decimal(count), 2)
-        match.attended_count = count
-        match.cost_per_person_calculated = cost
-
-    return render(request, 'cric/pages/attendance_list.html', {'matches': all_matches})
-
-
 @login_required
-def match_attendance_detail_view(request, match_id):
-    try:
-        match = Match.objects.prefetch_related('teams__captain').get(pk=match_id)
-        session = match.session
-    except Match.DoesNotExist:
-        messages.error(request, "The selected match does not exist.")
-        return redirect('attendance_list')
+def session_attendance_detail_view(request, session_id):
+    """POST target for the attendance form embedded in session_detail.html.
 
-    if request.method == 'POST':
-        present_mp_ids = request.POST.getlist('present')
+    Single save flow: every POST recomputes cost_per_person from the new
+    attendee count and re-syncs Payment rows. Re-saving after toggling
+    someone re-revises the split. Bare GETs redirect back to session detail
+    (there's no standalone attendance page).
+    """
+    session = get_object_or_404(Session, pk=session_id)
 
-        for mp in SessionPlayer.objects.filter(session=session):
-            attendance, created = Attendance.objects.get_or_create(match_player=mp)
-            attendance.attended = str(mp.id) in present_mp_ids
-            attendance.save()
+    if request.method != 'POST':
+        return redirect('session_detail', session_id=session.id)
 
-        messages.success(request, f'Attendance for "{match.name}" updated successfully!')
+    if not request.user.is_staff:
+        messages.error(request, "You don't have permission to perform this action.")
+        return redirect('session_detail', session_id=session.id)
 
-        if 'confirm_attendance' in request.POST:
-            present_count = len(present_mp_ids)
-            if session:
-                if present_count > 0 and session.cost > 0:
-                    cost_per_person = session.cost / Decimal(present_count)
-                    session.cost_per_person = round(cost_per_person, 2)
-                    session.attendance_confirmed = True
-                    session.save()
-                    messages.success(
-                        request,
-                        f'Attendance confirmed for {present_count} players. '
-                        f'Cost per person is {session.cost_per_person}.'
-                    )
-                else:
-                    session.cost_per_person = None
-                    session.attendance_confirmed = False
-                    session.save()
-                    messages.warning(request, 'Attendance confirmation reset (no players or no cost).')
+    present_sp_ids = set(request.POST.getlist('present'))
 
-        return redirect('match_attendance_detail', match_id=match.id)
+    with transaction.atomic():
+        # 1. Sync each SessionPlayer's Attendance.attended.
+        attendee_user_ids = []
+        for sp in SessionPlayer.objects.filter(session=session).select_related('user'):
+            is_present = str(sp.id) in present_sp_ids
+            attendance, _ = Attendance.objects.get_or_create(
+                match_player=sp, defaults={'attended': is_present}
+            )
+            if attendance.attended != is_present:
+                attendance.attended = is_present
+                attendance.save(update_fields=['attended'])
+            if is_present:
+                attendee_user_ids.append(sp.user_id)
 
-    teams = match.teams.all()
-    team1_players = []
-    team2_players = []
-    if teams.count() >= 2:
-        team1 = teams[0]
-        team2 = teams[1]
-        team1_players = SessionPlayer.objects.filter(
-            session=session, team=team1).select_related('user').all()
-        team2_players = SessionPlayer.objects.filter(
-            session=session, team=team2).select_related('user').all()
+        present_count = len(attendee_user_ids)
+        if present_count == 0 or not session.cost:
+            session.cost_per_person = None
+            session.attendance_confirmed = False
+            session.save(update_fields=['cost_per_person', 'attendance_confirmed'])
+            # Remove any pending payments — no one attended.
+            Payment.objects.filter(session=session, status='pending').delete()
+            messages.warning(request, 'No attendees marked — attendance cleared, no cost split.')
+            return redirect('session_detail', session_id=session.id)
 
-    present_list = list(Attendance.objects.filter(
-        match_player__session=session, attended=True
-    ).values_list('match_player_id', flat=True))
+        # 2. Recompute the per-person split.
+        cost_per_person = (session.cost / Decimal(present_count)).quantize(Decimal('0.01'))
+        session.cost_per_person = cost_per_person
+        session.attendance_confirmed = True
+        session.save(update_fields=['cost_per_person', 'attendance_confirmed'])
 
-    context = {
-        'match': match,
-        'teams': teams,
-        'team1_players': team1_players,
-        'team2_players': team2_players,
-        'present_list': present_list,
-    }
-    return render(request, 'cric/pages/attendance_detail.html', context)
+        # 3. Sync Payment rows:
+        #    - drop pending payments for users no longer attending
+        #    - leave paid payments alone (historic record)
+        #    - create/upsert pending payments for current attendees with the new amount
+        attendee_set = set(attendee_user_ids)
+        pending_removed = Payment.objects.filter(
+            session=session, status='pending'
+        ).exclude(user_id__in=attendee_set).delete()[0]
+
+        # Warn about attendees being unchecked while a paid Payment exists.
+        paid_unchecked = Payment.objects.filter(
+            session=session, status='paid'
+        ).exclude(user_id__in=attendee_set).select_related('user')
+        for p in paid_unchecked:
+            messages.warning(
+                request,
+                f"{p.user.username} has already paid €{p.amount} for this session "
+                f"but is now unchecked. The paid record was kept; refund manually if needed."
+            )
+
+        for uid in attendee_set:
+            payment, created = Payment.objects.get_or_create(
+                user_id=uid, session=session,
+                defaults={'amount': cost_per_person, 'status': 'pending', 'method': 'cash'},
+            )
+            if not created and payment.status == 'pending' and payment.amount != cost_per_person:
+                payment.amount = cost_per_person
+                payment.save(update_fields=['amount'])
+
+    suffix = f' Removed {pending_removed} pending payment(s).' if pending_removed else ''
+    messages.success(
+        request,
+        f'Attendance saved: {present_count} present, €{cost_per_person} per player.{suffix}'
+    )
+    return redirect('session_detail', session_id=session.id)
 
 
 @login_required
 def payments_view(request):
-    sessions = Session.objects.all()
-    selected_session = None
-    teams = []
+    """Cross-session payment tracking page.
 
+    Two tabs (via ?tab=session|balances):
+      - By session: pick a session, see attendees, toggle paid status
+      - Member balances: list of members with outstanding totals, sorted desc
+
+    POST handles per-payment toggle (paid ↔ pending) for the selected session.
+    """
+    today = timezone.now().date()
+    thirty_days_ago = today - timedelta(days=30)
+
+    # Snapshot strip ─────────────────────────────────────────────
+    outstanding_total = (
+        Payment.objects.filter(status='pending')
+        .aggregate(total=Sum('amount')).get('total') or Decimal('0')
+    )
+    sessions_30d = Session.objects.filter(
+        date__gte=thirty_days_ago, date__lte=today, attendance_confirmed=True
+    ).count()
+    # "Settled" = members with no pending payments (out of those who have any payments)
+    members_with_payments = User.objects.filter(payment__isnull=False).distinct()
+    settled_count = members_with_payments.exclude(
+        payment__status='pending'
+    ).distinct().count()
+    members_with_payments_count = members_with_payments.count()
+
+    # Sessions with confirmed attendance (the only ones that have Payment rows) ──
+    confirmed_sessions = (
+        Session.objects.filter(attendance_confirmed=True)
+        .order_by('-date', '-time')
+    )
+
+    # POST: toggle paid status for a selected session ────────────
     if request.method == 'POST':
+        if not request.user.is_staff:
+            messages.error(request, "You don't have permission to perform this action.")
+            return redirect('manage-payments')
         session_id = request.POST.get('session_id')
         try:
-            selected_session = Session.objects.get(pk=session_id)
-            match = selected_session.matches.first()
-            if match:
-                teams = list(match.team_set.all())
+            target_session = Session.objects.get(pk=session_id)
         except Session.DoesNotExist:
-            messages.error(request, 'Session not found!')
-    elif 'session_id' in request.GET:
+            messages.error(request, "Session not found.")
+            return redirect('manage-payments')
+
+        paid_user_ids = set(request.POST.getlist('paid_user'))
+        with transaction.atomic():
+            for payment in Payment.objects.filter(session=target_session):
+                new_status = 'paid' if str(payment.user_id) in paid_user_ids else 'pending'
+                if payment.status != new_status:
+                    payment.status = new_status
+                    payment.save(update_fields=['status'])
+        messages.success(request, f"Payments updated for {target_session.name}.")
+        return redirect(f"{reverse('manage-payments')}?tab=session&session_id={target_session.id}")
+
+    # Tab + selected session ─────────────────────────────────────
+    tab = request.GET.get('tab') or 'session'
+    selected_session = None
+    selected_payments = []
+    selected_paid_count = 0
+    selected_outstanding = Decimal('0')
+
+    if tab == 'session':
         session_id = request.GET.get('session_id')
-        try:
-            selected_session = Session.objects.get(pk=session_id)
-            match = selected_session.matches.first()
-            if match:
-                teams = list(match.team_set.all())
-        except Session.DoesNotExist:
-            selected_session = None
+        if session_id:
+            selected_session = Session.objects.filter(pk=session_id, attendance_confirmed=True).first()
+        if selected_session is None:
+            selected_session = confirmed_sessions.first()
+        if selected_session is not None:
+            selected_payments = list(
+                Payment.objects.filter(session=selected_session)
+                .select_related('user')
+                .order_by('user__username')
+            )
+            selected_paid_count = sum(1 for p in selected_payments if p.status == 'paid')
+            selected_outstanding = sum(
+                (p.amount for p in selected_payments if p.status != 'paid'),
+                Decimal('0'),
+            )
 
-    attendance_by_player = {}
-    if selected_session:
-        for attendance in Attendance.objects.filter(
-            match_player__session=selected_session, attended=True
-        ):
-            attendance_by_player[attendance.match_player.user.id] = attendance
-
-    paid_list = []
-    if selected_session:
-        for payment in Payment.objects.filter(session=selected_session, status='paid'):
-            session_player = SessionPlayer.objects.filter(
-                session=selected_session, user=payment.user).first()
-            if session_player:
-                paid_list.append(str(session_player.id))
+    # Balances tab ───────────────────────────────────────────────
+    balances = []
+    if tab == 'balances':
+        # Aggregate per-user totals across all sessions with payments.
+        payment_users = (
+            Payment.objects.values('user_id')
+            .annotate(
+                total_due=Sum('amount'),
+                outstanding=Sum('amount', filter=models.Q(status='pending')),
+                paid_amount=Sum('amount', filter=models.Q(status='paid')),
+            )
+        )
+        user_map = {u.id: u for u in User.objects.filter(payment__isnull=False).distinct()}
+        for row in payment_users:
+            u = user_map.get(row['user_id'])
+            if u is None:
+                continue
+            outstanding = row['outstanding'] or Decimal('0')
+            paid = row['paid_amount'] or Decimal('0')
+            total = row['total_due'] or Decimal('0')
+            balances.append({
+                'user': u,
+                'outstanding': outstanding,
+                'paid': paid,
+                'total': total,
+            })
+        balances.sort(key=lambda b: (-b['outstanding'], b['user'].username))
 
     context = {
-        'sessions': sessions,
+        'tab': tab,
+        'confirmed_sessions': confirmed_sessions,
         'selected_session': selected_session,
-        'teams': teams,
-        'paid_list': paid_list,
-        'attendance_by_player': attendance_by_player,
+        'selected_payments': selected_payments,
+        'selected_paid_count': selected_paid_count,
+        'selected_outstanding': selected_outstanding,
+        'balances': balances,
+        'outstanding_total': outstanding_total,
+        'sessions_30d': sessions_30d,
+        'settled_count': settled_count,
+        'members_with_payments_count': members_with_payments_count,
     }
     return render(request, 'cric/pages/payments.html', context)

@@ -12,7 +12,6 @@ urlpatterns = [
     path('match/<int:match_id>/delete/', views.delete_match_view, name='delete_match'),
     path('poll/<int:poll_id>/vote/', views.vote_session_view, name='vote_session'),
     path('poll/<int:poll_id>/toggle/', views.close_poll_view, name='close_poll'),
-    path('manage/attendance/', views.attendance_view, name='attendance_list'),
-    path('manage/attendance/<int:match_id>/', views.match_attendance_detail_view, name='match_attendance_detail'),
+    path('manage/attendance/session/<int:session_id>/', views.session_attendance_detail_view, name='session_attendance_detail'),
     path('manage/payments/', views.payments_view, name='manage-payments'),
 ]
