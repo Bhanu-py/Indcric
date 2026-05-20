@@ -26,19 +26,26 @@
                         sans: ['Inter', 'ui-sans-serif', 'system-ui'],
                     },
                     colors: {
+                        /* ICG navy primary — anchored by the four brand hexes
+                           supplied 2026-05-20: #435360, #425170, #366293, #021B3A.
+                           500 = vibrant mid-blue, 700 = btn-primary, 900 = header. */
                         pitch: {
-                            50:  '#f0fdf4',
-                            100: '#dcfce7',
-                            200: '#bbf7d0',
-                            300: '#86efac',
-                            400: '#4ade80',
-                            500: '#22c55e',
-                            600: '#16a34a',
-                            700: '#15803d',
-                            800: '#166534',
-                            900: '#14532d',
-                            950: '#052e16',
+                            50:  '#eef3f9',
+                            100: '#d5e1ee',
+                            200: '#abc1dc',
+                            300: '#81a1ca',
+                            400: '#5882b8',
+                            500: '#366293',   /* brand mid-blue */
+                            600: '#2b4f78',
+                            700: '#1e3c5d',   /* btn-primary base */
+                            800: '#102942',
+                            900: '#021B3A',   /* deep navy — app header, hero */
+                            950: '#011124',
                         },
+                        /* Supporting brand tokens — the two slate hexes that
+                           don't sit on the blue ramp. Use as muted accents. */
+                        'brand-steel': '#425170',
+                        'brand-slate': '#435360',
                     }
                 }
             }

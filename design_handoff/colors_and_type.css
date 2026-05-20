@@ -17,21 +17,29 @@
 
 :root {
   /* -----------------------------------------------------------
-     COLOR — PITCH GREEN (primary brand)
-     Named for the cricket pitch. Used for CTAs, links, accents,
-     the main app header (pitch-900) and the sign-in hero (pitch-950).
+     COLOR — ICG NAVY (primary brand)
+     Anchored by the four brand hexes supplied 2026-05-20:
+       #435360, #425170, #366293, #021B3A.
+     Used for CTAs, links, accents, the main app header (pitch-900)
+     and the sign-in hero (pitch-950). Pairs with the gold-shield
+     ICG logo (gold + cream on deep navy).
      ----------------------------------------------------------- */
-  --pitch-50:  #f0fdf4;
-  --pitch-100: #dcfce7;
-  --pitch-200: #bbf7d0;
-  --pitch-300: #86efac;
-  --pitch-400: #4ade80;
-  --pitch-500: #22c55e;
-  --pitch-600: #16a34a;
-  --pitch-700: #15803d;  /* btn-primary fill */
-  --pitch-800: #166534;  /* btn-primary hover, badge text */
-  --pitch-900: #14532d;  /* app header background */
-  --pitch-950: #052e16;  /* hero / signed-out background */
+  --pitch-50:  #eef3f9;
+  --pitch-100: #d5e1ee;
+  --pitch-200: #abc1dc;
+  --pitch-300: #81a1ca;
+  --pitch-400: #5882b8;
+  --pitch-500: #366293;  /* brand mid-blue */
+  --pitch-600: #2b4f78;
+  --pitch-700: #1e3c5d;  /* btn-primary fill */
+  --pitch-800: #102942;  /* btn-primary hover */
+  --pitch-900: #021B3A;  /* app header background, hero */
+  --pitch-950: #011124;  /* deepest, signed-out background */
+
+  /* Supporting brand accents — the two slate-blue hexes that don't
+     sit on the navy ramp. Use for muted chips and secondary fills. */
+  --brand-steel: #425170;
+  --brand-slate: #435360;
 
   /* -----------------------------------------------------------
      COLOR — STONE NEUTRALS (warm grey)
