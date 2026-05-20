@@ -47,12 +47,10 @@ def home(request):
 
     outstanding_total = Decimal('0')
     if request.user.is_authenticated:
-        outstanding_total = (
-            Payment.objects.filter(user=request.user, status='pending')
-            .aggregate(total=Sum('amount'))
-            .get('total')
-            or Decimal('0')
-        )
+        qs = Payment.objects.filter(status='pending')
+        if not request.user.is_staff:
+            qs = qs.filter(user=request.user)
+        outstanding_total = qs.aggregate(total=Sum('amount')).get('total') or Decimal('0')
 
     active_members = User.objects.filter(is_active=True).count()
 
@@ -64,6 +62,7 @@ def home(request):
         'next_session_votes': next_session_votes,
         'sessions_30d': sessions_30d,
         'outstanding_total': outstanding_total,
+        'outstanding_is_club_wide': request.user.is_authenticated and request.user.is_staff,
         'active_members': active_members,
     }
     return render(request, 'home.html', context)

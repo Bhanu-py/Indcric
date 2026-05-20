@@ -135,7 +135,11 @@
         <div class="card"><div class="p-4">
             {% with outstanding_str=outstanding_total|stringformat:"s" %}
             {% with outstanding_label="€"|add:outstanding_str %}
-                {% include "_components/stat_column.html" with label="Outstanding" value=outstanding_label dot="amber" first=True %}
+                {% if outstanding_is_club_wide %}
+                    {% include "_components/stat_column.html" with label="Club outstanding" value=outstanding_label dot="amber" first=True %}
+                {% else %}
+                    {% include "_components/stat_column.html" with label="Your outstanding" value=outstanding_label dot="amber" first=True %}
+                {% endif %}
             {% endwith %}
             {% endwith %}
         </div></div>
