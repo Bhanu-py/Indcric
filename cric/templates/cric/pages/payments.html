@@ -50,9 +50,7 @@
     </div>
 
     {% if tab == 'session' %}
-    {# ══════════════════════════════════════════════
-       BY SESSION — pick session + per-attendee paid
-       ══════════════════════════════════════════════ #}
+    {% comment %}BY SESSION — pick session + per-attendee paid{% endcomment %}
     <section class="mb-6">
         {% include "_components/eyebrow.html" with label="Select a session" %}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -147,9 +145,7 @@
     {% endif %}
 
     {% else %}
-    {# ══════════════════════════════════════════════
-       MEMBER BALANCES — list of users with outstanding totals, sorted desc
-       ══════════════════════════════════════════════ #}
+    {% comment %}MEMBER BALANCES — list of users with outstanding totals, sorted desc{% endcomment %}
     <section>
         {% include "_components/eyebrow.html" with label="Member balances" %}
         <div class="card overflow-hidden">

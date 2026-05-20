@@ -112,10 +112,10 @@
         </div>
     </div>
 
-    {# ═══════════════════════════════════════════════════════════
-       ATTENDANCE — embedded on past sessions only.
-       The session is the unit; mark who showed up to split cost.
-       ═══════════════════════════════════════════════════════════ #}
+    {% comment %}
+    ATTENDANCE — embedded on past sessions only.
+    The session is the unit; mark who showed up to split cost.
+    {% endcomment %}
     {% if is_past %}
     <div class="card overflow-hidden mb-6">
         <div class="card-header flex items-center justify-between flex-wrap gap-2">

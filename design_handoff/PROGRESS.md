@@ -3,8 +3,8 @@
 Single source of truth for **where the design refresh stands and what to do next**.
 Update this file at the end of every working session so any machine (or future Claude session) can pick up without re-discovery.
 
-Last updated: **2026-05-15**
-Last commit: **`ed1a74a` — Add design overhaul progress tracker for handoff between machines**
+Last updated: **2026-05-20**
+Last commit: **`455f7c0` — Fix session lifecycle: attendance on session, single-save split, past sessions locked**
 Branch: **`master`** (synced with `origin/master`)
 
 ---
@@ -63,18 +63,22 @@ The "Spec" column lists exact pixel values from the design handoff. The "Impleme
 |---|---|---|
 | 1 | Foundation (tokens, partials, assets) | **Done** |
 | 2 | Login screen refresh | **Done** |
-| 2 | Dashboard refresh | **Done** |
-| 2 | Sign-up screen refresh | **Done (uncommitted)** |
-| 2 | Dashboard auth-tier gating | **Done (uncommitted)** |
-| 2 | Session detail refresh | **Done (uncommitted)** |
-| 2 | Profile refresh | **Done (uncommitted)** |
-| 2 | Payments refresh ("By match" / "Who owes whom" tabs) | **Pending** |
+| 2 | Login tab order (Forgot password placement) | **Done** |
+| 2 | Sign-up screen refresh (email required, WhatsApp phone) | **Done** |
+| 2 | Dashboard refresh + auth-tier gating | **Done** |
+| 2 | Dashboard "Add WhatsApp number" nudge banner | **Done** |
+| 2 | Session detail refresh | **Done** |
+| 2 | Session lifecycle: past sessions locked, attendance embedded, single-save split | **Done** |
+| 2 | Profile refresh | **Done** |
+| 2 | Edit-user modal (manage-users) URL fix | **Done** |
+| 2 | Payments refresh ("By session" / "Member balances" tabs) | **Done** |
 | 3 | Wallet transaction history (new) | **Pending** |
 | 3 | Team balance / snake-draft (new) | **Pending** |
 | 3 | Match result with scorecards (refresh skeleton) | **Pending** |
 | 3 | Notifications tabbed feed (new) | **Pending** |
-| 3 | Onboarding 3-step refresh | **Pending** |
+| 3 | Onboarding 3-step refresh — phone moved to signup, role still in onboarding | **Done (role step kept)** |
 | 3 | Mobile bottom nav (last) | **Pending** |
+| 3 | Settlement plan ("Who owes whom" peer-to-peer transfers) on Payments page | **Pending** |
 
 ---
 
@@ -299,6 +303,62 @@ The match-card "Show players" toggle is gone. **Player lists render unconditiona
 
 ---
 
+## What's done — Phase 2 (Session lifecycle: attendance + payments + past-session lockdown)
+
+Commit `455f7c0`. This slice unblocked attendance/payments end-to-end and turned past sessions into a closed state.
+
+### Data layer
+- **`SessionPlayer.team` is now nullable** (migration `0003_alter_sessionplayer_team`). Attendance and payment split live at session level; team is informational and populated later by the Match layer if/when teams are drafted.
+- **SessionPlayer was never created anywhere before this slice.** `session_detail_view` now auto-`get_or_create`s a SessionPlayer + `Attendance(attended=True)` for every Yes-voter on a past session. The pre-ticked roster appears because the DB rows really are set to attended=True.
+
+### Attendance UX (session-centric, not page-centric)
+- **Standalone `/manage/attendance/` pages are gone.** Deleted `attendance_view`, `attendance_list.html`, `attendance_detail.html`. Header "Attendance" link removed. Dashboard "Attendance" shortcut removed.
+- **Embedded card in `session_detail.html`** — appears for past sessions only, right after the Cost-split block. Renders the roster as a single list (no team split required).
+- **Single "Save attendance" button** — no separate Save/Confirm. Every save:
+  - Updates `Attendance.attended` per checkbox.
+  - Recomputes `session.cost_per_person = session.cost / present_count` (Decimal, quantized to `0.01`).
+  - Syncs Payments inside `transaction.atomic`:
+    - creates `pending` Payments for new attendees with the new amount,
+    - updates pending amounts when the split changes,
+    - deletes pending Payments for users now unchecked,
+    - leaves `paid` Payments alone and warns ("refund manually if needed") if you uncheck someone who already paid.
+- **Re-saving after toggling re-revises the split.** No lock-in after first confirm.
+
+### Past sessions are locked
+- **"Session ended" badge** in the session_detail hero (replaces the poll status badge when `is_past`).
+- **Voting hidden** in template + rejected in `vote_session_view` (`session.date < today` → redirect with error).
+- **Add Match button hidden** in template; both `add_match_view` and the no-`match_id` branch of `save_teams_view` reject past sessions. Editing existing matches is still allowed for historical fixes.
+- **Poll badge hidden** when `is_past` (replaced by the "Session ended" badge).
+
+### Attendance tracking on dashboard
+- Past-session cards (everywhere `_components/session_card.html` is rendered) get a new bottom row: an "Attendance" label with a **Confirmed** (green) or **Pending** (amber) badge. Staff scans the dashboard's Previous Sessions section to see which sessions still need attention — no separate tracker needed.
+
+### Payments page rewrite (per [PaymentsScreen.jsx](ui_kits/indcric_web/PaymentsScreen.jsx), Match → Session)
+- **Snapshot strip**: Outstanding (€, amber) · Sessions · 30d (pitch) · Settled X / Y (emerald). Uses `_components/stat_column.html`.
+- **Segmented control tabs**: "By session" + "Member balances" (URL query `?tab=session|balances`, refresh-safe).
+- **By session tab**: 3-col session picker grid (date tile + name + per-player cost; ring-2 pitch-500 on selected); per-attendee list with paid/pending checkboxes; staff Save toggles status.
+- **Member balances tab**: every user with payment activity, sorted by outstanding desc, with **Owes €X** (amber) or **Settled** (green) badges.
+- Settlement plan (peer-to-peer transfers, "Who owes whom" section in the JSX) is **not implemented** — our system has a single collector (the club organizer), not peer credits, so that section doesn't map. Listed in Phase 3.
+
+### Files touched in commit `455f7c0`
+| File | Change |
+|---|---|
+| [apps/sessions/models.py](../apps/sessions/models.py) | `SessionPlayer.team` → `null=True, blank=True, on_delete=SET_NULL` |
+| `apps/sessions/migrations/0003_alter_sessionplayer_team.py` | New migration |
+| [apps/sessions/views.py](../apps/sessions/views.py) | `session_detail_view` computes `is_past` + auto-creates roster; `session_attendance_detail_view` rewritten as POST-only (bare GET → redirect); `add_match_view` + `save_teams_view` reject past sessions; `attendance_view` deleted; `payments_view` rewritten with snapshot + tabs + balances |
+| [apps/sessions/urls.py](../apps/sessions/urls.py) | Dropped `attendance_list` URL |
+| [cric/templates/cric/pages/session_detail.html](../cric/templates/cric/pages/session_detail.html) | "Session ended" badge; vote/team-edit affordances gated by `is_past`; embedded Attendance card after Cost split |
+| [cric/templates/cric/pages/payments.html](../cric/templates/cric/pages/payments.html) | Full rewrite per JSX |
+| [templates/_components/session_card.html](../templates/_components/session_card.html) | Attendance Confirmed/Pending badge on past cards |
+| [templates/includes/header.html](../templates/includes/header.html) | Dropped Attendance menu link |
+| [templates/home.html](../templates/home.html) | Dropped Attendance shortcut |
+| Deleted | `attendance_list.html`, `attendance_detail.html` |
+
+### Gotcha worth remembering
+**Django `{# ... #}` is single-line only.** A multi-line block with the opening `{#` on one line and `#}` on a later line is treated as literal text and renders on the page. Use `{% comment %}…{% endcomment %}` for multi-line. Bit us once in this slice on the Attendance section header; fixed in a follow-up.
+
+---
+
 ## Pending — Phase 3 (new features)
 
 ### E. Wallet transaction history
@@ -366,3 +426,11 @@ After Phase 2 is done, regroup before starting Phase 3 — those slices are net-
 ## Commit log (design overhaul)
 
 - `a0f9412` — Adopt new design system: foundation + login + dashboard refresh
+- `ed1a74a` — Add design overhaul progress tracker for handoff between machines
+- `5963eb0` — Phase 2 design refresh: auth + dashboard + session detail + profile
+- `f9a8ec2` — Fix edit-user modal: replace stale hardcoded URL with template-resolved prefix
+- `e82edb3` — Fix signup label: mark email as required, not optional
+- `8dc962c` — Fix TemplateSyntaxError on /manage-users/: rename underscore-prefixed var
+- `7c13cad` — Collect WhatsApp phone at signup; nudge existing users via dashboard banner
+- `4ceda25` — Fix login tab order: move Forgot password link below password input
+- `455f7c0` — Fix session lifecycle: attendance on session, single-save split, past sessions locked
