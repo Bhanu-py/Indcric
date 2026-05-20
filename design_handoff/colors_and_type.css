@@ -17,29 +17,37 @@
 
 :root {
   /* -----------------------------------------------------------
-     COLOR — ICG NAVY (primary brand)
-     Anchored by the four brand hexes supplied 2026-05-20:
-       #435360, #425170, #366293, #021B3A.
-     Used for CTAs, links, accents, the main app header (pitch-900)
-     and the sign-in hero (pitch-950). Pairs with the gold-shield
-     ICG logo (gold + cream on deep navy).
-     ----------------------------------------------------------- */
-  --pitch-50:  #eef3f9;
-  --pitch-100: #d5e1ee;
-  --pitch-200: #abc1dc;
-  --pitch-300: #81a1ca;
-  --pitch-400: #5882b8;
-  --pitch-500: #366293;  /* brand mid-blue */
-  --pitch-600: #2b4f78;
-  --pitch-700: #1e3c5d;  /* btn-primary fill */
-  --pitch-800: #102942;  /* btn-primary hover */
-  --pitch-900: #021B3A;  /* app header background, hero */
-  --pitch-950: #011124;  /* deepest, signed-out background */
+     COLOR — PITCH (primary brand)
+     ICG ran a Deccan-Chargers-inspired navy rebrand. The variable
+     name "pitch" is held over from the green era so nothing
+     downstream breaks; the values are now a deep heritage navy
+     ramp anchored on #366293 (mid) and #021B3A (deepest). Pairs
+     with the gold (amber) accent on the new shield crest.
 
-  /* Supporting brand accents — the two slate-blue hexes that don't
-     sit on the navy ramp. Use for muted chips and secondary fills. */
-  --brand-steel: #425170;
-  --brand-slate: #435360;
+     Reference codes from the brief:
+       #435360  #425170  #366293  #021B3A
+     ----------------------------------------------------------- */
+  --pitch-50:  #eef3f8;
+  --pitch-100: #d6e2ee;
+  --pitch-200: #adc4dd;
+  --pitch-300: #7fa3c6;
+  --pitch-400: #5784b0;
+  --pitch-500: #3f6ea0;
+  --pitch-600: #366293;  /* brief anchor — bright royal */
+  --pitch-700: #2a5078;  /* btn-primary fill */
+  --pitch-800: #1b3858;  /* btn-primary hover, badge text */
+  --pitch-900: #0a2647;  /* app header background */
+  --pitch-950: #021b3a;  /* brief anchor — hero / signed-out background */
+
+  /* -----------------------------------------------------------
+     COLOR — INK (complementary slate / indigo)
+     The other two codes from the rebrand brief, kept available as
+     a moodier neutral-blue family for things like the app footer,
+     muted card chrome, or alternate header treatments. Not yet
+     wired into the workhorse tokens — opt in by class.
+     ----------------------------------------------------------- */
+  --ink-slate:  #435360;  /* slate blue-grey */
+  --ink-indigo: #425170;  /* muted indigo-slate */
 
   /* -----------------------------------------------------------
      COLOR — STONE NEUTRALS (warm grey)

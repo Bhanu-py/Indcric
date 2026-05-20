@@ -33,19 +33,41 @@ class UserHTMxTable(tables.Table):
         except Exception:
             return "€0.00"
 
+    # SVG glyphs from design_handoff/preview/icons.html — bat (sky),
+    # ball (red), allrounder (purple). Rendered as an icon-only chip
+    # so the role column reads at a glance without redundant labels.
+    _ROLE_ICONS = {
+        'batsman': (
+            'Batsman', 'bg-sky-100 text-sky-700',
+            '<path d="M12 3v5"/><path d="M10 5.5h4"/>'
+            '<rect x="9" y="8.5" width="6" height="12.5" rx="1.5"/>'
+        ),
+        'bowler': (
+            'Bowler', 'bg-red-50 text-red-700',
+            '<circle cx="12" cy="12" r="8.5"/>'
+            '<path d="M5 14c3.5 2.5 10.5 2.5 14 0"/>'
+            '<path d="M8 14.6v1.4M11 15.4v1.4M14 15.4v1.4M16.8 14.6v1.4"/>'
+        ),
+        'allrounder': (
+            'All-Rounder', 'bg-purple-100 text-purple-700',
+            '<path d="M4 4l4 4"/><path d="M7 7l9 9"/>'
+            '<path d="M14 14l3 3"/><circle cx="6.5" cy="17.5" r="3"/>'
+        ),
+    }
+
     def render_role(self, value):
         if not value:
-            return "-"
-        value_lower = value.lower()
-        badges = {
-            'batsman':    ('Batsman',    'bg-sky-100 text-sky-800'),
-            'bowler':     ('Bowler',     'bg-red-100 text-red-800'),
-            'allrounder': ('All-Rounder', 'bg-purple-100 text-purple-800'),
-        }
-        label, classes = badges.get(value_lower, (value, 'bg-stone-100 text-stone-700'))
+            return mark_safe('<span class="text-stone-300">—</span>')
+        role = self._ROLE_ICONS.get(value.lower())
+        if role is None:
+            return value
+        label, classes, paths = role
         return mark_safe(
-            f'<span class="inline-flex items-center px-2 py-0.5 rounded-full '
-            f'text-xs font-medium {classes}">{label}</span>'
+            f'<span title="{label}" class="inline-flex items-center justify-center '
+            f'w-8 h-8 rounded-lg {classes}">'
+            f'<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+            f'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">'
+            f'{paths}</svg></span>'
         )
 
     def render_batting_rating(self, value):

@@ -4,6 +4,26 @@ const { Home, Cog, ChevDown, User, Logout, UsersIcon = Icons.Users, Wallet, Cale
 function Header({ user, route, onNavigate, onLogout, unread=0 }) {
   const [manageOpen, setManageOpen] = React.useState(false);
   const [userOpen, setUserOpen] = React.useState(false);
+  const manageRef = React.useRef(null);
+  const userRef = React.useRef(null);
+
+  // Close dropdowns on outside-click or Escape. Hover-leave was closing the
+  // menu the instant the cursor crossed the small gap between trigger and
+  // panel — that's why "Log Out" was unreachable.
+  React.useEffect(() => {
+    if (!manageOpen && !userOpen) return;
+    const onDocDown = (e) => {
+      if (manageOpen && manageRef.current && !manageRef.current.contains(e.target)) setManageOpen(false);
+      if (userOpen   && userRef.current   && !userRef.current.contains(e.target))   setUserOpen(false);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') { setManageOpen(false); setUserOpen(false); } };
+    document.addEventListener('mousedown', onDocDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [manageOpen, userOpen]);
 
   return (
     <header style={{
@@ -23,8 +43,8 @@ function Header({ user, route, onNavigate, onLogout, unread=0 }) {
           )}
 
           {user.is_staff && (
-            <div style={{position:'relative'}} onMouseLeave={() => setManageOpen(false)}>
-              <NavLink onClick={() => setManageOpen(v => !v)} icon={<Cog size={16}/>}
+            <div ref={manageRef} style={{position:'relative'}}>
+              <NavLink onClick={() => { setManageOpen(v => !v); setUserOpen(false); }} icon={<Cog size={16}/>}
                        active={manageOpen || ['create-session','users'].includes(route)}>
                 Manage
                 <span style={{transform: manageOpen?'rotate(180deg)':'none', transition:'transform .15s', display:'inline-flex'}}>
@@ -45,8 +65,8 @@ function Header({ user, route, onNavigate, onLogout, unread=0 }) {
 
           <BellButton unread={unread} onClick={() => onNavigate('notifications')} active={route==='notifications'}/>
 
-          <div style={{position:'relative'}} onMouseLeave={() => setUserOpen(false)}>
-            <button onClick={() => setUserOpen(v => !v)} style={{
+          <div ref={userRef} style={{position:'relative'}}>
+            <button onClick={() => { setUserOpen(v => !v); setManageOpen(false); }} style={{
               display:'flex', alignItems:'center', gap:8, height:38, padding:'0 8px',
               borderRadius:8, background: userOpen ? 'rgba(255,255,255,0.10)' : 'transparent',
               border:'none', color:'#fff', cursor:'pointer'
@@ -67,7 +87,7 @@ function Header({ user, route, onNavigate, onLogout, unread=0 }) {
                 <DropdownItem icon={<User color="var(--stone-400)" size={16}/>} onClick={() => { setUserOpen(false); onNavigate('profile'); }}>My Profile</DropdownItem>
                 <DropdownItem icon={<Cog color="var(--stone-400)" size={16}/>} onClick={() => { setUserOpen(false); onNavigate('profile'); }}>Settings</DropdownItem>
                 <div style={{borderTop:'1px solid var(--stone-100)', margin:'4px 0'}}/>
-                <DropdownItem icon={<Logout color="var(--red-600)" size={16}/>} danger onClick={onLogout}>Log Out</DropdownItem>
+                <DropdownItem icon={<Logout color="var(--red-600)" size={16}/>} danger onClick={() => { setUserOpen(false); onLogout && onLogout(); }}>Log Out</DropdownItem>
               </Dropdown>
             )}
           </div>

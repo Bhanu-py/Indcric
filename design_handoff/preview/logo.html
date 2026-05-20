@@ -27,116 +27,160 @@
     background: var(--stone-50);
     border: 1px solid var(--stone-100);
     border-radius: 14px;
-    padding: 16px;
+    padding: 16px 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     width: fit-content;
   }
   .dark-tile {
-    background: var(--pitch-900);
+    background: var(--pitch-950);
     border-radius: 14px;
-    padding: 16px;
+    padding: 16px 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     width: fit-content;
   }
-  /* Mark wrapper: square; image fills */
-  .mark { display:block; }
+  .cream-tile {
+    background: #f4ead4;
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+  }
+  /* The crest is portrait 2:3 — keep aspect ratio fixed by width */
+  .crest { display:block; height:auto; }
+  .typo-note { font-size:11px;color:var(--stone-500);margin-top:10px;line-height:1.55; }
+  code.tok { font-family:var(--font-mono); font-size:11px; color:var(--stone-700); background:var(--stone-100); padding:1px 6px; border-radius:6px; }
 </style>
 </head>
 <body>
 <div class="card" style="padding:26px 28px;">
-  <div class="eyebrow" style="margin-bottom:18px;">Logo · ICG — Comet ball mark</div>
+  <div class="eyebrow" style="margin-bottom:6px;">Logo · ICG — Heritage shield crest</div>
+  <div style="font-size:11px;color:var(--stone-500);margin-bottom:18px;line-height:1.5;">
+    Portrait shield crest. Crown · Ghent's St. Bavo &amp; Belfry silhouette · crossed bat · banner wordmark. Built-in navy &amp; gold panel — works on light, dark and cream surfaces without a knockout box.
+  </div>
 
-  <!-- ═════════════ A · The mark at multiple sizes ═════════════ -->
+  <!-- ═════════════ A · The crest at three sizes ═════════════ -->
   <div class="group">
-    <div class="sub-eyebrow">A · Mark at three sizes</div>
+    <div class="sub-eyebrow">A · Crest at three sizes</div>
     <div style="display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap;">
 
       <div>
         <div class="light-tile">
-          <img class="mark" src="../assets/logo-mark.png" alt="ICG comet ball mark"
-               width="128" height="128" style="image-rendering: -webkit-optimize-contrast;">
+          <img class="crest" src="../assets/logo-mark.png" alt="ICG heritage crest"
+               width="168" style="image-rendering: -webkit-optimize-contrast;">
         </div>
-        <div class="tile-label">Large · 128 px</div>
-        <div class="tile-sub">app launch · marketing hero</div>
+        <div class="tile-label">Large · 168 px wide</div>
+        <div class="tile-sub">sign-in hero · jersey badge · marketing</div>
       </div>
 
       <div>
         <div class="light-tile">
-          <img class="mark" src="../assets/logo-mark.png" alt="ICG comet ball mark"
-               width="64" height="64">
+          <img class="crest" src="../assets/logo-mark.png" alt="ICG heritage crest" width="84">
         </div>
-        <div class="tile-label">Medium · 64 px</div>
-        <div class="tile-sub">app icon · share cards</div>
+        <div class="tile-label">Medium · 84 px wide</div>
+        <div class="tile-sub">profile hero · share cards</div>
       </div>
 
       <div>
         <div class="light-tile">
-          <img class="mark" src="../assets/logo-mark.png" alt="ICG comet ball mark"
-               width="32" height="32">
+          <img class="crest" src="../assets/logo-mark.png" alt="ICG heritage crest" width="44">
         </div>
-        <div class="tile-label">Small · 32 px</div>
-        <div class="tile-sub">header · favicon</div>
+        <div class="tile-label">Small · 44 px wide</div>
+        <div class="tile-sub">use sparingly — detail starts to compress</div>
       </div>
+    </div>
+    <div class="typo-note">
+      Below ~36 px the belfry detail and the lower banner copy stop reading. Use the stacked <strong>ICG</strong> wordmark (block&nbsp;C) for headers, favicons, and small chips instead.
     </div>
   </div>
 
-  <!-- ═════════════ Backgrounds the mark sits well on ═════════════ -->
+  <!-- ═════════════ B · Backgrounds ═════════════ -->
   <div class="group">
-    <div class="sub-eyebrow">Backgrounds · mark has a soft white card behind the artwork</div>
+    <div class="sub-eyebrow">B · Backgrounds — the crest carries its own panel</div>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
       <div class="light-tile" style="background:#ffffff;">
-        <img class="mark" src="../assets/logo-mark.png" width="80" height="80" alt="">
+        <img class="crest" src="../assets/logo-mark.png" width="88" alt="">
       </div>
       <div class="light-tile">
-        <img class="mark" src="../assets/logo-mark.png" width="80" height="80" alt="">
+        <img class="crest" src="../assets/logo-mark.png" width="88" alt="">
       </div>
-      <!-- on dark we wrap in a soft white card to keep contrast -->
       <div class="dark-tile">
-        <div style="background:#fff; border-radius:12px; padding:6px; display:flex;">
-          <img class="mark" src="../assets/logo-mark.png" width="74" height="74" alt="">
-        </div>
+        <img class="crest" src="../assets/logo-mark.png" width="88" alt="">
+      </div>
+      <div class="cream-tile">
+        <img class="crest" src="../assets/logo-mark.png" width="88" alt="">
       </div>
       <div style="font-size:12px;color:var(--stone-500); max-width:320px;">
-        On dark surfaces (the app header / sign-in hero) the mark sits on a soft white tile so the cricket ball stays legible. Don't reverse-knock the artwork — the flame's warm orange is the brand signal.
+        White, <code class="tok">stone-50</code>, <code class="tok">pitch-950</code>, and warm cream all read cleanly — the shield's gold trim and navy field stay legible without a knockout box. Don't recolor the crest; never place it on busy photography.
       </div>
     </div>
   </div>
 
-  <!-- ═════════════ In context — header, hero, share-card ═════════════ -->
+  <!-- ═════════════ C · Wordmark + horizontal lockup ═════════════ -->
   <div class="group">
-    <div class="sub-eyebrow">In context · header · hero · share-card</div>
+    <div class="sub-eyebrow">C · Wordmarks — small-surface fallback</div>
+    <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:24px;align-items:start;">
+
+      <!-- Stacked wordmark -->
+      <div style="display:flex;flex-direction:column;align-items:flex-start;">
+        <span style="font-size:44px;font-weight:800;letter-spacing:-0.045em;
+                     color:var(--pitch-950);line-height:0.95;font-family:var(--font-sans);">ICG</span>
+        <span style="font-size:9px;font-weight:700;letter-spacing:0.22em;
+                     color:var(--pitch-700);text-transform:uppercase;margin-top:8px;
+                     font-family:var(--font-sans);">Indian Cricket Ghent</span>
+        <div class="tile-label">Stacked wordmark</div>
+        <div class="tile-sub">letterhead · sign-in · jersey back</div>
+      </div>
+
+      <!-- Horizontal lockup -->
+      <div style="display:flex;flex-direction:column;align-items:flex-start;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <img src="../assets/logo-mark.png" width="44" alt="">
+          <span style="font-size:24px;font-weight:800;letter-spacing:-0.04em;
+                       color:var(--pitch-950);line-height:1;font-family:var(--font-sans);">ICG</span>
+          <span style="font-size:12px;font-weight:500;color:var(--stone-500);
+                       font-family:var(--font-sans);">· Cricket Club, Ghent</span>
+        </div>
+        <div class="tile-label">Horizontal lockup</div>
+        <div class="tile-sub">nav bar · share cards · footers</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════ D · In context ═════════════ -->
+  <div class="group">
+    <div class="sub-eyebrow">D · In context · header · hero · share-card</div>
     <div style="display:flex;flex-direction:column;gap:14px;">
 
       <!-- App header mock -->
-      <div style="background:var(--pitch-900); padding:12px 18px; border-radius:14px;
+      <div style="background:var(--pitch-900); padding:10px 18px; border-radius:14px;
                   display:flex; align-items:center; justify-content:space-between;">
         <div style="display:flex; align-items:center; gap:10px; color:#fff;">
-          <div style="background:#fff; border-radius:9px; padding:4px; display:flex;">
-            <img src="../assets/logo-mark.png" width="28" height="28" alt="">
-          </div>
-          <span style="font-weight:600; font-size:14px; letter-spacing:-0.005em;">ICG</span>
+          <img src="../assets/logo-mark.png" height="28" alt="">
+          <span style="font-weight:700; font-size:14px; letter-spacing:-0.005em;">ICG</span>
         </div>
         <div style="display:flex; gap:18px;">
-          <span style="font-size:12px; color:rgba(255,255,255,.85);">Dashboard</span>
-          <span style="font-size:12px; color:rgba(255,255,255,.55);">Teams</span>
-          <span style="font-size:12px; color:rgba(255,255,255,.55);">Payments</span>
+          <span style="font-size:12px; color:rgba(255,255,255,.92);">Dashboard</span>
+          <span style="font-size:12px; color:rgba(255,255,255,.6);">Teams</span>
+          <span style="font-size:12px; color:rgba(255,255,255,.6);">Payments</span>
         </div>
       </div>
 
       <!-- Hero strip (light) -->
       <div style="background:#fff; border:1px solid var(--stone-100); padding:18px 22px; border-radius:14px;
                   display:flex; align-items:center; gap:18px;">
-        <img src="../assets/logo-mark.png" width="56" height="56" alt="">
+        <img src="../assets/logo-mark.png" height="64" alt="">
         <div>
-          <div style="font-size:18px; font-weight:600; color:var(--stone-900); letter-spacing:-0.015em;">
+          <div style="font-size:18px; font-weight:700; color:var(--pitch-950); letter-spacing:-0.015em;">
             Indian Cricket Ghent
           </div>
           <div style="font-size:12px; color:var(--stone-500); margin-top:2px;">
-            Cricket club · Ghent, Belgium
+            Cricket club · Ghent, Belgium · Est. 2020
           </div>
         </div>
       </div>
@@ -144,9 +188,9 @@
       <!-- WhatsApp share card preview -->
       <div style="background:#fff; border:1px solid var(--stone-100); border-radius:14px; padding:18px;
                   display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:14px;">
-        <img src="../assets/logo-mark.png" width="40" height="40" alt="">
+        <img src="../assets/logo-mark.png" height="48" alt="">
         <div>
-          <div style="font-size:13px; font-weight:600; color:var(--stone-900);">Sunday Nets · 14 Jun</div>
+          <div style="font-size:13px; font-weight:700; color:var(--pitch-950);">Sunday Nets · 14 Jun</div>
           <div style="font-family:var(--font-mono); font-size:10px; color:var(--stone-500); margin-top:2px;
                       letter-spacing:0.04em;">SPORTHAL WATERSPORTBAAN · 18:00</div>
         </div>
@@ -157,39 +201,12 @@
     </div>
   </div>
 
-  <!-- ═════════════ B & C — wordmark + horizontal lockup ═════════════ -->
-  <div class="group">
-    <div class="sub-eyebrow">B &amp; C · wordmark + horizontal lockup</div>
-    <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:24px;align-items:start;">
-
-      <!-- B · Stacked wordmark -->
-      <div style="display:flex;flex-direction:column;align-items:flex-start;">
-        <span style="font-size:40px;font-weight:700;letter-spacing:-0.05em;
-                     color:var(--stone-900);line-height:0.95;font-family:var(--font-sans);">ICG</span>
-        <span style="font-size:9px;font-weight:600;letter-spacing:0.22em;
-                     color:var(--stone-500);text-transform:uppercase;margin-top:8px;
-                     font-family:var(--font-sans);">Indian Cricket Ghent</span>
-        <div class="tile-label">B · Stacked wordmark</div>
-        <div class="tile-sub">primary lockup · letterhead · sign-in</div>
-      </div>
-
-      <!-- C · Horizontal lockup -->
-      <div style="display:flex;flex-direction:column;align-items:flex-start;">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <img src="../assets/logo-mark.png" width="40" height="40" alt="">
-          <span style="font-size:24px;font-weight:700;letter-spacing:-0.04em;
-                       color:var(--stone-900);line-height:1;font-family:var(--font-sans);">ICG</span>
-          <span style="font-size:12px;font-weight:500;color:var(--stone-500);
-                       font-family:var(--font-sans);">· Cricket Club, Ghent</span>
-        </div>
-        <div class="tile-label">C · Horizontal lockup</div>
-        <div class="tile-sub">nav bar · share cards · footers</div>
-      </div>
-    </div>
+  <div style="margin-top:18px;padding:12px 14px;background:#fff7e0;border:1px solid #f1d98a;border-radius:10px;font-size:11px;color:#7a5b00;line-height:1.5;">
+    ⚠︎ Typo flag — the lower ribbon currently reads <strong>“EST. 2020 CHENT”</strong>. If that should be <strong>GHENT</strong>, re-export the artwork before this hits production surfaces.
   </div>
 
-  <div style="margin-top:16px;font-size:12px;color:var(--stone-500);">
-    The comet ball mark from the reference image, used as-is. Lives at <code style="font-family:var(--font-mono);font-size:11px;">assets/logo-mark.png</code>. Sits on a white tile on the dark app header so the cricket ball and the warm flame both stay legible. Pair with the wordmark for B and with the mark + wordmark for the horizontal lockup C.
+  <div class="typo-note" style="margin-top:14px;">
+    Crest artwork lives at <code class="tok">design_handoff/assets/logo-mark.png</code> (1024×1536, PNG with transparency). The brand is now navy + gold — pair the shield with <code class="tok">--pitch-950</code> backgrounds and the <code class="tok">--amber-500</code> accent for in-product surfaces.
   </div>
 </div>
 </body></html>
