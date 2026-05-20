@@ -2,7 +2,7 @@
 {% load i18n static %}
 {% load allauth account %}
 
-{% block title %}Sign In — IndCric{% endblock %}
+{% block title %}ICG | Sign In{% endblock %}
 {% block header %}{% endblock %}
 
 {% block content %}
@@ -20,9 +20,9 @@
             <!-- Mobile-only logo -->
             <div class="lg:hidden flex flex-col items-center mb-10">
                 <div class="w-12 h-12 rounded-[10px] bg-white p-1.5 flex items-center justify-center shadow-lg ring-1 ring-stone-100 mb-3">
-                    <img src="{% static 'icons/logo-mark.png' %}" alt="IndCric" class="w-full h-full object-contain">
+                    <img src="{% static 'icons/logo-mark.png' %}" alt="ICG" class="w-full h-full object-contain">
                 </div>
-                <span class="text-xl font-bold text-stone-900">IndCric</span>
+                <span class="text-xl font-bold text-stone-900">ICG</span>
                 <span class="font-mono text-[11px] text-stone-400 uppercase tracking-[0.08em] mt-0.5">Cricket Club Manager</span>
             </div>
 
@@ -142,7 +142,7 @@
             <!-- ── Sign up link ── -->
             <div class="mt-8 pt-6 border-t border-stone-100 text-center">
                 <p class="text-sm text-stone-500">
-                    New to IndCric?
+                    New to ICG?
                     <a href="{% url 'account_signup' %}"
                        class="ml-1 font-semibold text-pitch-700 hover:text-pitch-900 transition-colors">
                         Create an account →
