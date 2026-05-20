@@ -5,9 +5,9 @@
 
 {% block main %}
 {# URL prefix for the edit-user endpoint; trailing /<id>/ appended in JS so {% url %} can resolve at template-render time #}
-{% url 'edit-user' 0 as _edit_user_url_template %}
+{% url 'edit-user' 0 as edit_user_url_template %}
 <div class="max-w-6xl mx-auto px-4 py-8"
-     data-edit-user-url-prefix="{{ _edit_user_url_template|slice:':-2' }}">
+     data-edit-user-url-prefix="{{ edit_user_url_template|slice:':-2' }}">
     <div class="mb-6 flex justify-between items-center">
         <h2 class="text-2xl font-bold">User Management</h2>
         <a href="{% url 'create_user' %}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">
