@@ -67,6 +67,16 @@
          Authenticated dashboard
     ═══════════════════════════════════════════ -->
 
+    {# WhatsApp number nudge — for accounts created before phone-at-signup was required. #}
+    {% if not request.user.phone %}
+    {% url 'profile-settings' as settings_url %}
+    {% with phone_settings_url=settings_url|add:"#phone-form" %}
+    <div class="mb-5">
+        {% include "_components/alert.html" with variant="warn" title="Add your WhatsApp number" body="We use this for session reminders and payment nudges. It only takes a moment." cta_url=phone_settings_url cta_label="Open settings" %}
+    </div>
+    {% endwith %}
+    {% endif %}
+
     <!-- Welcome row -->
     <div class="flex items-end justify-between gap-4 mb-6 flex-wrap">
         <div>

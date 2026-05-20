@@ -114,6 +114,9 @@ ACCOUNT_EMAIL_VERIFICATION = "optional"
 ACCOUNT_USERNAME_REQUIRED = True
 ACCOUNT_LOGIN_METHODS = {"username", "email"}
 ACCOUNT_SIGNUP_FIELDS = ["username*", "email*", "password1*", "password2*"]
+# Custom signup form adds the required WhatsApp phone field (used by the
+# WhatsApp bot integration in apps/notifications).
+ACCOUNT_FORMS = {"signup": "apps.accounts.forms.CustomSignupForm"}
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http" if DEBUG else "https"
 ACCOUNT_EMAIL_SUBJECT_PREFIX = "[IndCric] "
 

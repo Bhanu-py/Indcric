@@ -170,7 +170,8 @@ def profile_delete_view(request):
 
 @login_required
 def profile_onboarding_view(request):
-    if request.user.phone:
+    # Phone is collected at signup; onboarding only captures playing role.
+    if request.user.role:
         return redirect('profile')
     if request.method == 'POST':
         form = OnboardingForm(request.POST, instance=request.user)

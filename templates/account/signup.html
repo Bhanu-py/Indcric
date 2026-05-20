@@ -90,6 +90,35 @@
                     {% endfor %}
                 </div>
 
+                <!-- ── WhatsApp phone ── -->
+                <div>
+                    <label class="form-label" for="id_phone">WhatsApp number <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                            <svg class="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 5a2 2 0 012-2h2.28a2 2 0 011.94 1.515l.61 2.435a2 2 0 01-.45 1.953L8.09 10.408a11.042 11.042 0 005.502 5.502l1.505-1.29a2 2 0 011.953-.45l2.435.61A2 2 0 0121 16.72V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                            </svg>
+                        </div>
+                        <input class="form-input !pl-10 {% if form.phone.errors %}!border-red-400 focus:!ring-red-400{% endif %}"
+                               type="tel" id="id_phone" name="phone"
+                               value="{{ form.phone.value|default:'' }}"
+                               placeholder="+32471123456"
+                               inputmode="tel"
+                               autocomplete="tel">
+                    </div>
+                    {% if form.phone.errors %}
+                        {% for error in form.phone.errors %}
+                        <p class="mt-1.5 flex items-center gap-1.5 text-xs text-red-600">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>{{ error }}
+                        </p>
+                        {% endfor %}
+                    {% else %}
+                        <p class="mt-1.5 text-xs text-stone-400">Used for session reminders &amp; payment nudges. Start with + and country code.</p>
+                    {% endif %}
+                </div>
+
                 <!-- ── Password ── -->
                 <div>
                     <label class="form-label" for="id_password1">Password <span class="text-red-500">*</span></label>

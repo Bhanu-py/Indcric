@@ -1,33 +1,68 @@
+from allauth.account.forms import SignupForm
 from django import forms
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
 
-class OnboardingForm(forms.ModelForm):
+def _normalize_phone(raw):
+    """Strip whitespace, enforce leading '+', return canonical form."""
+    phone = (raw or '').strip()
+    if not phone:
+        raise forms.ValidationError('WhatsApp number is required.')
+    if not phone.startswith('+'):
+        raise forms.ValidationError('Phone must start with + and country code, e.g. +32471123456')
+    return phone
+
+
+class CustomSignupForm(SignupForm):
+    """Allauth signup form extended with a required WhatsApp number.
+
+    Phone is required because the next-stage WhatsApp integration relies on
+    reaching every member — see design_handoff/PROGRESS.md and the BotEvent
+    model in apps/notifications/models.py.
+    """
+
     phone = forms.CharField(
         max_length=20,
-        help_text='International format e.g. +32471123456',
-        widget=forms.TextInput(attrs={'class': 'w-full p-2 border rounded', 'placeholder': '+32471123456'}),
+        required=True,
+        label='WhatsApp number',
+        help_text='International format, e.g. +32471123456',
+        widget=forms.TextInput(attrs={
+            'placeholder': '+32471123456',
+            'autocomplete': 'tel',
+            'inputmode': 'tel',
+        }),
     )
+
+    def clean_phone(self):
+        phone = _normalize_phone(self.cleaned_data.get('phone'))
+        if User.objects.filter(phone=phone).exists():
+            raise forms.ValidationError('This number is already registered.')
+        return phone
+
+    def save(self, request):
+        user = super().save(request)
+        user.phone = self.cleaned_data['phone']
+        user.save(update_fields=['phone'])
+        return user
+
+
+class OnboardingForm(forms.ModelForm):
+    """Post-signup step that captures playing role.
+
+    Phone is collected at signup via CustomSignupForm, so it's not asked here.
+    """
 
     class Meta:
         model = User
-        fields = ['phone', 'role']
+        fields = ['role']
         widgets = {
             'role': forms.Select(
                 attrs={'class': 'w-full p-2 border rounded'},
                 choices=[('batsman', 'Batsman'), ('bowler', 'Bowler'), ('allrounder', 'All-Rounder')],
             ),
         }
-
-    def clean_phone(self):
-        phone = self.cleaned_data['phone'].strip()
-        if not phone.startswith('+'):
-            raise forms.ValidationError('Phone must start with + and country code, e.g. +32471123456')
-        if User.objects.filter(phone=phone).exclude(pk=self.instance.pk).exists():
-            raise forms.ValidationError('This phone number is already registered.')
-        return phone
 
 
 class ProfileForm(forms.ModelForm):
@@ -73,13 +108,13 @@ class PhoneForm(forms.ModelForm):
             'phone': forms.TextInput(attrs={
                 'class': 'w-full p-2 border rounded',
                 'placeholder': '+32471123456',
+                'autocomplete': 'tel',
+                'inputmode': 'tel',
             }),
         }
 
     def clean_phone(self):
-        phone = (self.cleaned_data.get('phone') or '').strip()
-        if phone and not phone.startswith('+'):
-            raise forms.ValidationError('Must start with + and country code, e.g. +32471123456')
-        if phone and User.objects.filter(phone=phone).exclude(pk=self.instance.pk).exists():
+        phone = _normalize_phone(self.cleaned_data.get('phone'))
+        if User.objects.filter(phone=phone).exclude(pk=self.instance.pk).exists():
             raise forms.ValidationError('This number is already registered to another account.')
-        return phone or None
+        return phone

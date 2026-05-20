@@ -1,12 +1,17 @@
 {% comment %}
 Alert box — info / success / warn / error.
+Per the design system spec: glyph + title + body + optional action.
+
 Usage:
   {% include "_components/alert.html" with variant="success" title="Saved" body="Your changes are live." %}
+  {% include "_components/alert.html" with variant="warn" title="Add your WhatsApp number" body="Used for reminders." cta_url="/profile/settings/" cta_label="Open settings" %}
 
 Args:
-  variant   info | success | warn | error   (default info)
-  title     short heading (optional)
-  body      message body
+  variant    info | success | warn | error                       (default info)
+  title      short heading                                       (optional)
+  body       message body                                        (optional)
+  cta_url    URL for the action link                             (optional)
+  cta_label  label text for the action link                      (optional, default "Open")
 {% endcomment %}
 {% with av=variant|default:"info" %}
 <div class="alert
@@ -14,9 +19,33 @@ Args:
     {% elif av == 'warn' %}alert-warn-box
     {% elif av == 'error' %}alert-error-box
     {% else %}alert-info-box{% endif %}">
+
+    {# Leading glyph — tinted to match variant via currentColor #}
+    <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {% if av == 'success' %}
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        {% elif av == 'warn' %}
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        {% elif av == 'error' %}
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        {% else %}
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        {% endif %}
+    </svg>
+
     <div class="flex-1">
         {% if title %}<div class="font-semibold mb-0.5">{{ title }}</div>{% endif %}
-        <div>{{ body }}</div>
+        {% if body %}<div>{{ body }}</div>{% endif %}
     </div>
+
+    {% if cta_url %}
+    <a href="{{ cta_url }}"
+       class="shrink-0 self-center inline-flex items-center gap-1 text-sm font-semibold hover:underline">
+        {{ cta_label|default:"Open" }}
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+        </svg>
+    </a>
+    {% endif %}
 </div>
 {% endwith %}
