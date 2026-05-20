@@ -135,17 +135,38 @@
         <div class="card"><div class="p-4">
             {% with outstanding_str=outstanding_total|stringformat:"s" %}
             {% with outstanding_label="€"|add:outstanding_str %}
-                {% if outstanding_is_club_wide %}
-                    {% include "_components/stat_column.html" with label="Club outstanding" value=outstanding_label dot="amber" first=True %}
-                {% else %}
-                    {% include "_components/stat_column.html" with label="Your outstanding" value=outstanding_label dot="amber" first=True %}
-                {% endif %}
+                {% include "_components/stat_column.html" with label="Your outstanding" value=outstanding_label dot="amber" first=True %}
             {% endwith %}
             {% endwith %}
         </div></div>
         <div class="card"><div class="p-4">
             {% include "_components/stat_column.html" with label="Active members" value=active_members dot="sky" first=True %}
         </div></div>
+    </div>
+    {% else %}
+    <!-- ── Member snapshot — personal outstanding only ── -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-6">
+        <div class="card"><div class="p-4">
+            {% with outstanding_str=outstanding_total|stringformat:"s" %}
+            {% with outstanding_label="€"|add:outstanding_str %}
+                {% include "_components/stat_column.html" with label="Your outstanding" value=outstanding_label dot="amber" first=True %}
+            {% endwith %}
+            {% endwith %}
+        </div></div>
+        {% if next_session %}
+        <a href="{% url 'session_detail' next_session.id %}" class="card hover:shadow-md transition-shadow group block">
+            <div class="card-accent card-accent-pitch"></div>
+            <div class="p-4">
+                <div class="micro-label mb-2">Next up · {{ next_session.date|date:"D j M" }}</div>
+                <div class="text-base font-semibold text-stone-900 leading-tight group-hover:text-pitch-700 transition-colors">
+                    {{ next_session.name|default:"Untitled session" }}
+                </div>
+                <div class="text-xs text-stone-500 mt-1">
+                    {{ next_session.location }} · {{ next_session.time }}
+                </div>
+            </div>
+        </a>
+        {% endif %}
     </div>
     {% endif %}
 
