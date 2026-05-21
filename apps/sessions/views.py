@@ -13,7 +13,7 @@ from decimal import Decimal
 from .models import Session, SessionPlayer, Attendance
 from apps.matches.models import Match, Team, Player
 from apps.polls.models import Poll, Vote
-from apps.payments.models import Payment
+from apps.payments.models import Payment, Wallet
 
 User = get_user_model()
 
@@ -41,18 +41,24 @@ def home(request):
     next_session_votes = (
         session_vote_counts.get(next_session.id) if next_session else None
     )
-    sessions_30d = Session.objects.filter(
-        date__gte=today - timedelta(days=30), date__lte=today
-    ).count()
 
     outstanding_total = Decimal('0')
+    wallet_balance = Decimal('0')
+    next_session_user_vote = None
     if request.user.is_authenticated:
         outstanding_total = (
             Payment.objects.filter(user=request.user, status='pending')
             .aggregate(total=Sum('amount')).get('total') or Decimal('0')
         )
-
-    active_members = User.objects.filter(is_active=True).count()
+        wallet_balance = (
+            Wallet.objects.filter(user=request.user)
+            .aggregate(total=Sum('amount')).get('total') or Decimal('0')
+        )
+        if next_session and hasattr(next_session, 'poll'):
+            vote = Vote.objects.filter(
+                poll=next_session.poll, user=request.user
+            ).first()
+            next_session_user_vote = vote.choice if vote else None
 
     context = {
         'upcoming_sessions': upcoming_sessions,
@@ -60,9 +66,9 @@ def home(request):
         'vote_counts': session_vote_counts,
         'next_session': next_session,
         'next_session_votes': next_session_votes,
-        'sessions_30d': sessions_30d,
+        'next_session_user_vote': next_session_user_vote,
         'outstanding_total': outstanding_total,
-        'active_members': active_members,
+        'wallet_balance': wallet_balance,
     }
     return render(request, 'home.html', context)
 

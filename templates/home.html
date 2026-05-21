@@ -93,9 +93,9 @@
         {% endif %}
     </div>
 
-    {% if user.is_staff %}
-    <!-- ── Snapshot strip — STAFF ONLY per DESIGN_SYSTEM.md audience matrix ── -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr] gap-3.5 mb-6">
+    <!-- ── Member snapshot (same for staff — staff is also a member) ──
+         Next up (with vote-status pill) · Your outstanding · Wallet balance -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr] gap-3.5 mb-6">
 
         <!-- Next-up highlight card -->
         {% if next_session %}
@@ -109,15 +109,32 @@
                 <div class="text-xs text-stone-500">
                     {{ next_session.location }} · {{ next_session.time }}
                 </div>
-                {% if next_session_votes %}
-                <div class="mt-3 pt-2.5 border-t border-stone-100 flex items-center justify-between text-xs">
-                    <span class="text-stone-600">
+
+                {% if next_session.poll %}
+                <div class="mt-3 pt-2.5 border-t border-stone-100 flex items-center justify-between text-xs gap-2">
+                    {% if next_session_votes %}
+                    <span class="text-stone-600 shrink-0">
                         <b class="text-emerald-700">{{ next_session_votes.yes_votes }}</b> in · {{ next_session_votes.no_votes }} out
                     </span>
-                    <span class="text-pitch-700 font-medium inline-flex items-center gap-1">
-                        Open
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    {% else %}
+                    <span class="text-stone-400 shrink-0">No votes yet</span>
+                    {% endif %}
+
+                    {% if next_session.poll.is_open and not next_session_user_vote %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-pitch-100 text-pitch-700 text-[11px] font-semibold shrink-0">
+                        <span class="w-1.5 h-1.5 rounded-full bg-pitch-500 animate-pulse"></span>
+                        Tap to vote
                     </span>
+                    {% elif next_session_user_vote == 'yes' %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-semibold shrink-0">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                        You're in
+                    </span>
+                    {% elif next_session_user_vote == 'no' %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 text-[11px] font-semibold shrink-0">
+                        You're out
+                    </span>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
@@ -130,9 +147,6 @@
         {% endif %}
 
         <div class="card"><div class="p-4">
-            {% include "_components/stat_column.html" with label="Sessions · 30d" value=sessions_30d dot="pitch" first=True %}
-        </div></div>
-        <div class="card"><div class="p-4">
             {% with outstanding_str=outstanding_total|stringformat:"s" %}
             {% with outstanding_label="€"|add:outstanding_str %}
                 {% include "_components/stat_column.html" with label="Your outstanding" value=outstanding_label dot="amber" first=True %}
@@ -140,35 +154,13 @@
             {% endwith %}
         </div></div>
         <div class="card"><div class="p-4">
-            {% include "_components/stat_column.html" with label="Active members" value=active_members dot="sky" first=True %}
-        </div></div>
-    </div>
-    {% else %}
-    <!-- ── Member snapshot — personal outstanding only ── -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-6">
-        <div class="card"><div class="p-4">
-            {% with outstanding_str=outstanding_total|stringformat:"s" %}
-            {% with outstanding_label="€"|add:outstanding_str %}
-                {% include "_components/stat_column.html" with label="Your outstanding" value=outstanding_label dot="amber" first=True %}
+            {% with wallet_str=wallet_balance|stringformat:"s" %}
+            {% with wallet_label="€"|add:wallet_str %}
+                {% include "_components/stat_column.html" with label="Wallet balance" value=wallet_label dot="sky" first=True %}
             {% endwith %}
             {% endwith %}
         </div></div>
-        {% if next_session %}
-        <a href="{% url 'session_detail' next_session.id %}" class="card hover:shadow-md transition-shadow group block">
-            <div class="card-accent card-accent-pitch"></div>
-            <div class="p-4">
-                <div class="micro-label mb-2">Next up · {{ next_session.date|date:"D j M" }}</div>
-                <div class="text-base font-semibold text-stone-900 leading-tight group-hover:text-pitch-700 transition-colors">
-                    {{ next_session.name|default:"Untitled session" }}
-                </div>
-                <div class="text-xs text-stone-500 mt-1">
-                    {{ next_session.location }} · {{ next_session.time }}
-                </div>
-            </div>
-        </a>
-        {% endif %}
     </div>
-    {% endif %}
 
     <!-- ── Inline action shortcuts ── -->
     <div class="flex gap-2 mb-8 flex-wrap">
