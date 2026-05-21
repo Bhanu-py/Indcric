@@ -233,9 +233,11 @@
             @apply text-2xl font-bold text-stone-900 tabular-nums leading-none;
         }
 
-        /* ── Stat column (typographic mono label + tnum numeric, separated by 1px rule) ── */
+        /* ── Stat column (typographic mono label + tnum numeric, separated by 1px rule).
+              justify-between pins the label to the top and the number to the bottom,
+              so numbers stay aligned across columns even when one label wraps. ── */
         .stat-col {
-            @apply flex flex-col gap-1 px-4 py-2 border-l border-stone-100 first:border-l-0 first:pl-0;
+            @apply flex flex-col justify-between gap-1 px-4 py-2 border-l border-stone-100 first:border-l-0 first:pl-0;
         }
         .stat-col-num {
             @apply text-[22px] font-bold text-stone-900 tabular-nums leading-none;
@@ -326,9 +328,11 @@
         /* Rating bar */
         .rating-bar { @apply h-1.5 rounded-full bg-stone-100 overflow-hidden; }
         .rating-fill { @apply h-full rounded-full bg-pitch-500; }
-        /* 5-segment skill bar — stone-800 filled / stone-100 empty, rounds to halves */
-        .skill-bar { @apply inline-flex items-center gap-1; }
-        .skill-seg { @apply w-4 h-1 rounded-sm bg-stone-100 overflow-hidden relative; }
+        /* 5-segment skill bar — stone-800 filled / stone-100 empty, rounds to halves.
+           Mobile: half-width segments + tighter gap so it doesn't crowd chip names.
+           Desktop: original spacing restored on sm+. */
+        .skill-bar { @apply inline-flex items-center gap-0.5 sm:gap-1; }
+        .skill-seg { @apply w-2 sm:w-4 h-1 rounded-sm bg-stone-100 overflow-hidden relative; }
         .skill-seg-fill { @apply absolute inset-0 bg-stone-800; }
 
         /* Vote bar */

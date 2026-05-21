@@ -16,28 +16,32 @@ Args:
      data-role="{{ player.user.role|default:'' }}"
      data-rating="{{ player.rating }}">
     <div class="flex items-center gap-2 min-w-0 flex-1">
-        <span class="w-6 h-6 rounded-full {% if team_tone == 'amber' %}bg-amber-200 text-amber-800{% else %}bg-pitch-200 text-pitch-800{% endif %} flex items-center justify-center text-[11px] font-bold shrink-0">
+        {% comment %}role="button" instead of <button> so the chip's draggable parent isn't blocked from initiating drag when grabbed by the avatar (most natural drag handle).{% endcomment %}
+        <div role="button" tabindex="0" onclick="promoteCaptain(this)" data-captain-avatar
+             title="Tap to make captain" aria-label="Tap to make captain"
+             class="w-9 h-9 sm:w-6 sm:h-6 rounded-full {% if team_tone == 'amber' %}bg-amber-200 text-amber-800{% else %}bg-pitch-200 text-pitch-800{% endif %} flex items-center justify-center text-sm sm:text-[11px] font-bold shrink-0 cursor-pointer transition {% if is_captain %}ring-2 ring-amber-500{% else %}sm:hover:ring-2 sm:hover:ring-amber-300 active:ring-2 active:ring-amber-400{% endif %}">
             {{ player.user.username|first|upper }}
-        </span>
+        </div>
         <div class="min-w-0">
             <div class="flex items-center gap-1.5">
                 <span class="text-[12px] font-medium text-stone-800 truncate leading-tight">{{ player.user.username }}</span>
                 {% if is_captain %}<span class="captain-badge" title="Captain">C</span>{% endif %}
             </div>
-            <div class="font-mono text-[9px] text-stone-400 tracking-[0.04em]">
-                {{ player.user.role|default:"–" }} · <span class="rating-text">{{ player.rating }}</span>
+            <div class="font-mono text-[9px] text-stone-400 tracking-[0.04em] flex items-center gap-1">
+                {% include "_components/role_icon_inline.html" with role=player.user.role %}
+                <span class="rating-text">{{ player.rating }}</span>
             </div>
         </div>
     </div>
     <div class="flex items-center gap-1.5 shrink-0">
         {% include "_components/rating_bar.html" with value=player.rating %}
-        <button type="button" onclick="moveToOther(this)" title="Swap to other team"
-                class="w-5 h-5 rounded-[5px] border border-stone-200 bg-white flex items-center justify-center text-stone-500 hover:bg-stone-50">
-            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+        <button type="button" onclick="moveToOther(this)" title="Swap to other team" aria-label="Swap to other team"
+                class="w-9 h-9 sm:w-5 sm:h-5 rounded-md sm:rounded-[5px] border border-stone-200 bg-white flex items-center justify-center text-stone-500 active:bg-stone-100 sm:hover:bg-stone-50">
+            <svg class="w-4 h-4 sm:w-2.5 sm:h-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
         </button>
-        <button type="button" onclick="moveToPool(this)" title="Back to pool"
-                class="w-5 h-5 rounded-[5px] border border-stone-200 bg-white flex items-center justify-center text-stone-400 hover:text-red-500 hover:bg-red-50">
-            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
+        <button type="button" onclick="moveToPool(this)" title="Back to pool" aria-label="Back to pool"
+                class="w-9 h-9 sm:w-5 sm:h-5 rounded-md sm:rounded-[5px] border border-stone-200 bg-white flex items-center justify-center text-stone-400 active:bg-red-50 active:text-red-500 sm:hover:text-red-500 sm:hover:bg-red-50">
+            <svg class="w-4 h-4 sm:w-2.5 sm:h-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
         </button>
     </div>
 </div>

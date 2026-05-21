@@ -18,17 +18,19 @@
     <!-- ═══════════════════════════════════
          HERO CARD — gradient strip + date tile + name + meta
     ═══════════════════════════════════ -->
-    <div class="card overflow-hidden mb-4">
-        <!-- Gradient strip — pitch-800 → pitch-600 -->
-        <div class="h-14 bg-gradient-to-r from-pitch-800 to-pitch-600"></div>
+    <div class="card mb-4">
+        <!-- Gradient strip — pitch-800 → pitch-600 (rounds its own top so we can drop overflow-hidden,
+             which was clipping the staff actions dropdown below the hero card edge). -->
+        <div class="h-14 bg-gradient-to-r from-pitch-800 to-pitch-600 rounded-t-2xl"></div>
 
         <div class="px-5 sm:px-6 pb-5 -mt-6">
             <!-- Top row: date tile (overlapping gradient) + badges/cost on the right -->
             <div class="flex items-end justify-between gap-4 mb-4">
-                <!-- Floating date tile -->
-                <div class="w-14 h-14 rounded-2xl bg-white border border-stone-100 shadow-md flex flex-col items-center justify-center shrink-0">
-                    <span class="text-xl font-semibold text-stone-900 leading-none -tracking-[0.02em]">{{ session.date|date:"j" }}</span>
-                    <span class="font-mono text-[9px] font-medium text-stone-500 uppercase tracking-[0.06em] mt-0.5">{{ session.date|date:"M Y" }}</span>
+                <!-- Floating date tile — Day / Date / Month -->
+                <div class="w-14 h-14 rounded-2xl bg-white border border-stone-100 shadow-md flex flex-col items-center justify-center shrink-0 leading-none">
+                    <span class="font-mono text-[9px] font-semibold text-pitch-700 uppercase tracking-[0.08em]">{{ session.date|date:"D" }}</span>
+                    <span class="text-lg font-semibold text-stone-900 -tracking-[0.02em] mt-0.5">{{ session.date|date:"j" }}</span>
+                    <span class="font-mono text-[9px] font-medium text-stone-500 uppercase tracking-[0.08em] mt-0.5">{{ session.date|date:"M" }}</span>
                 </div>
 
                 <!-- Poll status / Confirmed pill -->
@@ -58,10 +60,77 @@
                 </div>
             </div>
 
-            <!-- Session name -->
-            <h1 class="text-xl font-semibold text-stone-900 leading-tight -tracking-[0.015em] !mb-1.5">
-                {{ session.name|default:"Untitled session" }}
-            </h1>
+            <!-- Session name + staff actions menu -->
+            <div class="flex items-start justify-between gap-2 !mb-1.5">
+                <h1 class="text-xl font-semibold text-stone-900 leading-tight -tracking-[0.015em] !mb-0 min-w-0 flex-1">
+                    {{ session.name|default:"Untitled session" }}
+                </h1>
+                {% if user.is_staff %}
+                <div x-data="{ open: false }" class="relative shrink-0 -mt-1 -mr-1">
+                    <button @click="open = !open" @click.away="open = false" type="button"
+                            class="w-9 h-9 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-100 active:bg-stone-200 transition-colors"
+                            aria-label="Session actions" title="Session actions">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
+                        </svg>
+                    </button>
+                    <div x-show="open" x-cloak
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 -translate-y-2 scale-95"
+                         x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                         x-transition:leave-end="opacity-0 -translate-y-2 scale-95"
+                         class="absolute right-0 top-10 w-56 bg-white text-stone-800 rounded-2xl shadow-xl border border-stone-100 py-2 z-50">
+
+                        {% if session.poll %}
+                        <form method="POST" action="{% url 'close_poll' session.poll.id %}">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors text-left">
+                                {% if session.poll.is_open %}
+                                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                </svg>
+                                <span>Close Poll</span>
+                                {% else %}
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+                                </svg>
+                                <span>Reopen Poll</span>
+                                {% endif %}
+                            </button>
+                        </form>
+                        {% else %}
+                        <a href="{% url 'create_poll' session.id %}"
+                           class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
+                            <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Create Poll
+                        </a>
+                        {% endif %}
+
+                        <div class="my-1 border-t border-stone-100"></div>
+
+                        <form method="POST" action="{% url 'delete_session' session.id %}"
+                              onsubmit="return confirm('Delete this session? This cannot be undone.')">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                                Delete Session
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
 
             <!-- Meta row — location · time · organiser -->
             <div class="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-stone-500">
@@ -91,8 +160,9 @@
         <div class="card-header">
             {% include "_components/eyebrow.html" with label="Cost split" %}
         </div>
-        <div class="card-body">
-            <div class="grid grid-cols-3">
+        <!-- Tighter padding than .card-body (py-5) since each stat-col already has its own py-2 -->
+        <div class="px-6 py-3">
+            <div class="grid grid-cols-3 items-stretch">
                 {% with cost_str=session.cost|stringformat:"s" %}
                     {% include "_components/stat_column.html" with dot="stone" label="Hall fee" value="€"|add:cost_str first=True %}
                 {% endwith %}
@@ -103,7 +173,7 @@
                     {% endwith %}
                 {% elif cost_per_person_est %}
                     {% with pp_str=cost_per_person_est|stringformat:"s" %}
-                        {% include "_components/stat_column.html" with dot="pitch" label="Per player (est.)" value="€"|add:pp_str %}
+                        {% include "_components/stat_column.html" with dot="pitch" label="Est. /player" value="€"|add:pp_str %}
                     {% endwith %}
                 {% else %}
                     {% include "_components/stat_column.html" with dot="pitch" label="Per player" value="—" %}
@@ -375,60 +445,6 @@
             </div>
             {% endif %}
 
-            <!-- Admin controls card -->
-            {% if user.is_staff %}
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="text-sm font-bold text-stone-800">Admin Controls</h2>
-                </div>
-                <div class="card-body space-y-2.5">
-
-                    {% if session.poll %}
-                    <form method="POST" action="{% url 'close_poll' session.poll.id %}">
-                        {% csrf_token %}
-                        <button type="submit"
-                                class="btn w-full justify-center btn-md
-                                {% if session.poll.is_open %}btn-amber{% else %}btn-success{% endif %}">
-                            {% if session.poll.is_open %}
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                            </svg>
-                            Close Poll
-                            {% else %}
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
-                            </svg>
-                            Reopen Poll
-                            {% endif %}
-                        </button>
-                    </form>
-                    {% else %}
-                    <a href="{% url 'create_poll' session.id %}"
-                       class="btn btn-secondary btn-md w-full justify-center">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
-                        Create Poll
-                    </a>
-                    {% endif %}
-
-                    <form method="POST" action="{% url 'delete_session' session.id %}"
-                          onsubmit="return confirm('Delete this session? This cannot be undone.')">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-danger btn-md w-full justify-center">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                            </svg>
-                            Delete Session
-                        </button>
-                    </form>
-
-                </div>
-            </div>
-            {% endif %}
         </div>
 
         <!-- ═══════════════════════════════════
@@ -578,16 +594,9 @@
 
                 <!-- Section header -->
                 <div class="card-header flex items-center justify-between flex-wrap gap-2.5">
-                    <div class="flex items-center gap-2 min-w-0 flex-1">
-                        <span class="font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-stone-500">
-                            Team balance · Draft
-                        </span>
-                        <input type="text" id="match-name-display"
-                               class="form-input !text-[12px] !font-medium !py-0.5 !px-2 h-7 flex-1 min-w-0 max-w-[160px]"
-                               value="{% if edit_match %}{{ edit_match.name }}{% else %}Match 1{% endif %}"
-                               placeholder="Match name"
-                               oninput="document.getElementById('match_name_input').value = this.value">
-                    </div>
+                    <span class="font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-stone-500">
+                        Team balance · Draft
+                    </span>
                     <div class="flex items-center gap-2 shrink-0">
                         {% if edit_match %}
                         <a href="{% url 'session_detail' session.id %}"
@@ -600,6 +609,15 @@
                             Auto-balance
                         </button>
                     </div>
+                </div>
+
+                <!-- Match name editor (centered, above the skill-gap meter) -->
+                <div class="px-5 py-3 flex justify-center border-b border-stone-100 bg-stone-50/40">
+                    <input type="text" id="match-name-display"
+                           class="form-input !text-sm !font-semibold !text-center !py-2 max-w-[260px] sm:max-w-[300px]"
+                           value="{% if edit_match %}{{ edit_match.name }}{% else %}Match 1{% endif %}"
+                           placeholder="Match name"
+                           oninput="document.getElementById('match_name_input').value = this.value">
                 </div>
 
                 <!-- Skill-gap meter row -->
@@ -736,8 +754,8 @@
                                value="{% if edit_team2 %}{{ edit_team2.name }}{% else %}Team 2{% endif %}">
                         <input type="hidden" id="team1_users" name="team1_players">
                         <input type="hidden" id="team2_users" name="team2_players">
-                        <input type="hidden" id="team1_captain" name="team1_captain">
-                        <input type="hidden" id="team2_captain" name="team2_captain">
+                        <input type="hidden" id="team1_captain" name="team1_captain" value="{% if edit_team1 and edit_team1.captain %}{{ edit_team1.captain.id }}{% endif %}">
+                        <input type="hidden" id="team2_captain" name="team2_captain" value="{% if edit_team2 and edit_team2.captain %}{{ edit_team2.captain.id }}{% endif %}">
                         <p id="teams-error" class="hidden text-xs text-red-600 text-right mb-2">
                             Each team needs at least 5 players.
                         </p>
@@ -862,6 +880,26 @@
     function poolTintFor(role) {
         return ROLE_TINT[(role || '').toLowerCase()] || '!bg-white !border-stone-200 !text-stone-800';
     }
+    /* Compact role icon — mirrors templates/_components/role_icon_inline.html */
+    function roleIconHtml(role) {
+        const r = (role || '').toLowerCase();
+        let tint, path, label;
+        if (r === 'bowler' || r === 'bowling') {
+            tint = 'bg-red-50 text-red-700'; label = 'Bowler';
+            path = '<circle cx="12" cy="12" r="8.5"/><path d="M5 14c3.5 2.5 10.5 2.5 14 0"/>';
+        } else if (r === 'allrounder' || r === 'all-rounder') {
+            tint = 'bg-purple-100 text-purple-700'; label = 'All-rounder';
+            path = '<path d="M4 4l4 4"/><path d="M7 7l9 9"/><path d="M14 14l3 3"/><circle cx="6.5" cy="17.5" r="3"/>';
+        } else if (r === 'keeper' || r === 'wicketkeeper') {
+            tint = 'bg-stone-100 text-stone-700'; label = 'Keeper';
+            path = '<path d="M12 3v5"/><path d="M10 5.5h4"/><rect x="9" y="8.5" width="6" height="12.5" rx="1.5"/>';
+        } else {
+            tint = 'bg-sky-100 text-sky-700'; label = role || 'No role';
+            path = '<path d="M12 3v5"/><path d="M10 5.5h4"/><rect x="9" y="8.5" width="6" height="12.5" rx="1.5"/>';
+        }
+        return `<span title="${label}" aria-label="${label}" class="inline-flex items-center justify-center w-4 h-4 rounded-[3px] shrink-0 ${tint}">`
+             + `<svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg></span>`;
+    }
     function ratingSegHtml(rv) {
         let html = '<div class="skill-bar" aria-label="Rating ' + rv + ' of 5">';
         for (let i = 1; i <= 5; i++) {
@@ -882,24 +920,26 @@
         el.className = PLAYER_CHIP_BASE + ' flex items-center justify-between gap-2 !py-1.5 !px-2 !rounded-lg';
         el.innerHTML = `
             <div class="flex items-center gap-2 min-w-0 flex-1">
-              <span class="w-6 h-6 rounded-full ${avatarTint} flex items-center justify-center text-[11px] font-bold shrink-0">${initial}</span>
+              <div role="button" tabindex="0" onclick="promoteCaptain(this)" data-captain-avatar
+                   title="Tap to make captain" aria-label="Tap to make captain"
+                   class="w-9 h-9 sm:w-6 sm:h-6 rounded-full ${avatarTint} flex items-center justify-center text-sm sm:text-[11px] font-bold shrink-0 cursor-pointer transition sm:hover:ring-2 sm:hover:ring-amber-300 active:ring-2 active:ring-amber-400">${initial}</div>
               <div class="min-w-0">
                 <div class="flex items-center gap-1.5">
                   <span class="text-[12px] font-medium text-stone-800 truncate leading-tight">${u}</span>
                   <span class="captain-badge-slot" data-cap-slot></span>
                 </div>
-                <div class="font-mono text-[9px] text-stone-400 tracking-[0.04em]">${ro} · <span class="rating-text">${rv}</span></div>
+                <div class="font-mono text-[9px] text-stone-400 tracking-[0.04em] flex items-center gap-1">${roleIconHtml(el.dataset.role)}<span class="rating-text">${rv}</span></div>
               </div>
             </div>
             <div class="flex items-center gap-1.5 shrink-0">
               ${ratingSegHtml(rv)}
-              <button type="button" onclick="moveToOther(this)" title="Swap to other team"
-                      class="w-5 h-5 rounded-[5px] border border-stone-200 bg-white flex items-center justify-center text-stone-500 hover:bg-stone-50">
-                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+              <button type="button" onclick="moveToOther(this)" title="Swap to other team" aria-label="Swap to other team"
+                      class="w-9 h-9 sm:w-5 sm:h-5 rounded-md sm:rounded-[5px] border border-stone-200 bg-white flex items-center justify-center text-stone-500 active:bg-stone-100 sm:hover:bg-stone-50">
+                <svg class="w-4 h-4 sm:w-2.5 sm:h-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
               </button>
-              <button type="button" onclick="moveToPool(this)" title="Back to pool"
-                      class="w-5 h-5 rounded-[5px] border border-stone-200 bg-white flex items-center justify-center text-stone-400 hover:text-red-500 hover:bg-red-50">
-                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
+              <button type="button" onclick="moveToPool(this)" title="Back to pool" aria-label="Back to pool"
+                      class="w-9 h-9 sm:w-5 sm:h-5 rounded-md sm:rounded-[5px] border border-stone-200 bg-white flex items-center justify-center text-stone-400 active:bg-red-50 active:text-red-500 sm:hover:text-red-500 sm:hover:bg-red-50">
+                <svg class="w-4 h-4 sm:w-2.5 sm:h-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
               </button>
             </div>
         `;
@@ -913,11 +953,11 @@
         el.innerHTML = `
             <span class="font-medium">${u}</span>
             <span class="font-mono text-[10px] opacity-70 tracking-[0.02em]">· <span class="rating-text">${rv}</span></span>
-            <span class="inline-flex gap-0.5 ml-1">
-              <button type="button" onclick="addToTeam(this, 'team1')" title="Send to Team 1"
-                      class="w-[18px] h-[18px] rounded-[5px] bg-pitch-700 hover:bg-pitch-800 text-white text-[10px] font-bold leading-none">A</button>
-              <button type="button" onclick="addToTeam(this, 'team2')" title="Send to Team 2"
-                      class="w-[18px] h-[18px] rounded-[5px] bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold leading-none">B</button>
+            <span class="inline-flex gap-1 sm:gap-0.5 ml-1">
+              <button type="button" onclick="addToTeam(this, 'team1')" title="Send to Team 1" aria-label="Send to Team 1"
+                      class="w-8 h-8 sm:w-[18px] sm:h-[18px] rounded-md sm:rounded-[5px] bg-pitch-700 active:bg-pitch-800 sm:hover:bg-pitch-800 text-white text-sm sm:text-[10px] font-bold leading-none">A</button>
+              <button type="button" onclick="addToTeam(this, 'team2')" title="Send to Team 2" aria-label="Send to Team 2"
+                      class="w-8 h-8 sm:w-[18px] sm:h-[18px] rounded-md sm:rounded-[5px] bg-amber-600 active:bg-amber-700 sm:hover:bg-amber-700 text-white text-sm sm:text-[10px] font-bold leading-none">B</button>
             </span>
         `;
     }
@@ -958,7 +998,9 @@
         moveChip(el, document.getElementById(teamSlug + '-players'));
     }
 
-    /* ───────── Hidden fields for form submit ───────── */
+    /* ───────── Hidden fields for form submit ─────────
+       Captain field is owned by assignCaptains() — do NOT overwrite it here,
+       or a manual captain choice gets clobbered on every move. */
     function updateHiddenFields() {
         const t1 = Array.from(document.getElementById('team1-players').querySelectorAll('[data-user-id]'))
             .map(e => e.dataset.userId);
@@ -966,8 +1008,20 @@
             .map(e => e.dataset.userId);
         document.getElementById('team1_users').value = t1.join(',');
         document.getElementById('team2_users').value = t2.join(',');
-        if (t1.length) document.getElementById('team1_captain').value = t1[0];
-        if (t2.length) document.getElementById('team2_captain').value = t2[0];
+    }
+
+    /* ───────── Manual captain selection ─────────
+       Tapping a player avatar promotes them to captain of their team. */
+    function promoteCaptain(btn) {
+        const chip = btn.closest('[data-user-id]');
+        if (!chip) return;
+        const teamBox = chip.closest('#team1-players, #team2-players');
+        if (!teamBox) return;
+        const teamSlug = teamBox.id.replace('-players', ''); // 'team1' | 'team2'
+        const field = document.getElementById(teamSlug + '_captain');
+        if (!field) return;
+        field.value = chip.dataset.userId;
+        assignCaptains();
     }
 
     function validateTeams(e) {
@@ -1078,12 +1132,42 @@
         rows.forEach(r => box.appendChild(r));
     }
 
+    /* Honors a manually-chosen captain (stored in #team1_captain / #team2_captain)
+       if that player is still on the team; otherwise falls back to the first
+       player by the role-sorted order. */
     function assignCaptains() {
-        ['team1-players', 'team2-players'].forEach(id => {
-            const box = document.getElementById(id);
-            box.querySelectorAll('[data-user-id]').forEach((row, i) => {
+        ['team1', 'team2'].forEach(teamSlug => {
+            const box = document.getElementById(teamSlug + '-players');
+            const field = document.getElementById(teamSlug + '_captain');
+            const rows = Array.from(box.querySelectorAll('[data-user-id]'));
+
+            if (rows.length === 0) {
+                if (field) field.value = '';
+                return;
+            }
+
+            const currentId = field ? field.value : '';
+            const stillInTeam = rows.find(r => r.dataset.userId === currentId);
+            const captainRow = stillInTeam || rows[0];
+            const captainId = captainRow.dataset.userId;
+            if (field) field.value = captainId;
+
+            rows.forEach(row => {
+                const isCaptain = row.dataset.userId === captainId;
+
+                // Avatar ring
+                const avatar = row.querySelector('[data-captain-avatar]');
+                if (avatar) {
+                    avatar.classList.toggle('ring-2', isCaptain);
+                    avatar.classList.toggle('ring-amber-500', isCaptain);
+                    // Hover/active hints only matter for non-captains
+                    avatar.classList.toggle('sm:hover:ring-amber-300', !isCaptain);
+                    avatar.classList.toggle('active:ring-amber-400', !isCaptain);
+                }
+
+                // Captain "C" badge next to the username
                 row.querySelectorAll('.captain-badge').forEach(b => b.remove());
-                if (i === 0) {
+                if (isCaptain) {
                     const c = document.createElement('span');
                     c.className = 'captain-badge';
                     c.textContent = 'C';

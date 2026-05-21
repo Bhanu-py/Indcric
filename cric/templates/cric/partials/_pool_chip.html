@@ -20,11 +20,11 @@ Args:
      data-rating="{{ voter.rating }}">
     <span class="font-medium">{{ voter.user.username }}</span>
     <span class="font-mono text-[10px] opacity-70 tracking-[0.02em]">· <span class="rating-text">{{ voter.rating }}</span></span>
-    <span class="inline-flex gap-0.5 ml-1">
-        <button type="button" onclick="addToTeam(this, 'team1')" title="Send to Team 1"
-                class="w-[18px] h-[18px] rounded-[5px] bg-pitch-700 hover:bg-pitch-800 text-white text-[10px] font-bold leading-none">A</button>
-        <button type="button" onclick="addToTeam(this, 'team2')" title="Send to Team 2"
-                class="w-[18px] h-[18px] rounded-[5px] bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold leading-none">B</button>
+    <span class="inline-flex gap-1 sm:gap-0.5 ml-1">
+        <button type="button" onclick="addToTeam(this, 'team1')" title="Send to Team 1" aria-label="Send to Team 1"
+                class="w-8 h-8 sm:w-[18px] sm:h-[18px] rounded-md sm:rounded-[5px] bg-pitch-700 active:bg-pitch-800 sm:hover:bg-pitch-800 text-white text-sm sm:text-[10px] font-bold leading-none">A</button>
+        <button type="button" onclick="addToTeam(this, 'team2')" title="Send to Team 2" aria-label="Send to Team 2"
+                class="w-8 h-8 sm:w-[18px] sm:h-[18px] rounded-md sm:rounded-[5px] bg-amber-600 active:bg-amber-700 sm:hover:bg-amber-700 text-white text-sm sm:text-[10px] font-bold leading-none">B</button>
     </span>
 </div>
 {% endwith %}

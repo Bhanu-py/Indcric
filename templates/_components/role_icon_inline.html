@@ -1,0 +1,33 @@
+{% comment %}
+Compact role icon — SVG glyph in a tinted square, sized for inline chip use.
+Matches the larger role chips used on the Users table (apps/accounts/tables.py),
+just sized down for use inside player chips on the session detail page.
+
+Usage:
+  {% include "_components/role_icon_inline.html" with role=user.role %}
+
+Args:
+  role   batsman | bowler | allrounder | keeper | (anything else falls back to batsman)
+{% endcomment %}
+{% with rkey=role|default:""|lower %}
+<span title="{{ role|default:'No role' }}" aria-label="{{ role|default:'No role' }}"
+      class="inline-flex items-center justify-center w-4 h-4 rounded-[3px] shrink-0
+      {% if rkey == 'bowler' or rkey == 'bowling' %}bg-red-50 text-red-700
+      {% elif rkey == 'allrounder' or rkey == 'all-rounder' %}bg-purple-100 text-purple-700
+      {% elif rkey == 'keeper' or rkey == 'wicketkeeper' %}bg-stone-100 text-stone-700
+      {% else %}bg-sky-100 text-sky-700{% endif %}">
+    <svg class="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        {% if rkey == 'bowler' or rkey == 'bowling' %}
+            <circle cx="12" cy="12" r="8.5"/>
+            <path d="M5 14c3.5 2.5 10.5 2.5 14 0"/>
+        {% elif rkey == 'allrounder' or rkey == 'all-rounder' %}
+            <path d="M4 4l4 4"/><path d="M7 7l9 9"/>
+            <path d="M14 14l3 3"/><circle cx="6.5" cy="17.5" r="3"/>
+        {% else %}
+            <path d="M12 3v5"/><path d="M10 5.5h4"/>
+            <rect x="9" y="8.5" width="6" height="12.5" rx="1.5"/>
+        {% endif %}
+    </svg>
+</span>
+{% endwith %}
