@@ -5,7 +5,8 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#021B3A">
     <meta name="description" content="ICG - Cricket Club Manager">
     <title>{% block title %}ICG{% endblock %}</title>
     <link rel="icon" type="image/png" href="{% static 'icons/logo-mark.png' %}">
@@ -63,10 +64,22 @@
             @apply min-h-screen flex flex-col;
         }
         .page-content {
-            @apply flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8;
+            @apply flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-8;
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
         }
         .page-content-narrow {
-            @apply flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-8;
+            @apply flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-8;
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
+        }
+
+        /* ── Mobile-first touch helpers ── */
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        .safe-top    { padding-top:    env(safe-area-inset-top); }
+        /* Reserve room for the mobile bottom nav (added later in M6).
+           When that nav lands, set `.has-bottom-nav` on <body> on mobile-only routes. */
+        .has-bottom-nav .page-content,
+        .has-bottom-nav .page-content-narrow {
+            padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
         }
 
         /* ── Cards ── */
@@ -88,10 +101,12 @@
                    transition-all duration-150 cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1
                    disabled:opacity-50 disabled:cursor-not-allowed select-none;
         }
-        .btn-sm  { @apply px-2.5 py-1 text-xs rounded-[7px]; }   /* 10×5, 12px, 7px */
-        .btn-md  { @apply px-3.5 py-[7px]; }                      /* 14×7 — inherits text-[13px] + rounded-lg */
-        .btn-lg  { @apply px-[18px] py-[9px] rounded-[9px]; }     /* 18×9, 13px, 9px */
-        .btn-xl  { @apply px-6 py-3 text-sm rounded-[10px]; }
+        /* btn-sm stays compact for inline/dense actions — DO NOT use as a mobile primary CTA. */
+        .btn-sm  { @apply px-2.5 py-1 text-xs rounded-[7px]; }
+        /* btn-md is the mobile-primary baseline: ≥44px tall on phone, collapses to 30px on sm+. */
+        .btn-md  { @apply px-3.5 py-3 sm:py-[7px]; }
+        .btn-lg  { @apply px-[18px] py-3.5 sm:py-[9px] rounded-[9px]; }
+        .btn-xl  { @apply px-6 py-3.5 sm:py-3 text-sm rounded-[10px]; }
 
         .btn-primary {
             @apply bg-pitch-700 text-white hover:bg-pitch-800 focus:ring-pitch-600 active:scale-95;
@@ -123,12 +138,14 @@
         }
         /* Form inputs — spec: 10px radius, 13px text, stone-200 border, 2px pitch-500 focus ring.
            Source: README.md Component primitives table. */
+        /* Inputs are 48px tall on mobile (≥44px tap target) and collapse to 40px on sm+.
+           text-base on mobile prevents iOS auto-zoom on focus; sm+ shrinks back to 13px. */
         .form-input {
-            @apply w-full rounded-[10px] border border-stone-200 bg-white px-4 py-2.5 text-[13px] text-stone-900
+            @apply w-full rounded-[10px] border border-stone-200 bg-white px-4 py-3 sm:py-2.5 text-base sm:text-[13px] text-stone-900
                    placeholder-stone-400 transition focus:outline-none focus:ring-2 focus:ring-pitch-500 focus:border-transparent;
         }
         .form-select {
-            @apply w-full rounded-[10px] border border-stone-200 bg-white px-4 py-2.5 text-[13px] text-stone-900
+            @apply w-full rounded-[10px] border border-stone-200 bg-white px-4 py-3 sm:py-2.5 text-base sm:text-[13px] text-stone-900
                    transition focus:outline-none focus:ring-2 focus:ring-pitch-500 focus:border-transparent;
         }
         /* Override global textarea/input for auth forms only */
