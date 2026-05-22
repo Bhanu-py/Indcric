@@ -6,7 +6,6 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
 from django.contrib.auth import get_user_model
 
 from .models import BotEvent
@@ -237,76 +236,6 @@ def _handle_help(wa_message_id, phone, raw):
         "- BALANCE: show wallet balance and outstanding payments\n"
         "- HELP: show this message"
     )
-
-
-def _authenticate(request):
-    token = request.headers.get('X-Bot-Token', '')
-    expected = getattr(settings, 'BOT_WEBHOOK_TOKEN', '')
-    return bool(expected) and token == expected
-
-
-@csrf_exempt
-@require_POST
-def bot_rsvp_view(request):
-    from apps.sessions.models import Session
-    from apps.polls.models import Vote
-
-    if not _authenticate(request):
-        return _bad('unauthorized', 401)
-
-    try:
-        data = json.loads(request.body)
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        return _bad('invalid json')
-
-    wa_message_id = data.get('wa_message_id', '').strip()
-    phone = _normalize_inbound_phone(data.get('phone', ''))
-    session_id = data.get('session_id')
-    choice = data.get('choice', '').strip().lower()
-
-    if not all([wa_message_id, phone, session_id, choice]):
-        return _bad('missing fields: wa_message_id, phone, session_id, choice required')
-
-    if choice not in ('yes', 'no'):
-        return _bad('choice must be yes or no')
-
-    try:
-        user = User.objects.get(phone=phone)
-    except User.DoesNotExist:
-        try:
-            BotEvent.objects.create(
-                wa_message_id=wa_message_id, phone=phone, user=None,
-                action='rsvp', direction=BotEvent.INBOUND, payload=data,
-            )
-        except IntegrityError:
-            pass
-        return _bad('user_not_found', 404)
-
-    try:
-        session = Session.objects.select_related('poll').get(pk=session_id)
-    except Session.DoesNotExist:
-        return _bad('session_not_found', 404)
-
-    if not hasattr(session, 'poll'):
-        return _bad('no_poll')
-
-    poll = session.poll
-    if not poll.is_open:
-        return _bad('poll_closed')
-
-    try:
-        with transaction.atomic():
-            BotEvent.objects.create(
-                wa_message_id=wa_message_id, phone=phone, user=user,
-                action='rsvp', direction=BotEvent.INBOUND, payload=data,
-            )
-            vote, created = Vote.objects.update_or_create(
-                poll=poll, user=user, defaults={'choice': choice}
-            )
-    except IntegrityError:
-        return JsonResponse({'ok': True, 'duplicate': True})
-
-    return JsonResponse({'ok': True, 'created': created, 'choice': choice})
 
 
 def run_reminders_view(request):

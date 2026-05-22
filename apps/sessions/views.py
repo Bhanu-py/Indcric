@@ -119,12 +119,35 @@ def create_session_view(request):
             name=name, date=date, time=time, duration=duration,
             location=location, cost=cost, created_by=request.user,
         )
-        Poll.objects.create(
+        poll = Poll.objects.create(
             session=session,
             question="Will you attend this session?",
             is_open=True,
         )
-        messages.success(request, 'Session created successfully!')
+
+        try:
+            from apps.notifications.services import notify_poll_created
+            sent = notify_poll_created(poll)
+            if sent:
+                messages.success(
+                    request,
+                    f'Session created. WhatsApp poll sent to {sent} member(s).'
+                )
+            else:
+                messages.success(
+                    request,
+                    'Session created. No WhatsApp DMs sent (no members with a phone yet).'
+                )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception(
+                "Failed to send WhatsApp poll notification for session %s", session.id
+            )
+            messages.warning(
+                request,
+                'Session created, but WhatsApp notifications failed. Check logs.'
+            )
+
         return redirect('home')
 
     return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
