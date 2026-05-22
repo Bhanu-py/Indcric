@@ -28,10 +28,10 @@ def _log_meta_error(to_phone, resp):
     """Pull the (#code) message out of Meta's JSON error body, not just the HTTP code."""
     try:
         err = resp.json().get("error", {})
-        code = err.get("code")
+        # Meta's `message` already contains the (#code) prefix; don't re-prepend.
         msg = err.get("message") or err.get("error_data", {}).get("details", "")
-        logger.error("WhatsApp send failed to %s: HTTP %s — (#%s) %s",
-                     to_phone, resp.status_code, code, msg)
+        logger.error("WhatsApp send failed to %s: HTTP %s — %s",
+                     to_phone, resp.status_code, msg)
     except Exception:
         logger.error("WhatsApp send failed to %s: HTTP %s — %s",
                      to_phone, resp.status_code, resp.text[:300])
