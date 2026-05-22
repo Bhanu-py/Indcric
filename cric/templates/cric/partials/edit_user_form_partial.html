@@ -98,13 +98,11 @@
 
 {% if can_delete %}
 <div class="mt-4 pt-3 border-t border-stone-100 text-right">
-    <form method="post" action="{% url 'delete_user' user.id %}" class="inline"
-          onsubmit="return confirm('Delete {{ user.get_full_name|default:user.username|escapejs }}? This cannot be undone.');">
-        {% csrf_token %}
-        <button type="submit" class="text-xs text-stone-400 hover:text-red-600 transition-colors">
-            Delete player
-        </button>
-    </form>
+    <button type="button"
+            onclick="showDeleteConfirm('{% url 'delete_user' user.id %}', '{{ user.get_full_name|default:user.username|escapejs }}')"
+            class="text-xs text-stone-400 hover:text-red-600 transition-colors">
+        Delete player
+    </button>
 </div>
 {% endif %}
 {% endif %}
