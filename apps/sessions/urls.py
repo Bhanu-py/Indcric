@@ -6,6 +6,7 @@ urlpatterns = [
     path('create-session/', views.create_session_view, name='create_session'),
     path('session/<int:session_id>/', views.session_detail_view, name='session_detail'),
     path('session/<int:session_id>/delete/', views.delete_session_view, name='delete_session'),
+    path('session/<int:session_id>/resend-dms/', views.resend_poll_notifications_view, name='resend_poll_dms'),
     path('session/<int:session_id>/save-teams/', views.save_teams_view, name='save_teams'),
     path('session/<int:session_id>/add-match/', views.add_match_view, name='add_match'),
     path('match/<int:match_id>/record-score/', views.record_score_view, name='record_score'),

@@ -154,6 +154,47 @@ def create_session_view(request):
 
 
 @login_required
+def resend_poll_notifications_view(request, session_id):
+    """Staff-only: re-fire session_rsvp DMs to all phone-having members.
+
+    Useful when the initial broadcast failed (template not yet approved,
+    Meta outage, access-token issue), or for sessions that predate the
+    WhatsApp integration.
+    """
+    if not request.user.is_staff:
+        messages.error(request, "You don't have permission to perform this action.")
+        return redirect('session_detail', session_id=session_id)
+
+    session = get_object_or_404(Session, id=session_id)
+    if not hasattr(session, 'poll'):
+        messages.error(request, "This session has no poll to send.")
+        return redirect('session_detail', session_id=session_id)
+
+    if request.method != 'POST':
+        return redirect('session_detail', session_id=session_id)
+
+    try:
+        from apps.notifications.services import notify_poll_created
+        sent = notify_poll_created(session.poll)
+        if sent:
+            messages.success(request, f'WhatsApp poll DM sent to {sent} member(s).')
+        else:
+            messages.warning(
+                request,
+                'No DMs sent — either no members with a phone, or the template '
+                'is not yet approved. Check Render logs for Meta error codes.'
+            )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception(
+            "Resend poll DMs failed for session %s", session.id
+        )
+        messages.error(request, 'Resend failed. Check Render logs.')
+
+    return redirect('session_detail', session_id=session.id)
+
+
+@login_required
 def delete_session_view(request, session_id):
     if not request.user.is_staff:
         messages.error(request, "You don't have permission to perform this action.")
