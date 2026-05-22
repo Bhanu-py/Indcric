@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model, logout
 from django.contrib.auth.views import redirect_to_login
@@ -187,7 +188,7 @@ def profile_onboarding_view(request):
     return render(request, 'cric/pages/profile_onboarding.html', {'form': form})
 
 
-@login_required
+@staff_member_required
 def manage_users(request):
     if request.method == 'POST':
         user_id = request.POST.get('user_id')
@@ -222,7 +223,7 @@ def manage_users(request):
     return render(request, 'cric/pages/manage_users.html', {'users': users})
 
 
-@login_required
+@staff_member_required
 def delete_user_view(request, user_id):
     if request.method == 'POST':
         try:
@@ -240,7 +241,7 @@ def delete_user_view(request, user_id):
     return redirect('manage-users')
 
 
-@login_required
+@staff_member_required
 def edit_user_view(request, user_id):
     try:
         user = User.objects.get(pk=user_id)

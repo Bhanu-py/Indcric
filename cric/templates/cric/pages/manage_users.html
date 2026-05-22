@@ -157,7 +157,7 @@
 </div>
 
 <!-- Hidden delete form -->
-<form id="deleteForm" method="post" action=""></form>
+<form id="deleteForm" method="post" action="">{% csrf_token %}</form>
 
 <!-- Delete confirmation modal -->
 <div id="deleteModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 flex">
