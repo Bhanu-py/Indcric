@@ -24,6 +24,19 @@ def _headers():
     }
 
 
+def _log_meta_error(to_phone, resp):
+    """Pull the (#code) message out of Meta's JSON error body, not just the HTTP code."""
+    try:
+        err = resp.json().get("error", {})
+        code = err.get("code")
+        msg = err.get("message") or err.get("error_data", {}).get("details", "")
+        logger.error("WhatsApp send failed to %s: HTTP %s — (#%s) %s",
+                     to_phone, resp.status_code, code, msg)
+    except Exception:
+        logger.error("WhatsApp send failed to %s: HTTP %s — %s",
+                     to_phone, resp.status_code, resp.text[:300])
+
+
 def send_template_message(to_phone, template_name, language_code="en_US", components=None):
     if not settings.WHATSAPP_PHONE_NUMBER_ID or not settings.WHATSAPP_ACCESS_TOKEN:
         logger.warning("WhatsApp credentials not configured — skipping DM to %s", to_phone)
@@ -43,7 +56,9 @@ def send_template_message(to_phone, template_name, language_code="en_US", compon
 
     try:
         resp = requests.post(_graph_url(), headers=_headers(), json=payload, timeout=10)
-        resp.raise_for_status()
+        if not resp.ok:
+            _log_meta_error(to_phone, resp)
+            return False
         return True
     except requests.RequestException as e:
         logger.error("WhatsApp send failed to %s: %s", to_phone, e)
@@ -64,7 +79,9 @@ def send_text_message(to_phone, text):
 
     try:
         resp = requests.post(_graph_url(), headers=_headers(), json=payload, timeout=10)
-        resp.raise_for_status()
+        if not resp.ok:
+            _log_meta_error(to_phone, resp)
+            return False
         return True
     except requests.RequestException as e:
         logger.error("WhatsApp send failed to %s: %s", to_phone, e)
