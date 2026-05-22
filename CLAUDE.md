@@ -16,7 +16,7 @@ Django 5.1 web app for managing a cricket club: sessions, teams, attendance, pay
 | Forms | django-crispy-forms (Bootstrap 4 backend) |
 | Static | Whitenoise |
 | Server | Gunicorn (prod) |
-| Deployment | Azure Web Apps |
+| Deployment | Render (free tier) |
 
 ## Directory Structure
 
