@@ -9,7 +9,15 @@
     <meta name="theme-color" content="#021B3A">
     <meta name="description" content="ICG - Cricket Club Manager">
     <title>{% block title %}ICG{% endblock %}</title>
-    <link rel="icon" type="image/png" href="{% static 'icons/logo-mark.png' %}">
+    <link rel="icon" type="image/png" href="{% static 'icons/icon-192.png' %}">
+
+    {# PWA — installable shell + offline support. Manifest and sw.js are served #}
+    {# from the root scope via cric_core/urls.py so the worker can control '/'. #}
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ICG">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -354,5 +362,19 @@
     </main>
 
     {% block javascript %}{% endblock %}
+
+    {# Register the ICG service worker. Skips localhost/127.0.0.1 so dev hot-reload   #}
+    {# isn't shadowed by cached static assets. Failure is non-fatal (PWA is progressive). #}
+    <script>
+        (function () {
+            if (!('serviceWorker' in navigator)) return;
+            var host = window.location.hostname;
+            if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') return;
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .catch(function (err) { console.warn('SW registration failed:', err); });
+            });
+        })();
+    </script>
 </body>
 </html>

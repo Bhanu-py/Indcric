@@ -1,8 +1,27 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import TemplateView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    # PWA: manifest and service worker must be served from the root scope so the
+    # SW can intercept '/' navigations (browsers restrict SW scope to its origin path).
+    path(
+        "manifest.webmanifest",
+        TemplateView.as_view(
+            template_name="manifest.webmanifest",
+            content_type="application/manifest+json",
+        ),
+        name="manifest",
+    ),
+    path(
+        "sw.js",
+        TemplateView.as_view(
+            template_name="sw.js",
+            content_type="application/javascript",
+        ),
+        name="service_worker",
+    ),
     path('', include('apps.sessions.urls')),
     path('', include('apps.polls.urls')),
     path('', include('apps.matches.urls')),
