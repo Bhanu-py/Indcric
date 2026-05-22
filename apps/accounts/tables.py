@@ -1,8 +1,5 @@
 import django_tables2 as tables
 from django.contrib.auth import get_user_model
-from django.middleware.csrf import get_token
-from django.urls import reverse
-from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
 from apps.payments.models import Wallet
@@ -20,13 +17,12 @@ class UserHTMxTable(tables.Table):
     is_staff = tables.BooleanColumn(verbose_name="Staff Status", yesno='✓,✗')
     last_login = tables.Column(verbose_name="Last Login")
     wallet_amount = tables.Column(verbose_name="Wallet Amount", empty_values=(), orderable=False)
-    actions = tables.Column(verbose_name="Actions", empty_values=(), orderable=False)
 
     class Meta:
         model = User
         template_name = "tables/tailwind_table.html"
-        fields = ("id", "username", "role", "batting_rating", "bowling_rating", "fielding_rating", "is_staff", "last_login", "wallet_amount", "actions")
-        sequence = ("id", "username", "role", "batting_rating", "bowling_rating", "fielding_rating", "last_login", "is_staff", "wallet_amount", "actions")
+        fields = ("id", "username", "role", "batting_rating", "bowling_rating", "fielding_rating", "is_staff", "last_login", "wallet_amount")
+        sequence = ("id", "username", "role", "batting_rating", "bowling_rating", "fielding_rating", "last_login", "is_staff", "wallet_amount")
 
     def render_wallet_amount(self, record):
         try:
@@ -82,26 +78,6 @@ class UserHTMxTable(tables.Table):
 
     def render_fielding_rating(self, value):
         return self._render_rating(value)
-
-    def render_actions(self, record):
-        # `context` is populated by SingleTableMixin via {% render_table %}.
-        request = getattr(self, 'context', {}).get('request')
-        if request is None or not request.user.is_staff:
-            return mark_safe('<span class="text-stone-300">—</span>')
-        # Don't offer Delete on superuser rows or your own row.
-        if record == request.user or record.is_superuser:
-            return mark_safe('<span class="text-stone-300">—</span>')
-
-        delete_url = reverse('delete_user', args=[record.id])
-        csrf = get_token(request)
-        confirm_msg = escape(f"Delete {record.get_full_name() or record.username}? This cannot be undone.")
-        return mark_safe(
-            f'<form method="post" action="{delete_url}" class="inline" '
-            f'onsubmit="return confirm(\'{confirm_msg}\');">'
-            f'<input type="hidden" name="csrfmiddlewaretoken" value="{csrf}">'
-            f'<button type="submit" class="text-red-600 hover:text-red-700 text-sm font-medium">'
-            f'Delete</button></form>'
-        )
 
     def _render_rating(self, value):
         if not value:

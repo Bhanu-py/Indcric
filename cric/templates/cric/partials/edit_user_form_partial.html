@@ -89,10 +89,27 @@
     <div class="flex items-center gap-3 pt-2">
         <button type="submit" class="btn btn-primary btn-md flex-1 justify-center">Save Changes</button>
         <button type="button"
-                onclick="document.getElementById('modalOverlay').classList.add('hidden')"
+                onclick="typeof closeModal === 'function' ? closeModal() : document.getElementById('editUserModal').style.display='none'"
                 class="btn btn-secondary btn-md">
             Cancel
         </button>
     </div>
 </form>
+
+{% if can_delete %}
+<div class="mt-6 pt-5 border-t border-stone-200">
+    <p class="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">Danger zone</p>
+    <form method="post" action="{% url 'delete_user' user.id %}"
+          onsubmit="return confirm('Delete {{ user.get_full_name|default:user.username|escapejs }}? This cannot be undone.');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger btn-md w-full justify-center">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            Delete player
+        </button>
+    </form>
+</div>
+{% endif %}
 {% endif %}

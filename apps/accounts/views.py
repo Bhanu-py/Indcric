@@ -292,15 +292,18 @@ def edit_user_view(request, user_id):
             messages.success(request, 'User updated successfully!')
             return redirect('manage-users')
 
+        can_delete = (user != request.user) and not user.is_superuser
         if request.headers.get('HX-Request'):
             return render(request, 'cric/partials/edit_user_form_partial.html', {
                 'user': user,
                 'wallet_amount': wallet_amount,
+                'can_delete': can_delete,
             })
         return render(request, 'cric/pages/edit_user_form.html', {
             'user': user,
             'wallet_amount': wallet_amount,
             'modal_view': True,
+            'can_delete': can_delete,
         })
 
     except User.DoesNotExist:
