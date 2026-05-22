@@ -184,7 +184,9 @@ if DATABASE_URL:
     }
     DATABASES['default'].setdefault('OPTIONS', {})
     DATABASES['default']['OPTIONS'].setdefault('sslmode', 'require')
-    
+    # Render free Postgres closes idle connections; ping before reuse and reconnect if dead.
+    DATABASES['default']['CONN_HEALTH_CHECKS'] = True
+
 # Fall back to individual environment variables if available
 elif os.getenv("db_hostname") and os.getenv("db_databasename") and os.getenv("db_username") and os.getenv("db_password"):
     logger.info("Using individual environment variables for database configuration")
@@ -196,6 +198,8 @@ elif os.getenv("db_hostname") and os.getenv("db_databasename") and os.getenv("db
             'PASSWORD': os.getenv("db_password"),
             'HOST': os.getenv("db_hostname"),
             'PORT': os.getenv("db_port", "5432"),
+            'CONN_MAX_AGE': 600,
+            'CONN_HEALTH_CHECKS': True,
             'OPTIONS': {
                 'options': '-c search_path=django_schema,public'
             }
