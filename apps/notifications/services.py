@@ -74,13 +74,16 @@ def send_text_message(to_phone, text):
 def notify_poll_created(poll):
     """
     DM all club members with a phone number when a new poll opens.
-    Template body: "Hi {{1}}! New IndCric session: {{2}} on {{3}}. Reply YES to play or NO to sit out."
+
+    Template body:  "Hi {{1}}! New IndCric session: {{2}} on {{3}}. Reply YES to play or NO to sit out."
+    URL button:     https://indcric.onrender.com/session/{{1}}/   (button {{1}} = session id)
     """
     from django.contrib.auth import get_user_model
     User = get_user_model()
 
     session = poll.session
     date_str = session.date.strftime("%a %d %b")
+    session_id_str = str(session.id)
     users_with_phone = User.objects.filter(phone__isnull=False).exclude(phone='')
 
     sent = 0
@@ -93,7 +96,15 @@ def notify_poll_created(poll):
                     {"type": "text", "text": session.name},
                     {"type": "text", "text": date_str},
                 ],
-            }
+            },
+            {
+                "type": "button",
+                "sub_type": "url",
+                "index": "0",
+                "parameters": [
+                    {"type": "text", "text": session_id_str},
+                ],
+            },
         ]
         ok = send_template_message(user.phone, "session_rsvp", components=components)
         if ok:
