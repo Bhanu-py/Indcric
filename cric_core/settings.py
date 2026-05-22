@@ -87,6 +87,9 @@ INSTALLED_APPS = [
 SITE_ID = 1
 
 LOGIN_REDIRECT_URL = '/'
+# After signup, send new users through onboarding (role picker) before home.
+# The onboarding view bounces existing users straight to their profile.
+ACCOUNT_SIGNUP_REDIRECT_URL = '/profile/onboarding/'
 
 # --- Email backend ---
 if DEBUG:

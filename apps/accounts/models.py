@@ -4,7 +4,10 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class User(AbstractUser):
-    role = models.CharField(max_length=20, default='batsman')
+    # Empty by default so the post-signup onboarding view triggers for new
+    # users. Existing rows backfilled with 'batsman' retain that value and
+    # correctly skip onboarding.
+    role = models.CharField(max_length=20, blank=True, default='')
     batting_rating = models.DecimalField(
         max_digits=3, decimal_places=1, default=2.5,
         validators=[MinValueValidator(0), MaxValueValidator(5)]
