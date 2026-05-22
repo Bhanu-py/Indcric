@@ -3,7 +3,7 @@
 <div class="flex items-center justify-between mb-5">
     <h2 class="text-base font-bold text-stone-900">Edit Player</h2>
     <button type="button"
-            onclick="document.getElementById('modalOverlay').classList.add('hidden')"
+            onclick="typeof closeModal === 'function' ? closeModal() : document.getElementById('editUserModal').style.display='none'"
             class="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
