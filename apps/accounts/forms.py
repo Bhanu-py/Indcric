@@ -1,8 +1,17 @@
+from decimal import Decimal
+
 from allauth.account.forms import SignupForm
 from django import forms
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
+
+
+def _round_to_half(value):
+    """Snap a rating to the nearest 0.5 step (0, 0.5, 1.0, ..., 5.0)."""
+    if value in (None, ''):
+        return value
+    return Decimal(str(round(float(value) * 2) / 2))
 
 
 def _normalize_phone(raw):
@@ -75,6 +84,15 @@ class OnboardingForm(forms.ModelForm):
             raise forms.ValidationError('Full name is required.')
         return name
 
+    def clean_batting_rating(self):
+        return _round_to_half(self.cleaned_data.get('batting_rating'))
+
+    def clean_bowling_rating(self):
+        return _round_to_half(self.cleaned_data.get('bowling_rating'))
+
+    def clean_fielding_rating(self):
+        return _round_to_half(self.cleaned_data.get('fielding_rating'))
+
     def save(self, commit=True):
         user = super().save(commit=False)
         name = self.cleaned_data['full_name']
@@ -97,10 +115,19 @@ class ProfileForm(forms.ModelForm):
                 attrs={'class': 'w-full p-2 border rounded'},
                 choices=[('batsman', 'Batsman'), ('bowler', 'Bowler'), ('allrounder', 'All-Rounder')],
             ),
-            'batting_rating': forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'min': '0', 'max': '5', 'step': '0.1'}),
-            'bowling_rating': forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'min': '0', 'max': '5', 'step': '0.1'}),
-            'fielding_rating': forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'min': '0', 'max': '5', 'step': '0.1'}),
+            'batting_rating': forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'min': '0', 'max': '5', 'step': '0.5'}),
+            'bowling_rating': forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'min': '0', 'max': '5', 'step': '0.5'}),
+            'fielding_rating': forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'min': '0', 'max': '5', 'step': '0.5'}),
         }
+
+    def clean_batting_rating(self):
+        return _round_to_half(self.cleaned_data.get('batting_rating'))
+
+    def clean_bowling_rating(self):
+        return _round_to_half(self.cleaned_data.get('bowling_rating'))
+
+    def clean_fielding_rating(self):
+        return _round_to_half(self.cleaned_data.get('fielding_rating'))
 
 
 class EmailForm(forms.ModelForm):

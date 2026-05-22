@@ -150,7 +150,7 @@
                 <span class="text-sm font-medium text-stone-700">Batting</span>
                 <span class="font-mono text-[12px] text-stone-500 tabular-nums" x-text="parseFloat(batting).toFixed(1)"></span>
               </div>
-              <input type="range" name="batting_rating" min="0" max="5" step="0.1"
+              <input type="range" name="batting_rating" min="0" max="5" step="0.5"
                      x-model="batting"
                      class="w-full h-1.5 rounded-full bg-stone-200 accent-pitch-700">
               {% if form.batting_rating.errors %}<p class="text-red-600 text-xs mt-1">{{ form.batting_rating.errors.0 }}</p>{% endif %}
@@ -160,7 +160,7 @@
                 <span class="text-sm font-medium text-stone-700">Bowling</span>
                 <span class="font-mono text-[12px] text-stone-500 tabular-nums" x-text="parseFloat(bowling).toFixed(1)"></span>
               </div>
-              <input type="range" name="bowling_rating" min="0" max="5" step="0.1"
+              <input type="range" name="bowling_rating" min="0" max="5" step="0.5"
                      x-model="bowling"
                      class="w-full h-1.5 rounded-full bg-stone-200 accent-pitch-700">
               {% if form.bowling_rating.errors %}<p class="text-red-600 text-xs mt-1">{{ form.bowling_rating.errors.0 }}</p>{% endif %}
@@ -170,7 +170,7 @@
                 <span class="text-sm font-medium text-stone-700">Fielding</span>
                 <span class="font-mono text-[12px] text-stone-500 tabular-nums" x-text="parseFloat(fielding).toFixed(1)"></span>
               </div>
-              <input type="range" name="fielding_rating" min="0" max="5" step="0.1"
+              <input type="range" name="fielding_rating" min="0" max="5" step="0.5"
                      x-model="fielding"
                      class="w-full h-1.5 rounded-full bg-stone-200 accent-pitch-700">
               {% if form.fielding_rating.errors %}<p class="text-red-600 text-xs mt-1">{{ form.fielding_rating.errors.0 }}</p>{% endif %}
