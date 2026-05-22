@@ -114,6 +114,8 @@ WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
 WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
 # Leave empty to disable session reminders until Meta approves the template.
 WHATSAPP_REMINDER_TEMPLATE = os.getenv("WHATSAPP_REMINDER_TEMPLATE", "")
+# Approved template Meta calls 'session_rsvp_temp'. Override via env if renamed.
+WHATSAPP_RSVP_TEMPLATE = os.getenv("WHATSAPP_RSVP_TEMPLATE", "session_rsvp_temp")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 # --- allauth account behavior ---

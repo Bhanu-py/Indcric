@@ -123,7 +123,7 @@ def notify_poll_created(poll):
                 ],
             },
         ]
-        ok = send_template_message(user.phone, "session_rsvp", components=components)
+        ok = send_template_message(user.phone, settings.WHATSAPP_RSVP_TEMPLATE, components=components)
         if ok:
             sent += 1
 
