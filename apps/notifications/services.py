@@ -37,10 +37,13 @@ def _log_meta_error(to_phone, resp):
                      to_phone, resp.status_code, resp.text[:300])
 
 
-def send_template_message(to_phone, template_name, language_code="en_US", components=None):
+def send_template_message(to_phone, template_name, language_code=None, components=None):
     if not settings.WHATSAPP_PHONE_NUMBER_ID or not settings.WHATSAPP_ACCESS_TOKEN:
         logger.warning("WhatsApp credentials not configured — skipping DM to %s", to_phone)
         return False
+
+    if language_code is None:
+        language_code = getattr(settings, 'WHATSAPP_TEMPLATE_LANGUAGE', 'en_US')
 
     payload = {
         "messaging_product": "whatsapp",

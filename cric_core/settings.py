@@ -116,6 +116,8 @@ WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
 WHATSAPP_REMINDER_TEMPLATE = os.getenv("WHATSAPP_REMINDER_TEMPLATE", "")
 # Approved template Meta calls 'session_rsvp_temp'. Override via env if renamed.
 WHATSAPP_RSVP_TEMPLATE = os.getenv("WHATSAPP_RSVP_TEMPLATE", "session_rsvp_temp")
+# Locale of approved templates. en_GB matches the IndCric WABA submission.
+WHATSAPP_TEMPLATE_LANGUAGE = os.getenv("WHATSAPP_TEMPLATE_LANGUAGE", "en_GB")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 # --- allauth account behavior ---
