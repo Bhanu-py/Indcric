@@ -24,6 +24,20 @@ Run a bot inside the IndCric club's WhatsApp community/groups that talks to the 
 | DM in | Free text or button responses | Balance lookup, payment confirmation, admin commands |
 | DM out | Text + media + UPI links | Payment nudges, per-user reminders |
 
+## WhatsApp Community Model
+
+The club uses a **WhatsApp Community** — a parent container with one **Announcements** group + multiple linked **sub-groups** (e.g. "Saturday Players", "Sunday Players", "Tournament Squad"). The bot will be added to the Community, which means it joins the Announcements group and any sub-groups it's invited to.
+
+Key behavioural differences vs a plain group:
+
+- **Announcements group is admin-write-only.** For the bot to post session announcements there, the bot's WhatsApp account must be a Community admin. Otherwise, post to a sub-group instead.
+- **Sub-groups are normal groups.** RSVP replies, expense chat, score updates all happen in sub-groups.
+- **Each sub-group has its own group ID.** Bot must handle being in N sub-groups simultaneously — store a `Group` table mapping `wa_group_id` → which `Session` audience this group represents.
+- **Community ID is the umbrella.** `whatsapp-web.js` exposes `chat.groupMetadata.parentGroup` — use this to scope "is this message from our club's community?" rather than whitelisting individual group IDs.
+- **Cross-posting risk:** If a player belongs to multiple sub-groups, naive broadcasts can hit them twice. Dedupe by `User.phone`, not by group.
+
+Add a small `WhatsAppGroup` model so admins can map each sub-group to a default session-audience (or leave it general). Fields: `wa_group_id` (unique), `name`, `is_announcements` (bool), `default_audience` (FK or tag), `active` (bool).
+
 ## POC Scope — Tiered
 
 ### Tier 1 — Build first (highest leverage, smallest surface)
@@ -67,16 +81,18 @@ Run a bot inside the IndCric club's WhatsApp community/groups that talks to the 
 
 ## Open Questions
 
-- Which group(s) does the bot join? One pilot group, or the full community from day one?
-- Number choice: dedicated SIM/eSIM for the bot, or a Twilio-style virtual number? Affects ban-risk recovery.
-- Do we need an opt-in flow per user (privacy), or is membership in the group sufficient consent?
-- UPI link generation: static per-user UPI ID, or generated per-payment with amount pre-filled?
+- **Community scope:** Pilot in one sub-group first, or join the full Community on day one? Recommended: one sub-group for Tier 1, expand after.
+- **Bot admin status:** Will the bot's WhatsApp account be made a Community admin (so it can post to Announcements)? If not, all bot posts go to sub-groups.
+- **Number choice:** Dedicated SIM/eSIM for the bot, or a virtual number? Affects ban-risk recovery — if the number is banned, we need a backup path.
+- **Opt-in:** Is group membership sufficient consent for the bot to DM a player, or do we need an explicit `/optin` first?
+- **UPI:** Static per-user UPI ID stored on the profile, or per-payment generated link with amount pre-filled?
 
 ## Next Steps
 
 1. **Add `phone` field to `User`** — migration + admin field. Unique, indexed, nullable for existing users.
-2. **Create `BotEvent` model** — log every inbound/outbound message with WhatsApp message ID, user, action, timestamp. Audit + idempotency anchor.
-3. **Stand up Node bot locally** — `whatsapp-web.js` POC, log inbound group messages for a test group. ~2 hours.
-4. **Build first webhook**: `POST /api/bot/rsvp/` accepting `{phone, session_id, choice, wa_message_id}` → writes `Vote` via `get_or_create`. Token-auth.
-5. **Wire end-to-end Tier 1.1 (RSVP)** — bot posts a session, reads replies, calls webhook, confirms back in group.
-6. **Decide hosting + bot number** before Tier 1.2/1.3 (payment DMs need stable outbound).
+2. **Add `WhatsAppGroup` model** — maps a sub-group's `wa_group_id` to a club audience. Admin-managed.
+3. **Create `BotEvent` model** — log every inbound/outbound message with WhatsApp message ID, user, action, timestamp. Audit + idempotency anchor.
+4. **Stand up Node bot locally** — `whatsapp-web.js` POC, log inbound messages from a single test sub-group. ~2 hours.
+5. **Build first webhook**: `POST /api/bot/rsvp/` accepting `{phone, session_id, choice, wa_message_id}` → writes `Vote` via `get_or_create`. Token-auth via `BOT_WEBHOOK_TOKEN`.
+6. **Wire end-to-end Tier 1.1 (RSVP)** — bot posts a session in the pilot sub-group, reads replies, calls webhook, confirms back in group.
+7. **Decide hosting + bot number** before Tier 1.2/1.3 (payment DMs need stable outbound).
