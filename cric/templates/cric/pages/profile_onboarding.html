@@ -1,55 +1,233 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}ICG | Welcome{% endblock %}
 
 {% block content %}
-<div class="min-h-screen flex items-center justify-center bg-stone-50 px-4">
-    <div class="w-full max-w-md">
+{# Mirrors design_handoff/ui_kits/indcric_web/OnboardingScreen.jsx — 3-step wizard. #}
+<div
+  x-data="{
+    step: 0,
+    name: '{{ form.full_name.value|default:''|escapejs }}',
+    role: '{{ form.role.value|default:''|escapejs }}',
+    batting: parseFloat('{{ form.batting_rating.value|default:'2.5' }}') || 2.5,
+    bowling: parseFloat('{{ form.bowling_rating.value|default:'2.5' }}') || 2.5,
+    fielding: parseFloat('{{ form.fielding_rating.value|default:'2.5' }}') || 2.5,
+    canAdvance() {
+      if (this.step === 0) return this.name.trim().length > 0;
+      if (this.step === 1) return !!this.role;
+      return true;
+    },
+    next() { if (this.canAdvance() && this.step < 2) this.step++; },
+    back() { if (this.step > 0) this.step--; },
+    get avg() {
+      return ((parseFloat(this.batting) + parseFloat(this.bowling) + parseFloat(this.fielding)) / 3).toFixed(2);
+    }
+  }"
+  class="min-h-screen flex items-center justify-center bg-stone-50 px-4 py-8">
 
-        <!-- Header -->
-        <div class="text-center mb-8">
-            <div class="w-16 h-16 rounded-2xl bg-emerald-600 flex items-center justify-center mx-auto mb-4">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                </svg>
-            </div>
-            <h1 class="text-2xl font-bold text-stone-900">Welcome, {{ request.user.username }}</h1>
-            <p class="text-stone-500 mt-1 text-sm">Pick your role so we can balance teams fairly</p>
+  <form method="POST" novalidate
+        class="w-full max-w-[520px] bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
+    {% csrf_token %}
+
+    {# ── Header ── #}
+    <div class="px-6 py-5 border-b border-stone-100 flex items-center gap-3">
+      <div class="w-8 h-8 rounded-full bg-pitch-700 flex items-center justify-center text-white text-[11px] font-bold tracking-wider">
+        IC
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-[11px] font-mono tracking-widest text-stone-400 uppercase">
+          Step <span x-text="step + 1"></span> of 3
         </div>
-
-        <!-- Card -->
-        <div class="bg-white rounded-2xl shadow-sm border border-stone-200 p-6">
-            <form method="POST" novalidate>
-                {% csrf_token %}
-
-                <!-- Role -->
-                <div class="mb-6">
-                    <label class="block text-sm font-semibold text-stone-700 mb-1">
-                        Your role <span class="text-red-500">*</span>
-                    </label>
-                    <div class="grid grid-cols-3 gap-2">
-                        {% for value, label in form.fields.role.choices %}
-                        <label class="relative cursor-pointer">
-                            <input type="radio" name="role" value="{{ value }}"
-                                   {% if form.role.value == value or not form.role.value and value == 'batsman' %}checked{% endif %}
-                                   class="sr-only peer">
-                            <div class="text-center py-2.5 px-2 rounded-xl border border-stone-200 text-sm font-medium text-stone-600
-                                        peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-checked:text-emerald-700
-                                        hover:border-stone-300 transition-colors">
-                                {{ label }}
-                            </div>
-                        </label>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <button type="submit"
-                        class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm transition-colors">
-                    Get started
-                </button>
-            </form>
-        </div>
-
+        <div class="text-[15px] font-semibold text-stone-900 mt-0.5"
+             x-text="['Identity', 'Role & skill', 'Wrap up'][step]"></div>
+      </div>
+      <div class="flex gap-1 shrink-0">
+        <template x-for="i in 3" :key="i">
+          <span class="h-1.5 rounded-full transition-all duration-200"
+                :class="{
+                  'w-[18px] bg-pitch-700': (i-1) === step,
+                  'w-2 bg-pitch-700': (i-1) < step,
+                  'w-2 bg-stone-200': (i-1) > step
+                }"></span>
+        </template>
+      </div>
     </div>
+
+    {# ── Body ── #}
+    <div class="px-6 py-5 min-h-[280px]">
+
+      {% if form.non_field_errors %}
+        <div class="mb-4 px-3 py-2 rounded-lg bg-red-50 border border-red-100 text-red-700 text-sm">
+          {{ form.non_field_errors }}
+        </div>
+      {% endif %}
+
+      {# Step 1 — Identity #}
+      <div x-show="step === 0" class="flex flex-col gap-4">
+        <p class="text-[13px] text-stone-500">
+          Welcome to IndCric — let's set up your member profile. Takes about 30 seconds.
+        </p>
+        <div>
+          <label for="id_full_name" class="block text-sm font-semibold text-stone-700 mb-1.5">
+            Full name <span class="text-red-500">*</span>
+          </label>
+          <input type="text" name="full_name" id="id_full_name"
+                 x-model="name"
+                 placeholder="Bhanu Tej"
+                 autocomplete="name"
+                 class="form-input"
+                 required>
+          {% if form.full_name.errors %}
+            <p class="text-red-600 text-xs mt-1">{{ form.full_name.errors.0 }}</p>
+          {% endif %}
+        </div>
+        <div class="px-3 py-2.5 bg-stone-50 border border-stone-100 rounded-lg">
+          <div class="text-[11px] font-mono uppercase tracking-wider text-stone-400">Username</div>
+          <div class="text-sm font-medium text-stone-700 mt-0.5">{{ request.user.username }}</div>
+          <div class="text-[11px] text-stone-400 mt-0.5">Already set at signup — used everywhere in the club.</div>
+        </div>
+      </div>
+
+      {# Step 2 — Role & skill #}
+      <div x-show="step === 1" x-cloak class="flex flex-col gap-5">
+        <div>
+          <label class="block text-sm font-semibold text-stone-700 mb-2">
+            Pick your role <span class="text-red-500">*</span>
+          </label>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {# Batsman — sky tone #}
+            <label class="cursor-pointer">
+              <input type="radio" name="role" value="batsman" x-model="role" class="sr-only peer">
+              <div class="flex items-center gap-2.5 px-3.5 py-3 rounded-xl border border-stone-200 text-stone-700
+                          peer-checked:border-sky-300 peer-checked:bg-sky-50 peer-checked:text-sky-800
+                          transition-colors min-h-[44px]">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
+                        d="M4 20l6-6m4-4l6-6m-6 6l-2-2"/>
+                </svg>
+                <span class="text-sm font-medium">Batsman</span>
+              </div>
+            </label>
+            {# Bowler — red tone #}
+            <label class="cursor-pointer">
+              <input type="radio" name="role" value="bowler" x-model="role" class="sr-only peer">
+              <div class="flex items-center gap-2.5 px-3.5 py-3 rounded-xl border border-stone-200 text-stone-700
+                          peer-checked:border-red-200 peer-checked:bg-red-50 peer-checked:text-red-800
+                          transition-colors min-h-[44px]">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="8" stroke-width="1.75"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
+                        d="M9 9c2 1 4 1 6 0M9 15c2-1 4-1 6 0"/>
+                </svg>
+                <span class="text-sm font-medium">Bowler</span>
+              </div>
+            </label>
+            {# All-rounder — purple tone #}
+            <label class="cursor-pointer">
+              <input type="radio" name="role" value="allrounder" x-model="role" class="sr-only peer">
+              <div class="flex items-center gap-2.5 px-3.5 py-3 rounded-xl border border-stone-200 text-stone-700
+                          peer-checked:border-purple-300 peer-checked:bg-purple-50 peer-checked:text-purple-800
+                          transition-colors min-h-[44px]">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
+                        d="M12 4v16m-6-8h12"/>
+                </svg>
+                <span class="text-sm font-medium">All-rounder</span>
+              </div>
+            </label>
+          </div>
+          {% if form.role.errors %}
+            <p class="text-red-600 text-xs mt-1">{{ form.role.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-stone-700 mb-2">
+            Rate yourself
+          </label>
+          <div class="flex flex-col gap-3.5">
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-sm font-medium text-stone-700">Batting</span>
+                <span class="font-mono text-[12px] text-stone-500 tabular-nums" x-text="parseFloat(batting).toFixed(1)"></span>
+              </div>
+              <input type="range" name="batting_rating" min="0" max="5" step="0.1"
+                     x-model="batting"
+                     class="w-full h-1.5 rounded-full bg-stone-200 accent-pitch-700">
+              {% if form.batting_rating.errors %}<p class="text-red-600 text-xs mt-1">{{ form.batting_rating.errors.0 }}</p>{% endif %}
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-sm font-medium text-stone-700">Bowling</span>
+                <span class="font-mono text-[12px] text-stone-500 tabular-nums" x-text="parseFloat(bowling).toFixed(1)"></span>
+              </div>
+              <input type="range" name="bowling_rating" min="0" max="5" step="0.1"
+                     x-model="bowling"
+                     class="w-full h-1.5 rounded-full bg-stone-200 accent-pitch-700">
+              {% if form.bowling_rating.errors %}<p class="text-red-600 text-xs mt-1">{{ form.bowling_rating.errors.0 }}</p>{% endif %}
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-sm font-medium text-stone-700">Fielding</span>
+                <span class="font-mono text-[12px] text-stone-500 tabular-nums" x-text="parseFloat(fielding).toFixed(1)"></span>
+              </div>
+              <input type="range" name="fielding_rating" min="0" max="5" step="0.1"
+                     x-model="fielding"
+                     class="w-full h-1.5 rounded-full bg-stone-200 accent-pitch-700">
+              {% if form.fielding_rating.errors %}<p class="text-red-600 text-xs mt-1">{{ form.fielding_rating.errors.0 }}</p>{% endif %}
+            </div>
+          </div>
+          <p class="text-[11px] text-stone-400 font-mono tracking-wider mt-3">
+            Teammates can refine your ratings later · rolling avg over time
+          </p>
+        </div>
+      </div>
+
+      {# Step 3 — Wrap up #}
+      <div x-show="step === 2" x-cloak class="flex flex-col gap-4">
+        <p class="text-[13px] text-stone-500">
+          Looking good. Here's your profile snapshot:
+        </p>
+        <div class="flex items-center gap-3 px-3.5 py-3 bg-stone-50 rounded-xl border border-stone-100">
+          <div class="w-11 h-11 rounded-full bg-pitch-100 flex items-center justify-center text-pitch-700 font-semibold text-base"
+               x-text="(name || 'N').charAt(0).toUpperCase()"></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold text-stone-900 truncate" x-text="name || 'New Member'"></div>
+            <div class="text-[10px] font-mono text-stone-500 mt-0.5 tracking-wider uppercase">
+              Avg skill <span x-text="avg"></span>
+            </div>
+          </div>
+          <span class="text-[11px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md shrink-0"
+                :class="{
+                  'text-sky-800 bg-sky-100': role === 'batsman',
+                  'text-red-800 bg-red-50': role === 'bowler',
+                  'text-purple-800 bg-purple-100': role === 'allrounder',
+                  'text-stone-500 bg-stone-100': !role
+                }"
+                x-text="role ? role.charAt(0).toUpperCase() + role.slice(1) : 'No role'"></span>
+        </div>
+        <p class="text-[12px] text-stone-500">
+          You'll receive session polls on WhatsApp at <span class="font-mono text-stone-700">{{ request.user.phone }}</span>.
+        </p>
+      </div>
+    </div>
+
+    {# ── Footer ── #}
+    <div class="px-6 py-4 border-t border-stone-100 flex items-center justify-between gap-2.5">
+      <button type="button" @click="back()" x-show="step > 0"
+              class="btn-md btn-secondary text-sm">← Back</button>
+      <div x-show="step === 0"></div>
+
+      <button type="button" @click="next()" x-show="step < 2"
+              :disabled="!canAdvance()"
+              class="btn-md btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+        Next →
+      </button>
+      <button type="submit" x-show="step === 2"
+              class="btn-md btn-primary text-sm">
+        Enter the club ✓
+      </button>
+    </div>
+  </form>
 </div>
 {% endblock %}

@@ -48,21 +48,42 @@ class CustomSignupForm(SignupForm):
         return user
 
 
-class OnboardingForm(forms.ModelForm):
-    """Post-signup step that captures playing role.
+ROLE_CHOICES = (
+    ('batsman', 'Batsman'),
+    ('bowler', 'Bowler'),
+    ('allrounder', 'All-Rounder'),
+)
 
-    Phone is collected at signup via CustomSignupForm, so it's not asked here.
+
+class OnboardingForm(forms.ModelForm):
+    """Post-signup wizard: full name + role + skill ratings.
+
+    Phone is collected at signup via CustomSignupForm.
+    A single `full_name` field is split into first_name / last_name on save.
     """
+
+    full_name = forms.CharField(max_length=120, required=True, label='Full name')
+    role = forms.ChoiceField(choices=ROLE_CHOICES, required=True)
 
     class Meta:
         model = User
-        fields = ['role']
-        widgets = {
-            'role': forms.Select(
-                attrs={'class': 'w-full p-2 border rounded'},
-                choices=[('batsman', 'Batsman'), ('bowler', 'Bowler'), ('allrounder', 'All-Rounder')],
-            ),
-        }
+        fields = ['full_name', 'role', 'batting_rating', 'bowling_rating', 'fielding_rating']
+
+    def clean_full_name(self):
+        name = (self.cleaned_data.get('full_name') or '').strip()
+        if not name:
+            raise forms.ValidationError('Full name is required.')
+        return name
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        name = self.cleaned_data['full_name']
+        first, _, last = name.partition(' ')
+        user.first_name = first
+        user.last_name = last.strip()
+        if commit:
+            user.save()
+        return user
 
 
 class ProfileForm(forms.ModelForm):

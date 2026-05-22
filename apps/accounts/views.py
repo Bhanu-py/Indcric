@@ -170,16 +170,20 @@ def profile_delete_view(request):
 
 @login_required
 def profile_onboarding_view(request):
-    # Phone is collected at signup; onboarding only captures playing role.
+    # Phone is collected at signup; onboarding captures name + role + skills.
     if request.user.role:
-        return redirect('profile')
+        return redirect('home')
     if request.method == 'POST':
         form = OnboardingForm(request.POST, instance=request.user)
         if form.is_valid():
             form.save()
-            return redirect('profile')
+            return redirect('home')
     else:
-        form = OnboardingForm(instance=request.user)
+        initial_name = f"{request.user.first_name} {request.user.last_name}".strip()
+        form = OnboardingForm(
+            instance=request.user,
+            initial={'full_name': initial_name},
+        )
     return render(request, 'cric/pages/profile_onboarding.html', {'form': form})
 
 
