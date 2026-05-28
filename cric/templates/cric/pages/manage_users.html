@@ -117,11 +117,9 @@
 
                         <!-- Wallet -->
                         <td>
-                            {% with wallet=u.wallet_set.first %}
-                            <span class="font-semibold {% if wallet and wallet.amount > 0 %}text-pitch-700{% elif wallet and wallet.amount < 0 %}text-red-600{% else %}text-stone-400{% endif %}">
-                                &euro;{% if wallet %}{{ wallet.amount }}{% else %}0.00{% endif %}
+                            <span class="font-semibold {% if u.wallet_balance > 0 %}text-pitch-700{% elif u.wallet_balance < 0 %}text-red-600{% else %}text-stone-400{% endif %}">
+                                &euro;{{ u.wallet_balance }}
                             </span>
-                            {% endwith %}
                         </td>
 
                         <!-- Actions -->
