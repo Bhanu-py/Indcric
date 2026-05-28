@@ -1,6 +1,6 @@
 // ICG service worker — bump CACHE_NAME on any caching strategy change so old
 // caches get evicted on activate.
-const CACHE_NAME = 'icg-shell-v1';
+const CACHE_NAME = 'icg-shell-v2';
 
 // Pre-cache the bare minimum so the app can boot offline (just the start URL).
 // We deliberately do NOT pre-cache /static/ assets — they're cached on first
@@ -67,19 +67,24 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Same-origin static assets → cache-first, populate on miss.
+    // Same-origin static assets → stale-while-revalidate.
+    // Serve from cache for instant load, refresh in the background so the next
+    // visit gets the latest bytes — no need to bump CACHE_NAME on every asset change.
     if (url.origin === self.location.origin && url.pathname.startsWith('/static/')) {
         event.respondWith(
-            caches.match(request).then((cached) => {
-                if (cached) return cached;
-                return fetch(request).then((response) => {
-                    if (response && response.status === 200) {
-                        const clone = response.clone();
-                        caches.open(CACHE_NAME).then((c) => c.put(request, clone));
-                    }
-                    return response;
-                });
-            })
+            caches.open(CACHE_NAME).then((cache) =>
+                cache.match(request).then((cached) => {
+                    const networkFetch = fetch(request)
+                        .then((response) => {
+                            if (response && response.status === 200) {
+                                cache.put(request, response.clone());
+                            }
+                            return response;
+                        })
+                        .catch(() => cached);
+                    return cached || networkFetch;
+                })
+            )
         );
     }
     // Other requests: let the browser handle them.
