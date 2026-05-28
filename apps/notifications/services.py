@@ -370,8 +370,15 @@ def send_session_reminders():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _bot_number_for_walink():
-    """Bot's E.164 phone number without the leading '+' (wa.me URL format)."""
-    return (getattr(settings, 'WHATSAPP_BOT_NUMBER', '') or '').lstrip('+').strip()
+    """Bot's phone number stripped to digits only — the format wa.me expects.
+
+    Accepts whatever the admin pasted in WHATSAPP_BOT_NUMBER (with or without
+    '+', with or without spaces/dashes/parens) and keeps only digits, so a
+    sloppy env value like '+91 7330 7132' becomes '9173307132'. Returns ''
+    if no number is set (caller hides the share button in that case).
+    """
+    raw = getattr(settings, 'WHATSAPP_BOT_NUMBER', '') or ''
+    return ''.join(ch for ch in raw if ch.isdigit())
 
 
 def build_group_invite_text(poll, base_url):
