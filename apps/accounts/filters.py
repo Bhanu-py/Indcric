@@ -1,9 +1,9 @@
-from django.db.models import Q, OuterRef, Subquery, DecimalField, Value
+from django.db.models import Q, Sum, DecimalField, Value
 from django.db.models.functions import Coalesce
 import django_filters
 from django.contrib.auth import get_user_model
 
-from apps.payments.models import Wallet
+from apps.payments.models import Wallet  # noqa: F401  (kept for back-compat imports)
 
 User = get_user_model()
 
@@ -55,9 +55,14 @@ class UserFilter(django_filters.FilterSet):
         )
 
     def _annotate_with_wallet(self, queryset):
-        wallet_subquery = Wallet.objects.filter(user=OuterRef('pk')).values('amount')[:1]
+        # Wallet is a transaction ledger — annotate with the sum of all rows
+        # per user. wallet_set is the reverse accessor for Wallet.user FK.
         return queryset.annotate(
-            wallet_value=Coalesce(Subquery(wallet_subquery), Value(0), output_field=DecimalField())
+            wallet_value=Coalesce(
+                Sum('wallet__amount'),
+                Value(0),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            )
         )
 
     def filter_min_wallet(self, queryset, name, value):

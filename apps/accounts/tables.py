@@ -1,5 +1,6 @@
 import django_tables2 as tables
 from django.contrib.auth import get_user_model
+from django.db.models import Sum
 from django.utils.safestring import mark_safe
 
 from apps.payments.models import Wallet
@@ -25,13 +26,12 @@ class UserHTMxTable(tables.Table):
         sequence = ("id", "username", "role", "batting_rating", "bowling_rating", "fielding_rating", "last_login", "is_staff", "wallet_amount")
 
     def render_wallet_amount(self, record):
-        try:
-            wallet = Wallet.objects.filter(user=record).first()
-            if wallet:
-                return f"€{wallet.amount:.2f}"
-            return "€0.00"
-        except Exception:
-            return "€0.00"
+        # Wallet is a transaction ledger — balance is the sum of all rows.
+        balance = (
+            Wallet.objects.filter(user=record).aggregate(s=Sum('amount'))['s']
+            or 0
+        )
+        return f"€{balance:.2f}"
 
     # SVG glyphs from design_handoff/preview/icons.html — bat (sky),
     # ball (red), allrounder (purple). Rendered as an icon-only chip

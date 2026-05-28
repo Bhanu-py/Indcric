@@ -6,6 +6,8 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth.views import redirect_to_login
 from django.contrib import messages
 from django.db import transaction
+from django.db.models import Sum
+from django.db.models.functions import Coalesce
 from django.urls import reverse
 from decimal import Decimal, InvalidOperation
 
@@ -205,23 +207,28 @@ def manage_users(request):
             wallet_amount = Decimal('0.00')
 
         try:
-            user = User.objects.get(pk=user_id)
-            user.username = name
-            user.email = email
-            user.role = role
-            user.is_active = is_active
-            user.save()
-            wallet = user.wallet_set.first()
-            if wallet:
-                wallet.amount = wallet_amount
-                wallet.save()
-            else:
-                user.wallet_set.create(amount=wallet_amount)
+            with transaction.atomic():
+                user = User.objects.get(pk=user_id)
+                user.username = name
+                user.email = email
+                user.role = role
+                user.is_active = is_active
+                user.save()
+                current_balance = (
+                    user.wallet_set.aggregate(s=Sum('amount'))['s'] or Decimal('0')
+                )
+                delta = wallet_amount - current_balance
+                if delta != 0:
+                    user.wallet_set.create(amount=delta, status='adjustment')
             messages.success(request, "User updated successfully!")
         except User.DoesNotExist:
             messages.error(request, "User not found.")
 
-    users = User.objects.all().order_by('first_name', 'username')
+    users = (
+        User.objects.all()
+        .annotate(wallet_balance=Coalesce(Sum('wallet__amount'), Decimal('0')))
+        .order_by('first_name', 'username')
+    )
     return render(request, 'cric/pages/manage_users.html', {'users': users})
 
 
@@ -247,8 +254,10 @@ def delete_user_view(request, user_id):
 def edit_user_view(request, user_id):
     try:
         user = User.objects.get(pk=user_id)
-        wallet = user.wallet_set.first()
-        wallet_amount = wallet.amount if wallet else 0.00
+        # Wallet balance = sum of all ledger rows for this user.
+        wallet_amount = (
+            user.wallet_set.aggregate(s=Sum('amount'))['s'] or Decimal('0.00')
+        )
 
         if request.method == 'POST':
             username = request.POST.get('username')
@@ -272,22 +281,25 @@ def edit_user_view(request, user_id):
                 bowling_rating = Decimal('2.5')
                 fielding_rating = Decimal('2.5')
 
-            user.username = username
-            user.email = email
-            user.role = role
-            user.is_staff = is_staff
-            user.is_superuser = is_superuser
-            user.batting_rating = batting_rating
-            user.bowling_rating = bowling_rating
-            user.fielding_rating = fielding_rating
-            user.save()
+            with transaction.atomic():
+                user.username = username
+                user.email = email
+                user.role = role
+                user.is_staff = is_staff
+                user.is_superuser = is_superuser
+                user.batting_rating = batting_rating
+                user.bowling_rating = bowling_rating
+                user.fielding_rating = fielding_rating
+                user.save()
 
-            wallet = user.wallet_set.first()
-            if wallet:
-                wallet.amount = wallet_amount
-                wallet.save()
-            else:
-                user.wallet_set.create(amount=wallet_amount)
+                # Wallet is a ledger: append a balancing row so Sum() lands on
+                # the typed amount. Preserves the deduction/refund history.
+                current_balance = (
+                    user.wallet_set.aggregate(s=Sum('amount'))['s'] or Decimal('0')
+                )
+                delta = wallet_amount - current_balance
+                if delta != 0:
+                    user.wallet_set.create(amount=delta, status='adjustment')
 
             messages.success(request, 'User updated successfully!')
             return redirect('manage-users')

@@ -105,12 +105,20 @@
                     </button>
                     {% endif %}
                 </div>
+                {% if user.is_staff %}
+                <div class="px-5 py-2 border-b border-stone-100 bg-stone-50">
+                    <p class="font-mono text-[10px] text-stone-500 uppercase tracking-[0.08em]">
+                        Players with enough wallet credit are pre-ticked — Save debits their wallet. Tick the rest once they've paid by cash or transfer.
+                    </p>
+                </div>
+                {% endif %}
 
                 <div class="p-3 flex flex-col gap-1.5">
-                    {% for payment in selected_payments %}
+                    {% for row in selected_payments %}
+                    {% with payment=row.payment %}
                     <label for="pay_{{ payment.id }}"
                            class="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] border border-stone-100 transition-all
-                                  {% if payment.status == 'paid' %}bg-pitch-50{% else %}bg-white{% endif %}
+                                  {% if payment.status == 'paid' %}bg-pitch-50{% elif row.covers %}bg-emerald-50/40{% else %}bg-white{% endif %}
                                   {% if user.is_staff %}cursor-pointer hover:border-pitch-200{% else %}cursor-default{% endif %}">
                         <div class="flex items-center gap-3 min-w-0">
                             <span class="w-7 h-7 rounded-full bg-stone-100 text-stone-600 flex items-center justify-center text-xs font-bold shrink-0">
@@ -119,22 +127,29 @@
                             <div class="min-w-0">
                                 <p class="text-[13px] font-medium text-stone-800 truncate">{{ payment.user.get_full_name|default:payment.user.username }}</p>
                                 <p class="font-mono text-[10px] text-stone-400 mt-0.5">
-                                    {% if payment.user.role %}{{ payment.user.role|role_emoji }} {{ payment.user.role|title }} · {% endif %}€{{ payment.amount }}
+                                    {% if payment.user.role %}{{ payment.user.role|role_emoji }} {{ payment.user.role|title }} · {% endif %}cost €{{ payment.amount }}
                                 </p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2.5 shrink-0">
+                        <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                            <div class="flex flex-col items-end leading-tight font-mono text-[10px] uppercase tracking-[0.06em]">
+                                <span class="text-stone-400">Wallet</span>
+                                <span class="text-stone-700">€{{ row.wallet }}{% if row.covers and payment.status != 'paid' %} <span class="text-emerald-600">→ €{{ row.projected_wallet }}</span>{% endif %}</span>
+                            </div>
                             {% if payment.status == 'paid' %}
-                                {% include "_components/badge.html" with variant="green" label="Paid" %}
+                                {% include "_components/badge.html" with variant="green" label=payment.method|title|add:" · paid" %}
+                            {% elif row.covers %}
+                                {% include "_components/badge.html" with variant="green" label="Wallet covers" %}
                             {% else %}
-                                {% include "_components/badge.html" with variant="amber" label="Pending" %}
+                                {% include "_components/badge.html" with variant="amber" label="Needs cash" %}
                             {% endif %}
                             <input type="checkbox" name="paid_user" value="{{ payment.user.id }}" id="pay_{{ payment.id }}"
                                    class="w-4 h-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500 cursor-pointer"
-                                   {% if payment.status == 'paid' %}checked{% endif %}
+                                   {% if payment.status == 'paid' or row.covers %}checked{% endif %}
                                    {% if not user.is_staff %}disabled{% endif %}>
                         </div>
                     </label>
+                    {% endwith %}
                     {% empty %}
                     <p class="text-sm text-stone-400 text-center py-8">No payments yet — confirm attendance on the session detail page to generate them.</p>
                     {% endfor %}
@@ -164,17 +179,28 @@
                         <div class="min-w-0">
                             <p class="text-[13px] font-medium text-stone-800 truncate">{{ b.user.get_full_name|default:b.user.username }}</p>
                             <p class="font-mono text-[10px] text-stone-400 mt-0.5">
-                                Paid €{{ b.paid }} of €{{ b.total }}
+                                Paid €{{ b.paid }} of €{{ b.total }} · wallet €{{ b.wallet }}
                             </p>
                         </div>
                     </div>
-                    {% if b.outstanding > 0 %}
-                        {% with owe_str=b.outstanding|stringformat:"s" %}
-                            {% include "_components/badge.html" with variant="amber" label="Owes €"|add:owe_str %}
-                        {% endwith %}
-                    {% else %}
-                        {% include "_components/badge.html" with variant="green" label="Settled" %}
-                    {% endif %}
+                    <div class="flex items-center gap-2 shrink-0">
+                        {% if b.wallet > 0 %}
+                            {% with wal_str=b.wallet|stringformat:"s" %}
+                                {% include "_components/badge.html" with variant="green" label="Wallet €"|add:wal_str %}
+                            {% endwith %}
+                        {% elif b.wallet < 0 %}
+                            {% with wal_str=b.wallet|stringformat:"s" %}
+                                {% include "_components/badge.html" with variant="red" label="Wallet €"|add:wal_str %}
+                            {% endwith %}
+                        {% endif %}
+                        {% if b.outstanding > 0 %}
+                            {% with owe_str=b.outstanding|stringformat:"s" %}
+                                {% include "_components/badge.html" with variant="amber" label="Owes €"|add:owe_str %}
+                            {% endwith %}
+                        {% else %}
+                            {% include "_components/badge.html" with variant="green" label="Settled" %}
+                        {% endif %}
+                    </div>
                 </div>
                 {% empty %}
                 <p class="text-sm text-stone-400 text-center py-8">No payment activity yet.</p>
