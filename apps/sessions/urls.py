@@ -14,5 +14,6 @@ urlpatterns = [
     path('poll/<int:poll_id>/vote/', views.vote_session_view, name='vote_session'),
     path('poll/<int:poll_id>/toggle/', views.close_poll_view, name='close_poll'),
     path('manage/attendance/session/<int:session_id>/', views.session_attendance_detail_view, name='session_attendance_detail'),
+    path('session/<int:session_id>/add-attendee/', views.add_attendee_view, name='session_add_attendee'),
     path('manage/payments/', views.payments_view, name='manage-payments'),
 ]

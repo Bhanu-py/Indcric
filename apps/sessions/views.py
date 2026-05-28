@@ -125,29 +125,11 @@ def create_session_view(request):
             is_open=True,
         )
 
-        try:
-            from apps.notifications.services import notify_poll_created
-            sent = notify_poll_created(poll)
-            if sent:
-                messages.success(
-                    request,
-                    f'Session created. WhatsApp poll sent to {sent} member(s).'
-                )
-            else:
-                messages.success(
-                    request,
-                    'Session created. No WhatsApp DMs sent (no members with a phone yet).'
-                )
-        except Exception:
-            import logging
-            logging.getLogger(__name__).exception(
-                "Failed to send WhatsApp poll notification for session %s", session.id
-            )
-            messages.warning(
-                request,
-                'Session created, but WhatsApp notifications failed. Check logs.'
-            )
-
+        messages.success(
+            request,
+            'Session created. Open the session page and tap '
+            '"Share to WhatsApp Group" to invite members.'
+        )
         return redirect('home')
 
     return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
@@ -314,6 +296,7 @@ def session_detail_view(request, session_id):
     # ── Attendance roster (only used by the embedded attendance card on past sessions) ──
     attendance_roster = []
     attendance_present_ids = []
+    addable_users = []
     if is_past and hasattr(session, 'poll'):
         # Auto-create SessionPlayer rows for yes-voters so the roster is populated.
         # Default each new attendee to attended=True — the optimistic assumption is that
@@ -331,6 +314,19 @@ def session_detail_view(request, session_id):
             Attendance.objects.filter(match_player__session=session, attended=True)
             .values_list('match_player_id', flat=True)
         )
+        if request.user.is_staff:
+            in_roster_ids = {sp.user_id for sp in attendance_roster}
+            addable_users = list(
+                User.objects.filter(is_active=True)
+                .exclude(id__in=in_roster_ids)
+                .order_by('username')
+            )
+
+    whatsapp_share_url = ''
+    if hasattr(session, 'poll'):
+        from apps.notifications.services import build_group_share_url
+        base = request.build_absolute_uri('/')
+        whatsapp_share_url = build_group_share_url(session.poll, base)
 
     context = {
         'session': session,
@@ -351,6 +347,8 @@ def session_detail_view(request, session_id):
         'edit_team2': edit_team2,
         'edit_team1_players': edit_team1_players,
         'edit_team2_players': edit_team2_players,
+        'whatsapp_share_url': whatsapp_share_url,
+        'addable_users': addable_users,
     }
     return render(request, 'cric/pages/session_detail.html', context)
 
@@ -542,6 +540,50 @@ def delete_match_view(request, match_id):
 
 
 @login_required
+def add_attendee_view(request, session_id):
+    """Staff: add a player to the attendance roster after the session is past.
+
+    For walk-ins who didn't vote on the poll. Creates a SessionPlayer and an
+    Attendance row marked present, mirroring the auto-populate flow for
+    yes-voters. The staff still has to hit Save attendance afterwards to
+    recompute cost_per_person and sync Payment rows.
+    """
+    session = get_object_or_404(Session, pk=session_id)
+
+    if request.method != 'POST':
+        return redirect('session_detail', session_id=session.id)
+
+    if not request.user.is_staff:
+        messages.error(request, "You don't have permission to perform this action.")
+        return redirect('session_detail', session_id=session.id)
+
+    user_id = request.POST.get('user_id')
+    if not user_id:
+        messages.error(request, "No player selected.")
+        return redirect('session_detail', session_id=session.id)
+
+    try:
+        added_user = User.objects.get(pk=user_id, is_active=True)
+    except (User.DoesNotExist, ValueError):
+        messages.error(request, "That player wasn't found.")
+        return redirect('session_detail', session_id=session.id)
+
+    with transaction.atomic():
+        sp, created = SessionPlayer.objects.get_or_create(session=session, user=added_user)
+        Attendance.objects.get_or_create(match_player=sp, defaults={'attended': True})
+
+    if created:
+        messages.success(
+            request,
+            f"{added_user.get_full_name() or added_user.username} added to the roster. "
+            "Hit Save attendance to apply the new cost split."
+        )
+    else:
+        messages.info(request, f"{added_user.username} was already on the roster.")
+
+    return redirect('session_detail', session_id=session.id)
+
+
 @login_required
 def session_attendance_detail_view(request, session_id):
     """POST target for the attendance form embedded in session_detail.html.
