@@ -6,21 +6,27 @@
 {% block header %}{% endblock %}
 
 {% block content %}
-<div class="flex min-h-screen bg-white">
+<div class="flex min-h-screen bg-pitch-950 lg:bg-white">
 
     {% include "account/_entrance_hero.html" %}
 
     <!-- ═══════════════════════════════════════════
          RIGHT PANEL  — sign-in form
+         Mobile: dark brand bg shows around a centered white card.
+         Desktop (lg+): sits flush right, white background.
     ═══════════════════════════════════════════ -->
-    <div class="flex-1 flex flex-col items-center justify-center px-6 sm:px-12 py-12 bg-white" x-data="{ showPass: false }">
+    <div class="flex-1 flex flex-col items-center justify-center lg:h-screen lg:overflow-y-auto px-4 sm:px-8 py-8 sm:py-12 lg:bg-white" x-data="{ showPass: false }">
 
-        <div class="w-full max-w-[360px]">
+        <div class="w-full max-w-[420px] lg:max-w-[360px] bg-white rounded-2xl shadow-2xl p-6 sm:p-8 lg:bg-transparent lg:shadow-none lg:rounded-none lg:p-0">
 
-            <!-- Mobile-only logo -->
-            <div class="lg:hidden flex flex-col items-center mb-10">
-                <img src="{% static 'icons/logo-mark.png' %}" alt="ICG" class="w-80 max-w-[80vw] h-auto object-contain mb-3">
-                <span class="font-mono text-[11px] text-stone-400 uppercase tracking-[0.08em] mt-0.5">Cricket Club Manager</span>
+            <!-- Mobile-only logo — pitch-950 tile so the PNG's residual navy in the
+                 wordmark blends with the background instead of clashing on white. -->
+            <div class="lg:hidden flex flex-col items-center mb-6">
+                <div class="w-[120px] h-[120px] mx-auto overflow-hidden flex items-center justify-center bg-pitch-950 rounded-2xl shadow-md">
+                    <img src="{% static 'icons/logo-mark.png' %}" alt="ICG"
+                         class="w-full h-full object-contain scale-[2.6] origin-center">
+                </div>
+                <span class="font-mono text-[11px] text-stone-400 uppercase tracking-[0.08em] mt-2">Cricket Club Manager</span>
             </div>
 
             <!-- Heading -->

@@ -2,7 +2,7 @@
 <!-- ═══════════════════════════════════════════
      LEFT PANEL — dark cricket-brand side (shared by login + signup)
 ═══════════════════════════════════════════ -->
-<div class="hidden lg:flex lg:w-[46%] xl:w-5/12 bg-pitch-950 relative overflow-hidden flex-col">
+<div class="hidden lg:flex lg:h-screen lg:w-[46%] xl:w-5/12 bg-pitch-950 relative overflow-x-hidden lg:overflow-y-auto flex-col">
 
     <!-- Cricket ground watermark -->
     <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 480 680"
@@ -32,13 +32,25 @@
     <!-- Panel content -->
     <div class="relative z-10 flex flex-col h-full px-10 xl:px-14 py-12">
 
-        <!-- Logo — ICG shield (gold on navy, drops onto the navy hero unframed) -->
-        <a href="/" class="block w-fit max-w-full">
-            <img src="{% static 'icons/logo-mark.png' %}" alt="ICG" class="w-[250px] max-w-full h-auto object-contain drop-shadow-lg">
+        {% comment %}
+        Logo lockup — ICG shield + stacked wordmark.
+        The PNG has internal whitespace, so the image is wrapped in an
+        overflow-hidden box and scaled up via transform so the visible crest
+        fills the box. Stacked wordmark pattern per design_handoff/preview/logo.html (block C).
+        {% endcomment %}
+        <a href="/" class="flex items-center gap-3 w-fit max-w-full">
+            <div class="w-[130px] h-[130px] overflow-hidden flex items-center justify-center shrink-0">
+                <img src="{% static 'icons/logo-mark.png' %}" alt="ICG"
+                     class="w-full h-full object-contain scale-[2.6] origin-center drop-shadow-lg">
+            </div>
+            <span class="flex flex-col items-start leading-none">
+                <span class="text-[44px] xl:text-[56px] font-extrabold tracking-[-0.045em] text-white leading-[0.9]">ICG</span>
+                <span class="text-[10px] font-bold tracking-[0.22em] text-pitch-300 uppercase mt-2">Indian Cricket Ghent</span>
+            </span>
         </a>
 
-        <!-- Hero copy — centre of panel -->
-        <div class="flex-1 flex flex-col justify-center py-10">
+        <!-- Hero copy — sits just below the logo lockup; footer pushed to bottom by flex-1 -->
+        <div class="flex-1 flex flex-col justify-start pt-6 pb-2">
 
             <!-- Pill badge — mono micro-label with live pulse dot -->
             <div class="inline-flex items-center gap-2 bg-white/[0.06] border border-white/10 rounded-full px-3 py-1.5 mb-8 w-fit">
@@ -51,7 +63,7 @@
                 <span class="block text-pitch-400 mt-1">All in one place.</span>
             </h2>
 
-            <p class="text-pitch-300 text-sm leading-relaxed mb-10 max-w-[300px]">
+            <p class="text-pitch-300 text-sm leading-relaxed mb-4 max-w-[300px]">
                 Manage sessions, split costs, balance teams by skill,
                 and track every match — built for the way your club really runs.
             </p>
