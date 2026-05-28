@@ -72,6 +72,8 @@ def _handle_whatsapp_message(request):
                 value = change.get('value', {})
                 for msg in value.get('messages', []):
                     _process_message(msg, value)
+                for status in value.get('statuses', []):
+                    _process_status(status)
     except Exception:
         logger.exception('Error processing WhatsApp webhook payload')
 
@@ -104,6 +106,63 @@ def _extract_text(msg):
     if msg_type == 'button':
         return (msg.get('button', {}).get('text', '') or '').strip().lower()
     return ''
+
+
+def _process_status(status):
+    """Log a Meta delivery-status callback (sent / delivered / read / failed).
+
+    Meta can send multiple status updates for one outbound message — `sent`,
+    then `delivered`, then `read`, or a terminal `failed` with an `errors` list.
+    We key BotEvent rows by `{wamid}:{state}` so each transition is its own row
+    and duplicate webhook deliveries hit the unique constraint cleanly.
+
+    The failure case is the one that matters for diagnosis: `errors[0].code` /
+    `errors[0].title` tell us *why* delivery didn't reach the recipient (e.g.
+    131026 = receiver unreachable, 131047 = re-engagement required, 131056 =
+    pair rate limit, 470 = template paused).
+    """
+    wamid = status.get('id', '')
+    state = (status.get('status') or '').lower()
+    recipient_raw = status.get('recipient_id', '')
+    if not wamid or not state:
+        return
+
+    recipient = _normalize_inbound_phone(recipient_raw)
+    errors = status.get('errors') or []
+    error_code = errors[0].get('code') if errors else None
+    error_title = errors[0].get('title') if errors else None
+
+    if state == 'failed':
+        logger.error(
+            'WhatsApp delivery failed to %s (wamid=%s): code=%s — %s',
+            recipient, wamid, error_code, error_title,
+        )
+    else:
+        logger.info('WhatsApp status %s for %s (wamid=%s)', state, recipient, wamid)
+
+    user = None
+    if recipient:
+        user = User.objects.filter(phone=recipient).first()
+
+    try:
+        BotEvent.objects.create(
+            wa_message_id=f"{wamid}:{state}",
+            phone=recipient,
+            user=user,
+            action='wa_status',
+            direction=BotEvent.OUTBOUND,
+            payload={
+                'wamid': wamid,
+                'status': state,
+                'recipient_id': recipient_raw,
+                'timestamp': status.get('timestamp'),
+                'errors': errors,
+                'conversation': status.get('conversation'),
+                'pricing': status.get('pricing'),
+            },
+        )
+    except IntegrityError:
+        pass  # duplicate webhook delivery — Meta retries on non-2xx
 
 
 def _process_message(msg, value):

@@ -155,11 +155,14 @@ def create_session_view(request):
 
 @login_required
 def resend_poll_notifications_view(request, session_id):
-    """Staff-only: re-fire session_rsvp DMs to all phone-having members.
+    """Staff-only: nudge non-voters with a fresh session_rsvp DM.
 
-    Useful when the initial broadcast failed (template not yet approved,
-    Meta outage, access-token issue), or for sessions that predate the
-    WhatsApp integration.
+    Defaults to scope='non_voters' (skip users who already voted) and enforces
+    a 6-hour cooldown per recipient so double-clicks don't spam.
+
+    Pass ?scope=all to override and re-fire to every phone-having member —
+    useful when the initial broadcast failed entirely (template not approved,
+    Meta outage, access-token issue).
     """
     if not request.user.is_staff:
         messages.error(request, "You don't have permission to perform this action.")
@@ -173,23 +176,57 @@ def resend_poll_notifications_view(request, session_id):
     if request.method != 'POST':
         return redirect('session_detail', session_id=session_id)
 
+    from apps.notifications.services import (
+        resend_poll_invite, SCOPE_NON_VOTERS, SCOPE_ALL,
+    )
+    requested_scope = (request.POST.get('scope') or request.GET.get('scope') or '').strip().lower()
+    scope = SCOPE_ALL if requested_scope == 'all' else SCOPE_NON_VOTERS
+
     try:
-        from apps.notifications.services import notify_poll_created
-        sent = notify_poll_created(session.poll)
-        if sent:
-            messages.success(request, f'WhatsApp poll DM sent to {sent} member(s).')
-        else:
-            messages.warning(
-                request,
-                'No DMs sent — either no members with a phone, or the template '
-                'is not yet approved. Check Render logs for Meta error codes.'
-            )
+        result = resend_poll_invite(session.poll, scope=scope)
     except Exception:
         import logging
         logging.getLogger(__name__).exception(
             "Resend poll DMs failed for session %s", session.id
         )
         messages.error(request, 'Resend failed. Check Render logs.')
+        return redirect('session_detail', session_id=session.id)
+
+    sent = result['sent']
+    skipped = result['skipped_cooldown']
+    no_creds = result.get('skipped_no_creds', 0)
+    failed = result['failed']
+    targets = result['targets']
+
+    if no_creds:
+        messages.warning(
+            request,
+            'WhatsApp credentials not configured on this server — '
+            f'{no_creds} DM(s) were not sent. Set WHATSAPP_PHONE_NUMBER_ID and '
+            'WHATSAPP_ACCESS_TOKEN in the environment.'
+        )
+    elif sent:
+        bits = [f"WhatsApp DM sent to {sent} member(s)"]
+        if skipped:
+            bits.append(f"{skipped} skipped (sent in last 6 h)")
+        if failed:
+            bits.append(f"{failed} failed — check logs")
+        messages.success(request, '. '.join(bits) + '.')
+    elif skipped and not failed:
+        messages.info(
+            request,
+            f'No DMs sent — all {skipped} eligible recipient(s) were messaged in the last 6 hours.'
+        )
+    elif targets == 0:
+        if scope == SCOPE_NON_VOTERS:
+            messages.info(request, 'No DMs to send — everyone with a phone has already voted.')
+        else:
+            messages.warning(request, 'No DMs sent — no members have a phone on file.')
+    else:
+        messages.error(
+            request,
+            f'Resend failed for all {failed} target(s). Check Render logs for Meta error codes.'
+        )
 
     return redirect('session_detail', session_id=session.id)
 
