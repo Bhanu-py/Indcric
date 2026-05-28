@@ -2,13 +2,17 @@ import hashlib
 import hmac
 import json
 import logging
+import re
 from django.conf import settings
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
 
 from .models import BotEvent
+
+
+RSVP_PATTERN = re.compile(r'^\s*(yes|no|y|n|✅|❌|1|2)\s*(?:[#\s]*(\d+))?\s*$', re.IGNORECASE)
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -90,21 +94,26 @@ def _normalize_inbound_phone(raw):
 
 
 def _extract_text(msg):
-    """Pull a comparable text token from text, button, or list-reply payloads."""
+    """Pull the user's text from text, button, or list-reply payloads.
+
+    Returns the original case-preserved string — callers lowercase as needed.
+    The RSVP_PATTERN regex has re.IGNORECASE so it doesn't care, but we want
+    the original text available for echoing back in 'didn't understand' replies.
+    """
     msg_type = msg.get('type')
     if msg_type == 'text':
-        return (msg.get('text', {}).get('body', '') or '').strip().lower()
+        return (msg.get('text', {}).get('body', '') or '').strip()
     if msg_type == 'interactive':
         interactive = msg.get('interactive', {})
         sub = interactive.get('type')
         if sub == 'button_reply':
             br = interactive.get('button_reply', {})
-            return (br.get('id') or br.get('title') or '').strip().lower()
+            return (br.get('id') or br.get('title') or '').strip()
         if sub == 'list_reply':
             lr = interactive.get('list_reply', {})
-            return (lr.get('id') or lr.get('title') or '').strip().lower()
+            return (lr.get('id') or lr.get('title') or '').strip()
     if msg_type == 'button':
-        return (msg.get('button', {}).get('text', '') or '').strip().lower()
+        return (msg.get('button', {}).get('text', '') or '').strip()
     return ''
 
 
@@ -173,59 +182,82 @@ def _process_message(msg, value):
     if not text:
         return
 
-    if text in ('yes', 'y', '✅', '1'):
-        _handle_rsvp(wa_message_id, phone, 'yes', msg)
-    elif text in ('no', 'n', '❌', '2'):
-        _handle_rsvp(wa_message_id, phone, 'no', msg)
-    elif text in ('balance', 'bal', '/balance', 'wallet'):
+    rsvp = RSVP_PATTERN.match(text)
+    if rsvp:
+        token = rsvp.group(1).lower()
+        session_id = int(rsvp.group(2)) if rsvp.group(2) else None
+        choice = 'yes' if token in ('yes', 'y', '✅', '1') else 'no'
+        _handle_rsvp(wa_message_id, phone, choice, msg, session_id=session_id)
+        return
+
+    text_lower = text.lower()
+    if text_lower in ('balance', 'bal', '/balance', 'wallet'):
         _handle_balance(wa_message_id, phone, msg)
-    elif text in ('help', '/help', '?'):
+    elif text_lower in ('help', '/help', '?'):
         _handle_help(wa_message_id, phone, msg)
     else:
         logger.info('Unrecognised WhatsApp message from %s: %s', phone, text)
-        _handle_help(wa_message_id, phone, msg)
+        _handle_unknown(wa_message_id, phone, text, msg)
 
 
-def _handle_rsvp(wa_message_id, phone, choice, raw):
-    from apps.sessions.models import Session
+def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None):
+    """Record an inbound RSVP and reply with a confirmation.
+
+    If session_id is given (from a wa.me deep link), target that specific
+    session's poll; otherwise fall back to the latest open poll. Replies are
+    sent inside the user's free 24h service window (the same inbound that
+    triggered this handler opened it), so they don't cost anything.
+    """
     from apps.polls.models import Poll, Vote
+    from .services import send_text_message
 
-    try:
-        user = User.objects.get(phone=phone)
-    except User.DoesNotExist:
+    user = User.objects.filter(phone=phone).first()
+
+    payload = {'raw': raw, 'requested_session_id': session_id, 'choice': choice}
+    if not _log_inbound(wa_message_id, phone, user, 'rsvp', payload):
+        return  # duplicate webhook delivery — first call already handled this
+
+    if user is None:
         logger.warning('WhatsApp RSVP from unknown phone %s', phone)
-        try:
-            BotEvent.objects.create(
-                wa_message_id=wa_message_id, phone=phone, user=None,
-                action='rsvp', direction=BotEvent.INBOUND, payload=raw,
-            )
-        except IntegrityError:
-            pass
+        send_text_message(
+            phone,
+            "I don't recognise this number. Add your WhatsApp number to your "
+            "IndCric profile first, then try again."
+        )
         return
 
-    poll = (
-        Session.objects
-        .filter(poll__is_open=True)
-        .order_by('-date')
-        .values_list('poll', flat=True)
-        .first()
+    poll_obj = None
+    if session_id is not None:
+        poll_obj = Poll.objects.filter(session_id=session_id, is_open=True).first()
+        if poll_obj is None:
+            logger.info(
+                'RSVP from %s targeted session %s but no open poll for it',
+                phone, session_id,
+            )
+
+    if poll_obj is None:
+        poll_obj = (
+            Poll.objects
+            .filter(is_open=True)
+            .order_by('-session__date')
+            .first()
+        )
+    if poll_obj is None:
+        send_text_message(phone, "No active session poll right now.")
+        return
+
+    Vote.objects.update_or_create(
+        poll=poll_obj, user=user, defaults={'choice': choice}
     )
-    if not poll:
-        logger.info('No open poll for RSVP from %s', phone)
-        return
 
-    poll_obj = Poll.objects.get(pk=poll)
-    try:
-        with transaction.atomic():
-            BotEvent.objects.create(
-                wa_message_id=wa_message_id, phone=phone, user=user,
-                action='rsvp', direction=BotEvent.INBOUND, payload=raw,
-            )
-            Vote.objects.update_or_create(
-                poll=poll_obj, user=user, defaults={'choice': choice}
-            )
-    except IntegrityError:
-        pass
+    session = poll_obj.session
+    date_str = session.date.strftime("%a %d %b")
+    opposite = 'NO' if choice == 'yes' else 'YES'
+    send_text_message(
+        phone,
+        f"Got it — recorded {choice.upper()} for {session.name} ({date_str}). "
+        f"Reply {opposite} to switch."
+    )
 
 
 def _log_inbound(wa_message_id, phone, user, action, payload):
@@ -287,13 +319,34 @@ def _handle_help(wa_message_id, phone, raw):
     except User.DoesNotExist:
         user = None
 
-    _log_inbound(wa_message_id, phone, user, 'help', raw)
+    if not _log_inbound(wa_message_id, phone, user, 'help', raw):
+        return
     send_text_message(
         phone,
         "IndCric bot commands:\n"
         "- YES / NO: RSVP to the latest session poll\n"
+        "- YES <session id> / NO <session id>: RSVP to a specific session\n"
         "- BALANCE: show wallet balance and outstanding payments\n"
         "- HELP: show this message"
+    )
+
+
+def _handle_unknown(wa_message_id, phone, text, raw):
+    """Reply when we couldn't parse the message. Echoes the user's input back
+    (with the case they actually typed) so they can see what got through —
+    helpful when mobile auto-capitalize or autocorrect mangled their RSVP.
+    """
+    from .services import send_text_message
+
+    user = User.objects.filter(phone=phone).first()
+    if not _log_inbound(wa_message_id, phone, user, 'unknown', {'raw': raw, 'text': text}):
+        return
+
+    safe_echo = text[:60] if text else ''
+    send_text_message(
+        phone,
+        f"I didn't understand '{safe_echo}'.\n"
+        f"Reply YES or NO to RSVP, BALANCE for your wallet, or HELP for options."
     )
 
 

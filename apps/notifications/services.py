@@ -1,9 +1,11 @@
 import logging
+import urllib.parse
 from datetime import datetime, timedelta
 
 import requests
 from django.conf import settings
 from django.db import IntegrityError
+from django.urls import reverse
 from django.utils import timezone
 
 from .models import BotEvent
@@ -359,3 +361,64 @@ def send_session_reminders():
                     counts[kind] += 1
 
     return counts
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Group-share helpers (free path: admin pastes a formatted message into the
+# WhatsApp Community group; members tap wa.me deep links to RSVP, which opens
+# a free 24-hour service window for the bot to receive their reply).
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _bot_number_for_walink():
+    """Bot's E.164 phone number without the leading '+' (wa.me URL format)."""
+    return (getattr(settings, 'WHATSAPP_BOT_NUMBER', '') or '').lstrip('+').strip()
+
+
+def build_group_invite_text(poll, base_url):
+    """Compose the message an admin will paste into the WhatsApp group.
+
+    Includes wa.me deep links per choice — tapping YES opens the bot DM with
+    'YES <session_id>' pre-filled. When the user sends, the inbound webhook
+    parses the session id and records the vote, all inside the free 24h
+    service window opened by their message.
+
+    Falls back to instructions + website link if WHATSAPP_BOT_NUMBER isn't set.
+    """
+    session = poll.session
+    date_str = session.date.strftime("%a %d %b")
+    time_str = session.time.strftime("%H:%M") if session.time else ''
+    session_url = base_url.rstrip('/') + reverse('session_detail', args=[session.id])
+    bot = _bot_number_for_walink()
+
+    lines = [
+        f"🏏 ICG session — {session.name}",
+        f"📅 {date_str}" + (f" · {time_str}" if time_str else ''),
+        f"📍 {session.location}",
+    ]
+    if session.cost:
+        lines.append(f"💰 €{session.cost} total")
+    lines.append("")
+
+    if bot:
+        lines.append("RSVP by tapping below — the bot will record your vote:")
+        lines.append(f"✅ YES → https://wa.me/{bot}?text=YES%20{session.id}")
+        lines.append(f"❌ NO → https://wa.me/{bot}?text=NO%20{session.id}")
+    else:
+        lines.append("Vote on the website (link below).")
+
+    lines.append("")
+    lines.append(f"Details: {session_url}")
+    return "\n".join(lines)
+
+
+def build_group_share_url(poll, base_url):
+    """wa.me/?text=... URL that opens the admin's WhatsApp share picker.
+
+    Tapping this on the admin's phone opens WhatsApp with the formatted invite
+    text pre-composed; they pick the Community group and send. Returns an empty
+    string if there's no session/poll to share.
+    """
+    if poll is None:
+        return ''
+    text = build_group_invite_text(poll, base_url)
+    return "https://wa.me/?text=" + urllib.parse.quote(text, safe='')

@@ -53,8 +53,6 @@ def create_poll_view(request, session_id):
             poll = form.save(commit=False)
             poll.session = session
             poll.save()
-            from apps.notifications.services import notify_poll_created
-            notify_poll_created(poll)
             return redirect('poll_detail', poll_id=poll.id)
     else:
         form = PollForm()

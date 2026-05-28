@@ -118,6 +118,10 @@ WHATSAPP_REMINDER_TEMPLATE = os.getenv("WHATSAPP_REMINDER_TEMPLATE", "")
 WHATSAPP_RSVP_TEMPLATE = os.getenv("WHATSAPP_RSVP_TEMPLATE", "session_rsvp_temp")
 # Locale of approved templates. en_GB matches the IndCric WABA submission.
 WHATSAPP_TEMPLATE_LANGUAGE = os.getenv("WHATSAPP_TEMPLATE_LANGUAGE", "en_GB")
+# Bot's display phone number in E.164 (with or without leading '+'). Used to build
+# wa.me/<number>?text=YES%20<session_id> deep links in the group share message
+# so members can tap-to-RSVP, which opens a free 24h service window for replies.
+WHATSAPP_BOT_NUMBER = os.getenv("WHATSAPP_BOT_NUMBER", "")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 # --- allauth account behavior ---

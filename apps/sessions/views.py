@@ -718,13 +718,61 @@ def payments_view(request):
             return redirect('manage-payments')
 
         paid_user_ids = set(request.POST.getlist('paid_user'))
+        # Per-row method override (cash users opt out of the wallet debit).
+        cash_user_ids = set(request.POST.getlist('cash_user'))
+        deducted = []
+        refunded = []
+        negative_warnings = []
         with transaction.atomic():
-            for payment in Payment.objects.filter(session=target_session):
-                new_status = 'paid' if str(payment.user_id) in paid_user_ids else 'pending'
-                if payment.status != new_status:
-                    payment.status = new_status
+            for payment in (
+                Payment.objects.filter(session=target_session)
+                .select_related('user')
+            ):
+                should_be_paid = str(payment.user_id) in paid_user_ids
+                is_paid = payment.status == 'paid'
+                pay_via_cash = str(payment.user_id) in cash_user_ids
+
+                if should_be_paid and not is_paid:
+                    method = 'cash' if pay_via_cash else 'wallet'
+                    if method == 'wallet':
+                        Wallet.objects.create(
+                            user=payment.user,
+                            amount=-payment.amount,
+                            status='paid',
+                        )
+                        balance = Wallet.objects.filter(user=payment.user).aggregate(
+                            s=Sum('amount')
+                        )['s'] or Decimal('0')
+                        if balance < 0:
+                            negative_warnings.append((payment.user.username, balance))
+                        deducted.append((payment.user.username, payment.amount))
+                    payment.status = 'paid'
+                    payment.method = method
+                    payment.save(update_fields=['status', 'method'])
+                elif not should_be_paid and is_paid:
+                    if payment.method == 'wallet':
+                        Wallet.objects.create(
+                            user=payment.user,
+                            amount=payment.amount,
+                            status='refund',
+                        )
+                        refunded.append((payment.user.username, payment.amount))
+                    payment.status = 'pending'
                     payment.save(update_fields=['status'])
-        messages.success(request, f"Payments updated for {target_session.name}.")
+
+        bits = [f"Payments updated for {target_session.name}"]
+        if deducted:
+            total = sum((amt for _, amt in deducted), Decimal('0'))
+            bits.append(f"€{total} debited from {len(deducted)} wallet(s)")
+        if refunded:
+            total_ref = sum((amt for _, amt in refunded), Decimal('0'))
+            bits.append(f"€{total_ref} refunded to {len(refunded)} wallet(s)")
+        messages.success(request, ". ".join(bits) + ".")
+        for username, bal in negative_warnings:
+            messages.warning(
+                request,
+                f"{username}'s wallet is now €{bal:.2f} after the debit — they owe a top-up."
+            )
         return redirect(f"{reverse('manage-payments')}?tab=session&session_id={target_session.id}")
 
     # Tab + selected session ─────────────────────────────────────
