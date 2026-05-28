@@ -193,6 +193,8 @@ def _process_message(msg, value):
     text_lower = text.lower()
     if text_lower in ('balance', 'bal', '/balance', 'wallet'):
         _handle_balance(wa_message_id, phone, msg)
+    elif text_lower in ('status', 'poll', 'who', 'count', '/status'):
+        _handle_status(wa_message_id, phone, msg)
     elif text_lower in ('help', '/help', '?'):
         _handle_help(wa_message_id, phone, msg)
     else:
@@ -311,6 +313,68 @@ def _handle_balance(wa_message_id, phone, raw):
     send_text_message(phone, "\n".join(lines))
 
 
+def _display_name(user):
+    """Human-readable name for use in bot replies. Prefers first name, falls
+    back to username so we never show a blank entry in the voter lists."""
+    return (user.first_name or user.username or '').strip() or '(unknown)'
+
+
+def _handle_status(wa_message_id, phone, raw):
+    """Reply with the current open poll's vote counts and voter lists."""
+    from apps.polls.models import Poll
+    from .services import send_text_message
+
+    try:
+        user = User.objects.get(phone=phone)
+    except User.DoesNotExist:
+        if _log_inbound(wa_message_id, phone, None, 'status', raw):
+            send_text_message(
+                phone,
+                "I don't recognise this number. Add your WhatsApp number to "
+                "your IndCric profile first."
+            )
+        return
+
+    if not _log_inbound(wa_message_id, phone, user, 'status', raw):
+        return
+
+    poll = (
+        Poll.objects
+        .filter(is_open=True)
+        .order_by('-session__date')
+        .select_related('session')
+        .first()
+    )
+    if poll is None:
+        send_text_message(phone, "No active session poll right now.")
+        return
+
+    session = poll.session
+    date_str = session.date.strftime("%a %d %b")
+
+    yes_voters = list(
+        poll.votes.filter(choice='yes')
+        .select_related('user')
+        .order_by('user__first_name', 'user__username')
+    )
+    no_voters = list(
+        poll.votes.filter(choice='no')
+        .select_related('user')
+        .order_by('user__first_name', 'user__username')
+    )
+
+    yes_names = ', '.join(_display_name(v.user) for v in yes_voters) or '—'
+    no_names = ', '.join(_display_name(v.user) for v in no_voters) or '—'
+
+    lines = [
+        f"🏏 {session.name} ({date_str})",
+        '',
+        f"✅ YES ({len(yes_voters)}): {yes_names}",
+        f"❌ NO ({len(no_voters)}): {no_names}",
+    ]
+    send_text_message(phone, '\n'.join(lines))
+
+
 def _handle_help(wa_message_id, phone, raw):
     from .services import send_text_message
 
@@ -326,6 +390,7 @@ def _handle_help(wa_message_id, phone, raw):
         "IndCric bot commands:\n"
         "- YES / NO: RSVP to the latest session poll\n"
         "- YES <session id> / NO <session id>: RSVP to a specific session\n"
+        "- STATUS: show current poll counts + who voted YES / NO\n"
         "- BALANCE: show wallet balance and outstanding payments\n"
         "- HELP: show this message"
     )
@@ -346,7 +411,8 @@ def _handle_unknown(wa_message_id, phone, text, raw):
     send_text_message(
         phone,
         f"I didn't understand '{safe_echo}'.\n"
-        f"Reply YES or NO to RSVP, BALANCE for your wallet, or HELP for options."
+        f"Reply YES or NO to RSVP, STATUS for poll counts, BALANCE for your "
+        f"wallet, or HELP for options."
     )
 
 
