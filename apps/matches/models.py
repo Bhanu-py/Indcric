@@ -71,6 +71,20 @@ class Innings(models.Model):
     is_closed = models.BooleanField(default=False)  # all out / overs done / manual end
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Live scorer working-state: who faces / bowls the NEXT ball. Mutable pointers
+    # (the Delivery ledger stays immutable). current_striker is cleared after a
+    # wicket until the scorer picks the incoming batter; current_bowler is cleared
+    # at the end of an over until a new bowler is chosen.
+    current_striker = models.ForeignKey(
+        Player, on_delete=models.SET_NULL, related_name='+', null=True, blank=True
+    )
+    current_non_striker = models.ForeignKey(
+        Player, on_delete=models.SET_NULL, related_name='+', null=True, blank=True
+    )
+    current_bowler = models.ForeignKey(
+        Player, on_delete=models.SET_NULL, related_name='+', null=True, blank=True
+    )
+
     class Meta:
         unique_together = [('match', 'number')]
         ordering = ['match', 'number']

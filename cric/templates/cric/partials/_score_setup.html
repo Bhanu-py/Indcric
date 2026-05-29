@@ -1,0 +1,93 @@
+{% comment %}
+Innings setup — choose batting side (toss) + overs (innings 1) + openers.
+Alpine drives the dependent opener/bowler lists from the chosen batting team.
+Context: match, number, teams_data (json), forced_batting.
+{% endcomment %}
+{{ teams_data|json_script:"teams-data" }}
+
+<form method="post" action="{% url 'start_innings' match.id %}"
+      x-data="scoreSetup({{ forced_batting.id|default:'null' }})"
+      class="flex flex-col gap-4">
+    {% csrf_token %}
+    <input type="hidden" name="number" value="{{ number }}">
+    <input type="hidden" name="batting_team" :value="battingId">
+
+    {% if number == 1 %}
+    <div class="card overflow-hidden">
+        <div class="card-header">{% include "_components/eyebrow.html" with label="Match setup" %}</div>
+        <div class="card-body flex flex-col gap-4">
+            <div>
+                <label for="overs" class="form-label">Overs per innings</label>
+                <input type="number" name="overs" id="overs" min="1" max="50" value="8"
+                       inputmode="numeric" class="form-input w-28">
+            </div>
+            <div>
+                <span class="form-label">Batting first</span>
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <template x-for="t in teams" :key="t.id">
+                        <button type="button" @click="battingId = t.id"
+                                :class="battingId == t.id ? 'bg-pitch-700 text-white border-pitch-700' : 'bg-white text-stone-700 border-stone-300'"
+                                class="btn btn-md justify-center border transition-colors" x-text="t.name"></button>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <input type="hidden" name="overs" value="{{ match.overs_limit }}">
+    <div class="card"><div class="p-4">
+        {% include "_components/eyebrow.html" with label="2nd innings" %}
+        <p class="text-sm text-stone-700 mt-2">{{ forced_batting.name }} batting · {{ match.overs_limit }} overs</p>
+    </div></div>
+    {% endif %}
+
+    <div class="card overflow-hidden" x-show="battingId" x-cloak>
+        <div class="card-header">{% include "_components/eyebrow.html" with label="Openers" %}</div>
+        <div class="card-body flex flex-col gap-3">
+            <select name="striker" x-model="striker" class="form-select">
+                <option value="">On strike…</option>
+                <template x-for="p in battingPlayers" :key="p.id">
+                    <option :value="p.id" x-text="p.name"></option>
+                </template>
+            </select>
+            <select name="non_striker" x-model="nonStriker" class="form-select">
+                <option value="">Non-striker…</option>
+                <template x-for="p in battingPlayers" :key="p.id">
+                    <option :value="p.id" x-text="p.name"></option>
+                </template>
+            </select>
+            <select name="bowler" x-model="bowler" class="form-select">
+                <option value="">Opening bowler…</option>
+                <template x-for="p in bowlingPlayers" :key="p.id">
+                    <option :value="p.id" x-text="p.name"></option>
+                </template>
+            </select>
+            <p class="font-mono text-[10px] text-amber-700 uppercase tracking-[0.08em]"
+               x-show="striker && striker === nonStriker" x-cloak>
+               Striker and non-striker must differ.
+            </p>
+        </div>
+    </div>
+
+    <button type="submit" :disabled="!ready"
+            class="btn btn-primary btn-md w-full justify-center disabled:opacity-50">
+        Start innings
+    </button>
+</form>
+
+<script>
+function scoreSetup(forcedId) {
+    const teams = JSON.parse(document.getElementById('teams-data').textContent);
+    return {
+        teams,
+        battingId: forcedId || (teams[0] && teams[0].id) || null,
+        striker: '', nonStriker: '', bowler: '',
+        get battingPlayers() { return (this.teams.find(t => t.id == this.battingId) || {}).players || []; },
+        get bowlingPlayers() { return (this.teams.find(t => t.id != this.battingId) || {}).players || []; },
+        get ready() {
+            return !!(this.battingId && this.striker && this.nonStriker && this.bowler
+                      && this.striker !== this.nonStriker);
+        },
+    };
+}
+</script>

@@ -16,9 +16,8 @@ Cricket conventions used here:
   * Balls faced by a batter exclude wides (no-balls count as faced).
 """
 from django.db import transaction
-from django.db.models import Max
 
-from .models import Delivery
+from .models import Innings, Delivery
 
 
 # ── Derivation (pure reads) ──────────────────────────────────────────────────
@@ -258,6 +257,49 @@ def undo_last(innings):
         last.delete()
         sync_team_cache(innings)
     return last
+
+
+def start_innings(match, *, number, batting_team, bowling_team, striker, non_striker, bowler):
+    """Create an innings and set the opening working-state."""
+    return Innings.objects.create(
+        match=match, number=number,
+        batting_team=batting_team, bowling_team=bowling_team,
+        current_striker=striker, current_non_striker=non_striker, current_bowler=bowler,
+    )
+
+
+def advance_after_delivery(innings):
+    """Recompute the live working-state (who's on strike / bowling next) from the
+    ledger. Striker is left None after a wicket and bowler None at over end — the
+    scorer then picks the incoming batter / new bowler."""
+    rows = _deliveries(innings)
+    if not rows:
+        return
+    last = rows[-1]
+    pair = on_strike_for_next(innings)
+    if pair is not None:
+        innings.current_striker, innings.current_non_striker = pair
+    legal = sum(1 for d in rows if d.is_legal)
+    innings.current_bowler = None if (last.is_legal and legal % 6 == 0) else last.bowler
+    innings.save(update_fields=['current_striker', 'current_non_striker', 'current_bowler'])
+
+
+@transaction.atomic
+def score_ball(innings, *, runs_off_bat=0, extra_type=Delivery.EXTRA_NONE, extra_runs=0,
+               is_wicket=False, dismissal_type='', out_player=None, fielder=None, client_uuid=''):
+    """Record one ball using the innings' current working-state, then advance it."""
+    delivery = record_delivery(
+        innings,
+        striker=innings.current_striker,
+        non_striker=innings.current_non_striker,
+        bowler=innings.current_bowler,
+        runs_off_bat=runs_off_bat, extra_type=extra_type, extra_runs=extra_runs,
+        is_wicket=is_wicket, dismissal_type=dismissal_type,
+        out_player=out_player or (innings.current_striker if is_wicket else None),
+        fielder=fielder, client_uuid=client_uuid,
+    )
+    advance_after_delivery(innings)
+    return delivery
 
 
 @transaction.atomic

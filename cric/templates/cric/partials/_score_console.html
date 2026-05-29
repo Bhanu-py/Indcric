@@ -1,0 +1,188 @@
+{% comment %}
+Live scoring console — swapped as a unit (#score-console) on every action.
+States: complete → end-innings; need_batter → pick batter; need_bowler →
+pick bowler; ready → the tap grid. Staff only. Context from _console_context().
+{% endcomment %}
+<div id="score-console" class="flex flex-col gap-4">
+
+    {# ── Scoreboard ── #}
+    <div class="card overflow-hidden">
+        <div class="card-accent card-accent-pitch"></div>
+        <div class="p-4 sm:p-5">
+            <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                    <div class="micro-label">{{ innings.batting_team.name }} batting · innings {{ innings.number }}</div>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span class="text-4xl font-semibold text-stone-900 -tracking-[0.025em] tabular-nums leading-none">
+                            {{ score.runs }}<span class="text-stone-400">/{{ score.wickets }}</span>
+                        </span>
+                        <span class="font-mono text-xs text-stone-500">
+                            ({{ score.overs }}{% if overs_limit %}/{{ overs_limit }}{% endif %} ov)
+                        </span>
+                    </div>
+                    <div class="font-mono text-[10px] text-stone-400 uppercase tracking-[0.06em] mt-1.5">
+                        CRR {{ crr }} · Extras {{ score.extras }}
+                    </div>
+                </div>
+                <div class="flex flex-col items-end gap-1.5 shrink-0">
+                    <span class="micro-label">This over</span>
+                    <div class="flex items-center gap-1 flex-wrap justify-end max-w-[160px]">
+                        {% for b in over_balls %}
+                        <span class="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full font-mono text-[11px] font-semibold tabular-nums
+                            {% if b.kind == 'wicket' %}bg-red-50 text-red-700{% elif b.token == '6' %}bg-purple-100 text-purple-800{% elif b.token == '4' %}bg-sky-100 text-sky-800{% elif b.kind == 'runs' and b.token == '0' %}bg-stone-100 text-stone-400{% elif b.kind == 'runs' %}bg-emerald-50 text-emerald-700{% else %}bg-amber-50 text-amber-700{% endif %}">
+                            {{ b.token }}
+                        </span>
+                        {% empty %}
+                        <span class="font-mono text-[11px] text-stone-300">—</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            {# batters + bowler #}
+            <div class="mt-4 pt-3 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                <div class="flex flex-col gap-1.5">
+                    {% if striker %}
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-[13px] text-stone-800 truncate"><span class="text-pitch-600 font-bold">*</span> {{ striker.user.first_name|default:striker.user.username }}</span>
+                        {% if striker_stat %}<span class="font-mono text-xs text-stone-500 tabular-nums shrink-0">{{ striker_stat.runs }} ({{ striker_stat.balls }})</span>{% endif %}
+                    </div>
+                    {% endif %}
+                    {% if non_striker %}
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-[13px] text-stone-500 truncate">{{ non_striker.user.first_name|default:non_striker.user.username }}</span>
+                        {% if non_striker_stat %}<span class="font-mono text-xs text-stone-400 tabular-nums shrink-0">{{ non_striker_stat.runs }} ({{ non_striker_stat.balls }})</span>{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% if bowler %}
+                <div class="flex items-center justify-between gap-2 sm:justify-end sm:gap-3">
+                    <span class="text-[13px] text-stone-800 truncate">{{ bowler.user.first_name|default:bowler.user.username }}</span>
+                    {% if bowler_stat %}<span class="font-mono text-xs text-stone-500 tabular-nums shrink-0">{{ bowler_stat.overs }}–{{ bowler_stat.runs }}–{{ bowler_stat.wickets }}</span>{% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# ── State: innings complete ── #}
+    {% if complete %}
+    <div class="card overflow-hidden">
+        <div class="p-5 text-center">
+            <p class="text-sm font-semibold text-stone-800">Innings complete</p>
+            <p class="text-xs text-stone-500 mt-1">{{ innings.batting_team.name }} — {{ score.runs }}/{{ score.wickets }} ({{ score.overs }} ov)</p>
+        </div>
+        <form method="post" action="{% url 'end_innings' innings.id %}" class="px-5 pb-5">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary btn-md w-full justify-center">
+                {% if is_first_innings %}Start 2nd innings{% else %}Finish match{% endif %}
+            </button>
+        </form>
+    </div>
+
+    {# ── State: pick incoming batter ── #}
+    {% elif need_batter %}
+    {% include "_components/eyebrow.html" with label="Select next batter" %}
+    <div class="grid grid-cols-2 gap-2">
+        {% for p in available_batters %}
+        <button type="button"
+                hx-post="{% url 'score_set_batter' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
+                hx-vals='{"player": "{{ p.id }}"}'
+                class="btn btn-secondary btn-md justify-start">
+            {{ p.user.first_name|default:p.user.username }}
+        </button>
+        {% empty %}
+        <p class="col-span-2 text-sm text-stone-400 text-center py-4">No batters left — innings is all out.</p>
+        {% endfor %}
+    </div>
+
+    {# ── State: pick new bowler ── #}
+    {% elif need_bowler %}
+    {% include "_components/eyebrow.html" with label="Select bowler for the new over" %}
+    <div class="grid grid-cols-2 gap-2">
+        {% for p in available_bowlers %}
+        <button type="button"
+                hx-post="{% url 'score_set_bowler' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
+                hx-vals='{"player": "{{ p.id }}"}'
+                class="btn btn-secondary btn-md justify-start">
+            {{ p.user.first_name|default:p.user.username }}
+        </button>
+        {% endfor %}
+    </div>
+
+    {# ── State: ready — the tap grid ── #}
+    {% else %}
+    <form hx-post="{% url 'score_ball' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
+          x-data="{ mode: 'runs', wicket: false }"
+          class="card p-3 sm:p-4 flex flex-col gap-3 sticky bottom-0 safe-bottom md:static z-10 shadow-md md:shadow-sm">
+        {% csrf_token %}
+        <input type="hidden" name="mode" :value="mode">
+        <input type="hidden" name="uuid" value="{{ ball_uuid }}">
+
+        {# armed-extra hint #}
+        <p class="font-mono text-[10px] uppercase tracking-[0.08em] text-amber-700 text-center -mb-1"
+           x-show="mode !== 'runs'" x-cloak>
+           <span x-text="mode"></span> armed — tap runs (0 = penalty only)
+        </p>
+
+        {# runs #}
+        <div class="grid grid-cols-3 gap-2" x-show="!wicket">
+            {% for r in "0123" %}
+            <button type="submit" name="runs" value="{{ r }}"
+                    class="btn btn-secondary btn-md text-base font-semibold tabular-nums">{{ r }}</button>
+            {% endfor %}
+            <button type="submit" name="runs" value="4"
+                    class="btn btn-md text-base font-semibold tabular-nums bg-sky-100 text-sky-800 hover:bg-sky-200">4</button>
+            <button type="submit" name="runs" value="6"
+                    class="btn btn-md text-base font-semibold tabular-nums bg-purple-100 text-purple-800 hover:bg-purple-200">6</button>
+        </div>
+
+        {# extras (arm a mode, then tap runs) #}
+        <div class="grid grid-cols-4 gap-2" x-show="!wicket">
+            {% for m, lbl in extras_buttons %}
+            <button type="button" @click="mode = mode === '{{ m }}' ? 'runs' : '{{ m }}'"
+                    :class="mode === '{{ m }}' ? 'bg-amber-500 text-white' : 'bg-white text-stone-700 border border-stone-300'"
+                    class="btn btn-md text-sm font-medium transition-colors">{{ lbl }}</button>
+            {% endfor %}
+        </div>
+
+        {# wicket + undo #}
+        <div class="flex gap-2" x-show="!wicket">
+            <button type="button" @click="wicket = true; mode='runs'"
+                    class="btn btn-danger btn-md flex-1 justify-center">Wicket</button>
+            <button type="button"
+                    hx-post="{% url 'score_undo' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
+                    class="btn btn-secondary btn-md justify-center px-5">Undo</button>
+        </div>
+
+        {# wicket panel #}
+        <div x-show="wicket" x-cloak class="flex flex-col gap-2.5">
+            <div class="flex items-center justify-between">
+                {% include "_components/eyebrow.html" with label="How out?" %}
+                <button type="button" @click="wicket = false" class="text-xs text-stone-500 hover:text-stone-800">Cancel</button>
+            </div>
+            <select name="fielder" class="form-select">
+                <option value="">Fielder / keeper (if any)…</option>
+                {% for p in fielders %}
+                <option value="{{ p.id }}">{{ p.user.first_name|default:p.user.username }}</option>
+                {% endfor %}
+            </select>
+            <div class="grid grid-cols-2 gap-2">
+                {% for val, lbl in dismissals %}
+                <button type="submit" name="wicket" value="1" hx-vals='{"dismissal": "{{ val }}"}'
+                        class="btn btn-md justify-center bg-red-50 text-red-700 border border-red-200 hover:bg-red-100">{{ lbl }}</button>
+                {% endfor %}
+            </div>
+        </div>
+    </form>
+
+    {# bottom bar — sibling of the scoring form (no nested forms) #}
+    <div class="flex items-center justify-between px-1">
+        <a href="{% url 'session_detail' match.session_id %}" class="text-xs text-stone-400 hover:text-stone-700">Exit scoring</a>
+        <form method="post" action="{% url 'end_innings' innings.id %}" onsubmit="return confirm('End this innings now?')">
+            {% csrf_token %}
+            <button type="submit" class="text-xs text-stone-400 hover:text-red-600">End innings early</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
