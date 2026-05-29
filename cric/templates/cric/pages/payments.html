@@ -52,39 +52,126 @@
     {% if tab == 'session' %}
     {% comment %}BY SESSION — pick session + per-attendee paid{% endcomment %}
     <section class="mb-6">
-        {% include "_components/eyebrow.html" with label="Select a session" %}
+        {% comment %}Needs-payment sessions — full wrapping grid, always visible.{% endcomment %}
+        {% if unsettled_cards %}
+        {% include "_components/eyebrow.html" with label="Needs payment" %}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {% for s in confirmed_sessions %}
-            <a href="?tab=session&session_id={{ s.id }}"
-               class="card p-3.5 hover:shadow-md transition-all group
-                      {% if selected_session and selected_session.id == s.id %}ring-2 ring-pitch-500 shadow-md{% endif %}">
-                <div class="flex items-center gap-3 min-w-0">
-                    <div class="shrink-0 w-9 h-9 rounded-[10px] bg-pitch-50 flex flex-col items-center justify-center">
-                        <span class="text-[13px] font-semibold text-pitch-800 leading-none">{{ s.date|date:"j" }}</span>
-                        <span class="font-mono text-[8px] font-medium text-pitch-700 uppercase tracking-[0.06em] mt-0.5">{{ s.date|date:"M" }}</span>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <p class="text-[13px] font-semibold text-stone-800 truncate group-hover:text-pitch-700 transition-colors -tracking-[0.005em]">
-                            {{ s.name }}
-                        </p>
-                        <p class="font-mono text-[10px] text-stone-400 mt-0.5">
-                            {{ s.date|date:"D j M" }} · €{{ s.cost_per_person }}/p
-                        </p>
-                    </div>
-                    {% if selected_session and selected_session.id == s.id %}
-                    <svg class="w-4 h-4 text-pitch-600 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                    {% endif %}
-                </div>
-            </a>
-            {% empty %}
-            <div class="col-span-3 card p-10 text-center">
-                <p class="text-sm text-stone-400">No sessions have confirmed attendance yet. Confirm a past session's attendance to populate payments.</p>
-            </div>
+            {% for card in unsettled_cards %}
+                {% include "_components/payment_session_card.html" with card=card selected_session=selected_session %}
             {% endfor %}
+        </div>
+        {% endif %}
+
+        {% comment %}Attendance pending — past sessions not yet confirmed, not ready for payments.{% endcomment %}
+        {% if pending_attendance_sessions %}
+        <div class="{% if unsettled_cards %}mt-6{% endif %}">
+            {% include "_components/eyebrow.html" with label="Attendance pending" %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {% for s in pending_attendance_sessions %}
+                <a href="{% url 'session_detail' session_id=s.id %}"
+                   class="card p-3.5 hover:shadow-md transition-all group block border-amber-200 bg-amber-50/40">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="shrink-0 w-9 h-9 rounded-[10px] bg-amber-100 flex flex-col items-center justify-center">
+                            <span class="text-[13px] font-semibold text-amber-800 leading-none">{{ s.date|date:"j" }}</span>
+                            <span class="font-mono text-[8px] font-medium text-amber-700 uppercase tracking-[0.06em] mt-0.5">{{ s.date|date:"M" }}</span>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-[13px] font-semibold text-stone-800 truncate group-hover:text-amber-700 transition-colors -tracking-[0.005em]">
+                                {{ s.name }}
+                            </p>
+                            <p class="font-mono text-[10px] text-stone-400 mt-0.5">{{ s.date|date:"D j M" }}</p>
+                        </div>
+                    </div>
+                    <div class="mt-2.5 flex items-center justify-between">
+                        {% include "_components/badge.html" with variant="amber" label="Attendance pending" %}
+                        <span class="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700">
+                            Confirm
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% comment %}Settled — fully paid + free sessions, demoted to one compact horizontal-scroll archive strip.{% endcomment %}
+        {% if settled_cards or free_sessions %}
+        <div class="{% if unsettled_cards or pending_attendance_sessions %}mt-6{% endif %}">
+            {% include "_components/eyebrow.html" with label="Settled" %}
+            <div class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
+                {% for card in settled_cards %}
+                    {% include "_components/payment_session_card.html" with card=card selected_session=selected_session strip=True %}
+                {% endfor %}
+                {% for s in free_sessions %}
+                <a href="?tab=session&session_id={{ s.id }}"
+                   class="card p-3.5 shrink-0 w-60 snap-start opacity-80 block transition-all hover:shadow-md hover:opacity-100
+                          {% if selected_session and selected_session.id == s.id %}ring-2 ring-pitch-500 shadow-md opacity-100{% endif %}">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="shrink-0 w-9 h-9 rounded-[10px] bg-stone-100 flex flex-col items-center justify-center">
+                            <span class="text-[13px] font-semibold text-stone-700 leading-none">{{ s.date|date:"j" }}</span>
+                            <span class="font-mono text-[8px] font-medium text-stone-500 uppercase tracking-[0.06em] mt-0.5">{{ s.date|date:"M" }}</span>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-[13px] font-semibold text-stone-800 truncate -tracking-[0.005em]">{{ s.name|default:"Session" }}</p>
+                            <p class="font-mono text-[10px] text-stone-400 mt-0.5">{{ s.date|date:"D j M" }}</p>
+                        </div>
+                    </div>
+                    <div class="mt-2.5">
+                        {% include "_components/badge.html" with variant="stone" label="Free" %}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% comment %}Nothing at all.{% endcomment %}
+        {% if not unsettled_cards and not settled_cards and not pending_attendance_sessions and not free_sessions %}
+        <div class="card p-10 text-center">
+            <p class="text-sm text-stone-400">No sessions yet. Confirm a past session's attendance to populate payments.</p>
+        </div>
+        {% endif %}
+    </section>
+
+    {% if selected_session and selected_is_free %}
+    {% comment %}Free session — no payments to collect. List attendees + wallet only.{% endcomment %}
+    <section>
+        {% include "_components/eyebrow.html" with label=selected_session.name|default:"Session"|add:" — attendees" %}
+        <div class="card overflow-hidden">
+            <div class="px-5 py-3 border-b border-stone-100 flex items-center justify-between">
+                <h3 class="font-mono text-[10px] font-medium text-stone-500 uppercase tracking-[0.08em]">
+                    {{ selected_attendees|length }} attendee{{ selected_attendees|length|pluralize }}
+                </h3>
+                {% include "_components/badge.html" with variant="stone" label="Free · nothing to collect" %}
+            </div>
+            <div class="p-3 flex flex-col gap-1.5">
+                {% for row in selected_attendees %}
+                <div class="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] border border-stone-100 bg-white">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-7 h-7 rounded-full bg-stone-100 text-stone-600 flex items-center justify-center text-xs font-bold shrink-0">
+                            {{ row.user.username|first|upper }}
+                        </span>
+                        <div class="min-w-0">
+                            <p class="text-[13px] font-medium text-stone-800 truncate">{{ row.user.get_full_name|default:row.user.username }}</p>
+                            <p class="font-mono text-[10px] text-stone-400 mt-0.5">
+                                {% if row.user.role %}{{ row.user.role|role_emoji }} {{ row.user.role|title }}{% else %}@{{ row.user.username }}{% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end leading-tight font-mono text-[10px] uppercase tracking-[0.06em] shrink-0">
+                        <span class="text-stone-400">Wallet</span>
+                        <span class="{% if row.wallet < 0 %}text-red-600{% else %}text-stone-700{% endif %}">€{{ row.wallet }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-sm text-stone-400 text-center py-8">No attendees recorded for this session.</p>
+                {% endfor %}
+            </div>
         </div>
     </section>
 
-    {% if selected_session %}
+    {% elif selected_session %}
     <section>
         {% include "_components/eyebrow.html" with label=selected_session.name|add:" — payments" %}
         <form method="post" action="{% url 'manage-payments' %}">

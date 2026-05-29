@@ -619,13 +619,30 @@ def session_attendance_detail_view(request, session_id):
                 attendee_user_ids.append(sp.user_id)
 
         present_count = len(attendee_user_ids)
-        if present_count == 0 or not session.cost:
+
+        # Genuinely nobody present → clear attendance entirely.
+        if present_count == 0:
             session.cost_per_person = None
             session.attendance_confirmed = False
             session.save(update_fields=['cost_per_person', 'attendance_confirmed'])
             # Remove any pending payments — no one attended.
             Payment.objects.filter(session=session, status='pending').delete()
             messages.warning(request, 'No attendees marked — attendance cleared, no cost split.')
+            return redirect('session_detail', session_id=session.id)
+
+        # Attendees present but the session has no cost (free game) → still confirm
+        # attendance, there's just nothing to split or collect.
+        if not session.cost:
+            session.cost_per_person = None
+            session.attendance_confirmed = True
+            session.save(update_fields=['cost_per_person', 'attendance_confirmed'])
+            # No cost → drop stale pending payments; keep any historic paid records.
+            Payment.objects.filter(session=session, status='pending').delete()
+            messages.success(
+                request,
+                f'Attendance saved: {present_count} present. '
+                'No cost set for this session, so there is nothing to split.'
+            )
             return redirect('session_detail', session_id=session.id)
 
         # 2. Recompute the per-person split.
@@ -699,9 +716,52 @@ def payments_view(request):
     ).distinct().count()
     members_with_payments_count = members_with_payments.count()
 
-    # Sessions with confirmed attendance (the only ones that have Payment rows) ──
+    # Paid sessions with confirmed attendance (the only ones that have Payment
+    # rows). Free sessions (cost <= 0) never enter the payment flow — see below.
     confirmed_sessions = (
-        Session.objects.filter(attendance_confirmed=True)
+        Session.objects.filter(attendance_confirmed=True, cost__gt=0)
+        .order_by('-date', '-time')
+    )
+
+    # Per-session payment rollup — drives the status chip on each card and lets
+    # us sink fully-paid sessions to the bottom of the picker.
+    session_pay = {
+        row['session_id']: row
+        for row in Payment.objects.values('session_id').annotate(
+            total=models.Count('id'),
+            paid=models.Count('id', filter=models.Q(status='paid')),
+            outstanding=Sum('amount', filter=models.Q(status='pending')),
+        )
+    }
+
+    def _build_card(s):
+        agg = session_pay.get(s.id)
+        total = agg['total'] if agg else 0
+        paid = agg['paid'] if agg else 0
+        return {
+            'session': s,
+            'total': total,
+            'paid': paid,
+            'fully_paid': total > 0 and paid == total,
+            'outstanding': (agg['outstanding'] or Decimal('0')) if agg else Decimal('0'),
+        }
+
+    confirmed_cards = [_build_card(s) for s in confirmed_sessions]
+    # Needs-payment cards stay up top; fully-settled ones drop to the archive strip.
+    unsettled_cards = [c for c in confirmed_cards if not c['fully_paid']]
+    settled_cards = [c for c in confirmed_cards if c['fully_paid']]
+
+    # Paid past sessions whose attendance was never confirmed — not yet ready for
+    # payments. Surfaced with a nudge to go confirm attendance first.
+    pending_attendance_sessions = list(
+        Session.objects.filter(date__lt=today, attendance_confirmed=False, cost__gt=0)
+        .order_by('-date', '-time')
+    )
+
+    # Free past sessions (no cost) — nothing to split or collect, so they need no
+    # attendance-confirm or payment workflow. Shown as 'Free', no action required.
+    free_sessions = list(
+        Session.objects.filter(date__lt=today, cost__lte=0)
         .order_by('-date', '-time')
     )
 
@@ -775,6 +835,8 @@ def payments_view(request):
     selected_payments = []
     selected_paid_count = 0
     selected_outstanding = Decimal('0')
+    selected_is_free = False
+    selected_attendees = []
 
     # Per-user wallet balances — used by both tabs.
     wallet_by_user = {
@@ -785,10 +847,29 @@ def payments_view(request):
     if tab == 'session':
         session_id = request.GET.get('session_id')
         if session_id:
-            selected_session = Session.objects.filter(pk=session_id, attendance_confirmed=True).first()
+            # Selectable: a confirmed paid session, or a past free session.
+            selected_session = Session.objects.filter(
+                models.Q(attendance_confirmed=True) | models.Q(cost__lte=0, date__lt=today),
+                pk=session_id,
+            ).first()
         if selected_session is None:
             selected_session = confirmed_sessions.first()
-        if selected_session is not None:
+
+        selected_is_free = selected_session is not None and (selected_session.cost or 0) <= 0
+
+        if selected_is_free:
+            # Free session → no payments to collect. Just list the attendees with
+            # their wallet balance (no cash/paid checklist).
+            present_sps = (
+                SessionPlayer.objects.filter(session=selected_session, attendance__attended=True)
+                .select_related('user')
+                .order_by('user__username')
+            )
+            selected_attendees = [
+                {'user': sp.user, 'wallet': wallet_by_user.get(sp.user_id, Decimal('0'))}
+                for sp in present_sps
+            ]
+        elif selected_session is not None:
             raw_payments = list(
                 Payment.objects.filter(session=selected_session)
                 .select_related('user')
@@ -852,10 +933,16 @@ def payments_view(request):
     context = {
         'tab': tab,
         'confirmed_sessions': confirmed_sessions,
+        'unsettled_cards': unsettled_cards,
+        'settled_cards': settled_cards,
+        'pending_attendance_sessions': pending_attendance_sessions,
+        'free_sessions': free_sessions,
         'selected_session': selected_session,
         'selected_payments': selected_payments,
         'selected_paid_count': selected_paid_count,
         'selected_outstanding': selected_outstanding,
+        'selected_is_free': selected_is_free,
+        'selected_attendees': selected_attendees,
         'balances': balances,
         'outstanding_total': outstanding_total,
         'sessions_30d': sessions_30d,
