@@ -146,20 +146,26 @@
         </div>
         {% endif %}
 
-        <div class="card"><div class="p-4">
+        <a href="{% url 'profile' %}?tab=payments" class="card hover:shadow-md transition-shadow block group"><div class="p-4 flex items-center justify-between gap-2">
+            <div class="min-w-0">
             {% with outstanding_str=outstanding_total|stringformat:"s" %}
             {% with outstanding_label="€"|add:outstanding_str %}
                 {% include "_components/stat_column.html" with label="Your outstanding" value=outstanding_label dot="amber" first=True %}
             {% endwith %}
             {% endwith %}
-        </div></div>
-        <div class="card"><div class="p-4">
+            </div>
+            <svg class="w-4 h-4 text-stone-300 group-hover:text-stone-500 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </div></a>
+        <a href="{% url 'profile' %}?tab=wallet" class="card hover:shadow-md transition-shadow block group"><div class="p-4 flex items-center justify-between gap-2">
+            <div class="min-w-0">
             {% with wallet_str=wallet_balance|stringformat:"s" %}
             {% with wallet_label="€"|add:wallet_str %}
                 {% include "_components/stat_column.html" with label="Wallet balance" value=wallet_label dot="sky" first=True %}
             {% endwith %}
             {% endwith %}
-        </div></div>
+            </div>
+            <svg class="w-4 h-4 text-stone-300 group-hover:text-stone-500 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </div></a>
     </div>
 
     <!-- ── Inline action shortcuts ── -->
