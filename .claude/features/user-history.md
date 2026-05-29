@@ -1,6 +1,10 @@
 # User History — Games, Payments, Wallet Ledger
 
-**Status:** Spec only — no code yet
+**Status:** Implemented (v1) — 2026-05-29. Three tabs live on the profile page
+(self & staff only), HTMX-swapped, read-only over existing data (no new tables).
+Wallet→Payment FK and the `topup` status (Decisions Pending 1–2) remain future
+upgrades. Surfaced for staff via Member-balances → profile and the manage-users
+username link.
 **Owner:** bhanu
 **Created:** 2026-05-28
 

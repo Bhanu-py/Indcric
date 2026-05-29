@@ -1,0 +1,28 @@
+{% comment %}Wallet tab — ledger with running balance. Context: wallet_rows, wallet_balance.{% endcomment %}
+<div class="px-5 py-3 border-b border-stone-100 bg-stone-50 flex items-baseline justify-between">
+    <span class="font-mono text-[10px] font-medium text-stone-500 uppercase tracking-[0.08em]">Current balance</span>
+    <span class="font-mono text-lg font-bold tabular-nums {% if wallet_balance < 0 %}text-red-600{% else %}text-stone-900{% endif %}">€{{ wallet_balance|floatformat:2 }}</span>
+</div>
+<div class="p-3 flex flex-col gap-1.5">
+    {% for r in wallet_rows %}
+    <div class="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] border border-stone-100 bg-white">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="shrink-0 w-9 h-9 rounded-[10px] {% if r.is_credit %}bg-emerald-50{% else %}bg-red-50{% endif %} flex items-center justify-center">
+                <span class="text-base {% if r.is_credit %}text-emerald-600{% else %}text-red-500{% endif %}">{% if r.is_credit %}+{% else %}−{% endif %}</span>
+            </div>
+            <div class="min-w-0">
+                <p class="text-[13px] font-semibold text-stone-800 truncate -tracking-[0.005em]">{{ r.label }}</p>
+                <p class="font-mono text-[10px] text-stone-400 mt-0.5">{{ r.date|date:"D j M" }}</p>
+            </div>
+        </div>
+        <div class="flex flex-col items-end shrink-0 leading-tight">
+            <span class="font-mono text-[13px] font-semibold tabular-nums {% if r.is_credit %}text-emerald-600{% else %}text-red-600{% endif %}">
+                {% if r.is_credit %}+{% else %}−{% endif %}€{{ r.amount|floatformat:2|cut:"-" }}
+            </span>
+            <span class="font-mono text-[10px] text-stone-400 tabular-nums mt-0.5">bal €{{ r.balance|floatformat:2 }}</span>
+        </div>
+    </div>
+    {% empty %}
+    <p class="text-sm text-stone-400 text-center py-8">No wallet activity yet.</p>
+    {% endfor %}
+</div>

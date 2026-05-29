@@ -1,0 +1,36 @@
+{% comment %}Games tab — sessions the user was rostered for. Context: game_rows.{% endcomment %}
+<div class="p-3 flex flex-col gap-1.5">
+    {% for row in game_rows %}
+    <a href="{% url 'session_detail' row.session.id %}"
+       class="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] border border-stone-100 bg-white hover:border-pitch-200 hover:shadow-sm transition-all">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="shrink-0 w-9 h-9 rounded-[10px] bg-pitch-50 flex flex-col items-center justify-center">
+                <span class="text-[13px] font-semibold text-pitch-800 leading-none">{{ row.session.date|date:"j" }}</span>
+                <span class="font-mono text-[8px] font-medium text-pitch-700 uppercase tracking-[0.06em] mt-0.5">{{ row.session.date|date:"M" }}</span>
+            </div>
+            <div class="min-w-0">
+                <p class="text-[13px] font-semibold text-stone-800 truncate -tracking-[0.005em]">{{ row.session.name|default:"Session" }}</p>
+                <p class="font-mono text-[10px] text-stone-400 mt-0.5 truncate">
+                    {{ row.session.location }}{% if row.team %} · {{ row.team.name }}{% endif %}
+                </p>
+            </div>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+            {% if row.result == 'won' %}
+                {% include "_components/badge.html" with variant="green" label="Won" %}
+            {% elif row.result == 'lost' %}
+                {% include "_components/badge.html" with variant="red" label="Lost" %}
+            {% endif %}
+            {% if row.attended %}
+                {% include "_components/badge.html" with variant="pitch" label="Played" %}
+            {% elif row.vote == 'no' %}
+                {% include "_components/badge.html" with variant="stone" label="Voted out" %}
+            {% else %}
+                {% include "_components/badge.html" with variant="stone" label="No-show" %}
+            {% endif %}
+        </div>
+    </a>
+    {% empty %}
+    <p class="text-sm text-stone-400 text-center py-8">No games yet.</p>
+    {% endfor %}
+</div>

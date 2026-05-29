@@ -1,0 +1,37 @@
+{% comment %}Payments tab — every per-session bill. Context: payment_rows, payment_totals.{% endcomment %}
+<div class="px-5 py-2.5 border-b border-stone-100 bg-stone-50 flex items-center gap-x-4 gap-y-1 flex-wrap font-mono text-[10px] uppercase tracking-[0.08em]">
+    <span class="text-emerald-600">Paid €{{ payment_totals.paid|floatformat:2 }}</span>
+    <span class="text-amber-600">Pending €{{ payment_totals.pending|floatformat:2 }}</span>
+    <span class="text-stone-400">Wallet €{{ payment_totals.wallet|floatformat:2 }} · Cash €{{ payment_totals.cash|floatformat:2 }}</span>
+</div>
+<div class="p-3 flex flex-col gap-1.5">
+    {% for p in payment_rows %}
+    <div class="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] border border-stone-100 {% if p.status == 'paid' %}bg-pitch-50{% else %}bg-white{% endif %}">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="shrink-0 w-9 h-9 rounded-[10px] bg-stone-100 flex flex-col items-center justify-center">
+                <span class="text-[13px] font-semibold text-stone-700 leading-none">{{ p.date|date:"j" }}</span>
+                <span class="font-mono text-[8px] font-medium text-stone-500 uppercase tracking-[0.06em] mt-0.5">{{ p.date|date:"M" }}</span>
+            </div>
+            <div class="min-w-0">
+                <p class="text-[13px] font-semibold text-stone-800 truncate -tracking-[0.005em]">{{ p.session.name|default:"Session" }}</p>
+                <p class="font-mono text-[10px] text-stone-400 mt-0.5">{{ p.date|date:"D j M" }}</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+            <span class="font-mono text-[13px] font-semibold text-stone-800 tabular-nums">€{{ p.amount|floatformat:2 }}</span>
+            {% if p.method == 'wallet' %}
+                {% include "_components/badge.html" with variant="pitch" label="Wallet" %}
+            {% else %}
+                {% include "_components/badge.html" with variant="stone" label="Cash" %}
+            {% endif %}
+            {% if p.status == 'paid' %}
+                {% include "_components/badge.html" with variant="green" label="Paid" %}
+            {% else %}
+                {% include "_components/badge.html" with variant="amber" label="Pending" %}
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <p class="text-sm text-stone-400 text-center py-8">No payments yet.</p>
+    {% endfor %}
+</div>

@@ -6,8 +6,9 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth.views import redirect_to_login
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.db.models.functions import Coalesce
+from django.http import HttpResponseForbidden
 from django.urls import reverse
 from decimal import Decimal, InvalidOperation
 
@@ -43,11 +44,132 @@ class UsersHtmxTableView(SingleTableMixin, FilterView):
         return context
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Profile history (Games / Payments / Wallet) — read-only surfacing of data we
+# already store. No new tables; each helper just queries existing rows.
+# Visible to the user themselves and to staff only.
+# ─────────────────────────────────────────────────────────────────────────────
+
+HISTORY_TABS = ('games', 'payments', 'wallet')
+
+
+def _games_history(user):
+    """Sessions the user was rostered for, newest first, with attendance,
+    team, their vote, and (when scored) the result."""
+    from apps.sessions.models import SessionPlayer, Attendance
+    from apps.polls.models import Vote
+
+    session_players = (
+        SessionPlayer.objects.filter(user=user)
+        .select_related('session', 'team', 'team__match')
+        .order_by('-session__date', '-session__time')
+    )
+    attended_ids = set(
+        Attendance.objects.filter(match_player__user=user, attended=True)
+        .values_list('match_player_id', flat=True)
+    )
+    votes = {
+        v.poll.session_id: v.choice
+        for v in Vote.objects.filter(user=user).select_related('poll')
+    }
+
+    rows = []
+    for sp in session_players:
+        result = None
+        if sp.team and sp.team.match and sp.team.match.winner_id:
+            result = 'won' if sp.team.match.winner_id == sp.team_id else 'lost'
+        rows.append({
+            'session': sp.session,
+            'attended': sp.id in attended_ids,
+            'team': sp.team,
+            'vote': votes.get(sp.session_id),
+            'result': result,
+        })
+    return rows
+
+
+def _payments_history(user):
+    """Every per-session payment, newest first, plus method/status totals.
+
+    Includes cash payments (which never touch the wallet ledger)."""
+    from apps.payments.models import Payment
+
+    qs = (
+        Payment.objects.filter(user=user)
+        .select_related('session')
+        .order_by('-date', '-id')
+    )
+    rows = list(qs)
+    agg = qs.aggregate(
+        paid=Sum('amount', filter=Q(status='paid')),
+        pending=Sum('amount', filter=Q(status='pending')),
+        wallet=Sum('amount', filter=Q(status='paid', method='wallet')),
+        cash=Sum('amount', filter=Q(status='paid', method='cash')),
+    )
+    totals = {k: (v or Decimal('0')) for k, v in agg.items()}
+    return rows, totals
+
+
+_WALLET_LABELS = {
+    'paid': 'Session debit',
+    'refund': 'Refund',
+    'adjustment': 'Staff adjustment',
+    'pending': 'Top-up',
+    'topup': 'Top-up',
+}
+
+
+def _wallet_history(user):
+    """Wallet ledger rows with a running balance, newest first.
+
+    Running balance is computed in Python (oldest→newest) to stay
+    SQLite/Postgres-agnostic, then reversed for display."""
+    from apps.payments.models import Wallet
+
+    rows = list(Wallet.objects.filter(user=user).order_by('date', 'id'))
+    running = Decimal('0')
+    for r in rows:
+        running += r.amount
+        r.balance = running
+        r.label = _WALLET_LABELS.get(r.status, (r.status or 'Entry').title())
+        r.is_credit = r.amount >= 0
+    rows.reverse()
+    return rows, running
+
+
+def _history_context(user, tab):
+    if tab not in HISTORY_TABS:
+        tab = 'games'
+    ctx = {
+        'profile_user': user,
+        'history_tab': tab,
+        'tabs': [('games', 'Games'), ('payments', 'Payments'), ('wallet', 'Wallet')],
+    }
+    if tab == 'payments':
+        ctx['payment_rows'], ctx['payment_totals'] = _payments_history(user)
+    elif tab == 'wallet':
+        ctx['wallet_rows'], ctx['wallet_balance'] = _wallet_history(user)
+    else:
+        ctx['game_rows'] = _games_history(user)
+    return ctx
+
+
+@login_required
+def profile_history_view(request, username, tab='games'):
+    """HTMX partial for a profile's history tab. Self or staff only."""
+    target = get_object_or_404(User, username=username)
+    if not (request.user == target or request.user.is_staff):
+        return HttpResponseForbidden("You can only view your own history.")
+    return render(request, 'cric/partials/_history.html', _history_context(target, tab))
+
+
 @login_required
 def profile_view(request, username=None):
     if not username:
         username = request.user.username
     user = get_object_or_404(User, username=username)
+
+    can_view_history = (request.user == user) or request.user.is_staff
 
     edit_mode = request.GET.get('edit', False)
     if edit_mode:
@@ -60,7 +182,11 @@ def profile_view(request, username=None):
                 return redirect('profile')
         context = {'user': user, 'form': form, 'edit_mode': True, 'is_profile_page': True}
     else:
-        context = {'user': user, 'is_profile_page': True}
+        context = {'user': user, 'is_profile_page': True, 'can_view_history': can_view_history}
+        if can_view_history:
+            # Render the requested (or default Games) tab inline — no load flash.
+            # ?tab= lets deep links (e.g. Member balances) land on Payments.
+            context.update(_history_context(user, request.GET.get('tab', 'games')))
 
     return render(request, 'cric/pages/profile.html', context)
 

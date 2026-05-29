@@ -1,0 +1,33 @@
+{% comment %}
+Profile history block — tab strip + the active tab's content, swapped as a unit.
+
+Each tab button hx-gets its history URL and replaces this whole #history div
+(outerHTML) so the active-tab styling re-renders along with the content.
+
+Context: profile_user, history_tab, and the active tab's rows (game_rows /
+payment_rows+payment_totals / wallet_rows+wallet_balance).
+{% endcomment %}
+<div id="history" class="card overflow-hidden">
+    <div class="card-header flex items-center justify-between gap-2 flex-wrap">
+        {% include "_components/eyebrow.html" with label="History" %}
+        <div role="tablist" class="inline-flex gap-1 bg-stone-100 p-[3px] rounded-lg">
+            {% for key, lbl in tabs %}
+            <button type="button" role="tab"
+                    hx-get="{% url 'profile_history' profile_user.username key %}"
+                    hx-target="#history" hx-swap="outerHTML"
+                    class="px-3 py-1.5 rounded-md text-xs font-medium leading-none transition-all min-h-[32px]
+                           {% if history_tab == key %}bg-white text-stone-900 shadow-sm{% else %}text-stone-500 hover:text-stone-700{% endif %}">
+                {{ lbl }}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if history_tab == 'payments' %}
+        {% include "cric/partials/_history_payments.html" %}
+    {% elif history_tab == 'wallet' %}
+        {% include "cric/partials/_history_wallet.html" %}
+    {% else %}
+        {% include "cric/partials/_history_games.html" %}
+    {% endif %}
+</div>

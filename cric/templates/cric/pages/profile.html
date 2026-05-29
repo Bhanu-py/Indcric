@@ -233,6 +233,13 @@
     </div>
     {% endif %}
 
+    <!-- ── History (Games / Payments / Wallet) — self & staff only ── -->
+    {% if can_view_history %}
+    <div class="mb-4">
+        {% include "cric/partials/_history.html" %}
+    </div>
+    {% endif %}
+
     {% endif %}
 </div>
 {% endblock %}

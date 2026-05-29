@@ -1,6 +1,8 @@
 import django_tables2 as tables
 from django.contrib.auth import get_user_model
 from django.db.models import Sum
+from django.urls import reverse
+from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from apps.payments.models import Wallet
@@ -24,6 +26,15 @@ class UserHTMxTable(tables.Table):
         template_name = "tables/tailwind_table.html"
         fields = ("id", "username", "role", "batting_rating", "bowling_rating", "fielding_rating", "is_staff", "last_login", "wallet_amount")
         sequence = ("id", "username", "role", "batting_rating", "bowling_rating", "fielding_rating", "last_login", "is_staff", "wallet_amount")
+
+    def render_username(self, value, record):
+        # Link to the member's profile, where staff can see their full history
+        # (Games / Payments / Wallet tabs).
+        url = reverse('profile_with_username', args=[record.username])
+        return format_html(
+            '<a href="{}" class="font-medium text-pitch-700 hover:text-pitch-900 hover:underline">{}</a>',
+            url, value,
+        )
 
     def render_wallet_amount(self, record):
         # Wallet is a transaction ledger — balance is the sum of all rows.
