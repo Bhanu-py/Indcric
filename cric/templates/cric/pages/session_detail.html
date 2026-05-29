@@ -509,26 +509,39 @@
             <!-- ── Match summary cards ── -->
             {% for match in matches %}
             {% with mteams=match.teams.all %}
-            <div class="card mb-4 overflow-hidden">
+            {# Latest match expanded; older ones collapse (tap the title) — keeps a
+               multi-match session tidy on mobile. Editing match stays open. #}
+            <div class="card mb-4 overflow-hidden"
+                 x-data="{ expanded: {% if forloop.last or edit_match and edit_match.id == match.id %}true{% else %}false{% endif %}, open: false, score: false }">
                 {% if edit_match and edit_match.id == match.id %}
                 <div class="h-1 bg-pitch-500"></div>
                 {% endif %}
-                <div class="card-header flex items-center justify-between">
-                    <div class="flex items-center gap-2 flex-wrap">
+                <div class="card-header flex items-center justify-between gap-2">
+                    <button type="button" @click="expanded = !expanded" class="flex items-center gap-2 flex-wrap text-left min-w-0">
+                        <svg class="w-4 h-4 text-stone-400 transition-transform shrink-0" :class="expanded ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                         <h2 class="text-sm font-bold text-stone-800">{{ match.name }}</h2>
                         {% if edit_match and edit_match.id == match.id %}
                         <span class="badge badge-pitch text-xs">Editing</span>
                         {% elif match.winner %}
                         <span class="badge badge-green text-xs">{{ match.winner.name }} Won</span>
                         {% endif %}
-                    </div>
+                        <span x-show="!expanded" class="font-mono text-[10px] text-stone-400 uppercase tracking-[0.06em]">tap to open</span>
+                    </button>
                     {% if user.is_staff %}
+                    {% with locked=match.innings.exists %}
                     <div class="flex items-center gap-2 shrink-0">
                         {% if match.teams.all|length >= 2 %}
-                        <a href="{% url 'match_score' match.id %}" class="btn btn-primary btn-sm">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
-                            Score
-                        </a>
+                            {% if match.winner_id %}
+                            <a href="{% url 'scorecard' match.id %}" class="btn btn-secondary btn-sm">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                Scorecard
+                            </a>
+                            {% else %}
+                            <a href="{% url 'match_score' match.id %}" class="btn btn-primary btn-sm">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                                {% if locked %}Resume{% else %}Score{% endif %}
+                            </a>
+                            {% endif %}
                         {% endif %}
                         <a href="{% url 'session_detail' session.id %}?edit_match={{ match.id }}#team-editor"
                            class="btn {% if edit_match and edit_match.id == match.id %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
@@ -536,16 +549,17 @@
                             {% if edit_match and edit_match.id == match.id %}Editing…{% else %}Edit Teams{% endif %}
                         </a>
                         <form method="POST" action="{% url 'delete_match' match.id %}"
-                              onsubmit="return confirm('Delete {{ match.name }}? This cannot be undone.')">
+                              onsubmit="return confirm('Delete {{ match.name }}?{% if locked %} This erases the scorecard too.{% endif %} This cannot be undone.')">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-ghost btn-sm text-stone-400 hover:text-red-500">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                             </button>
                         </form>
                     </div>
+                    {% endwith %}
                     {% endif %}
                 </div>
-                <div class="card-body" x-data="{ open: false, score: false }">
+                <div class="card-body" x-show="expanded" x-cloak>
 
                     <!-- Compact team summary (always visible) -->
                     <div class="flex items-center gap-3 flex-wrap">
@@ -573,7 +587,7 @@
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                         </a>
                         {% endif %}
-                        {% if user.is_staff and mteams|length >= 2 %}
+                        {% if user.is_staff and mteams|length >= 2 and not match.innings.exists %}
                         <button type="button" @click="score = !score"
                                 class="text-xs text-stone-400 hover:text-stone-700 flex items-center gap-1 transition-colors ml-auto">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>

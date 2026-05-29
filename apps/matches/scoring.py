@@ -162,6 +162,77 @@ def extras_breakdown(innings):
     return out
 
 
+def career_stats(user):
+    """Lifelong batting / bowling / fielding aggregates for a user, derived from
+    every delivery they were involved in. Returns dicts ready for the profile."""
+    # Batting — group the user's faced deliveries by innings (for HS, NO, 50s).
+    bat = {}
+    for d in Delivery.objects.filter(striker__user=user).select_related('innings'):
+        e = bat.setdefault(d.innings_id, {'runs': 0, 'balls': 0, 'out': False,
+                                          'fours': 0, 'sixes': 0, 'match': d.innings.match_id})
+        e['runs'] += d.runs_off_bat
+        if d.extra_type != Delivery.EXTRA_WIDE:
+            e['balls'] += 1
+        if d.runs_off_bat == 4:
+            e['fours'] += 1
+        elif d.runs_off_bat == 6:
+            e['sixes'] += 1
+    for d in Delivery.objects.filter(out_player__user=user, is_wicket=True):
+        if d.innings_id in bat:
+            bat[d.innings_id]['out'] = True
+
+    b_inns = len(bat)
+    runs = sum(e['runs'] for e in bat.values())
+    balls = sum(e['balls'] for e in bat.values())
+    outs = sum(1 for e in bat.values() if e['out'])
+    hs = max((e['runs'] for e in bat.values()), default=0)
+    hs_no = any(e['runs'] == hs and not e['out'] for e in bat.values())
+    batting = {
+        'innings': b_inns, 'runs': runs, 'balls': balls, 'not_outs': b_inns - outs,
+        'hs': hs, 'hs_label': f"{hs}{'*' if hs_no else ''}",
+        'avg': round(runs / outs, 2) if outs else None,
+        'sr': round(runs * 100 / balls, 2) if balls else None,
+        'fours': sum(e['fours'] for e in bat.values()),
+        'sixes': sum(e['sixes'] for e in bat.values()),
+        'fifties': sum(1 for e in bat.values() if 50 <= e['runs'] < 100),
+        'hundreds': sum(1 for e in bat.values() if e['runs'] >= 100),
+    }
+
+    # Bowling — group by innings (for best figures).
+    bowl = {}
+    for d in Delivery.objects.filter(bowler__user=user).select_related('innings'):
+        e = bowl.setdefault(d.innings_id, {'balls': 0, 'runs': 0, 'wkts': 0, 'match': d.innings.match_id})
+        if d.is_legal:
+            e['balls'] += 1
+        e['runs'] += d.runs_conceded
+        if d.is_wicket and d.dismissal_type in Delivery.BOWLER_DISMISSALS:
+            e['wkts'] += 1
+    bo_balls = sum(e['balls'] for e in bowl.values())
+    bo_runs = sum(e['runs'] for e in bowl.values())
+    wkts = sum(e['wkts'] for e in bowl.values())
+    best = None
+    if bowl:
+        b = sorted(bowl.values(), key=lambda e: (-e['wkts'], e['runs']))[0]
+        best = f"{b['wkts']}/{b['runs']}"
+    bowling = {
+        'innings': len(bowl), 'overs': f"{bo_balls // 6}.{bo_balls % 6}", 'balls': bo_balls,
+        'runs': bo_runs, 'wickets': wkts, 'best': best,
+        'avg': round(bo_runs / wkts, 2) if wkts else None,
+        'econ': round(bo_runs * 6 / bo_balls, 2) if bo_balls else None,
+    }
+
+    fielding = {
+        'catches': Delivery.objects.filter(fielder__user=user, dismissal_type='caught').count(),
+        'runouts': Delivery.objects.filter(fielder__user=user, dismissal_type='runout').count(),
+        'stumpings': Delivery.objects.filter(fielder__user=user, dismissal_type='stumped').count(),
+    }
+
+    matches = len({e['match'] for e in bat.values()} | {e['match'] for e in bowl.values()})
+    has_data = bool(b_inns or bowl or fielding['catches'] or fielding['runouts'] or fielding['stumpings'])
+    return {'batting': batting, 'bowling': bowling, 'fielding': fielding,
+            'matches': matches, 'has_data': has_data}
+
+
 def result_line(match):
     """Human result once both innings are closed, e.g. 'A won by 12 runs' or
     'B won by 3 wickets'. Returns None while the match is still in progress."""
@@ -224,8 +295,20 @@ def on_strike_for_next(innings):
     return striker, non_striker
 
 
+def target_for(innings):
+    """Runs the (2nd-innings) batting team needs to WIN — first-innings total + 1.
+    Returns None for the first innings or if there's no first innings yet."""
+    if innings.number < 2:
+        return None
+    first = innings.match.innings.filter(number=1).first()
+    if first is None:
+        return None
+    return innings_score(first)['runs'] + 1
+
+
 def is_innings_complete(innings):
-    """True if the innings has ended: all out, overs cap reached, or closed."""
+    """True if the innings has ended: all out, overs cap reached, target chased
+    down (2nd innings), or manually closed."""
     if innings.is_closed:
         return True
     score = innings_score(innings)
@@ -234,6 +317,10 @@ def is_innings_complete(innings):
         return True
     limit = innings.match.overs_limit
     if limit and score['legal_balls'] >= limit * 6:
+        return True
+    # Chase: the 2nd innings ends the instant the target is reached.
+    target = target_for(innings)
+    if target is not None and score['runs'] >= target:
         return True
     return False
 

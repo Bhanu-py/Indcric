@@ -22,6 +22,16 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                 <div class="font-mono text-[10px] text-stone-400 uppercase tracking-[0.06em] mt-1.5">
                     CRR {{ crr }} · Extras {{ score.extras }}
                 </div>
+                {% if chase %}
+                <div class="mt-2 inline-flex items-center gap-2 rounded-lg bg-amber-50 px-2.5 py-1.5">
+                    <span class="font-mono text-[10px] text-amber-700 uppercase tracking-[0.06em]">Target {{ chase.target }}</span>
+                    {% if not complete %}
+                    <span class="text-[13px] font-semibold text-amber-800">
+                        Need {{ chase.needed }}{% if chase.balls_left is not None %} off {{ chase.balls_left }}{% endif %}
+                    </span>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
 
             {# This over — one line; scrolls horizontally if the over runs long #}
@@ -70,7 +80,9 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
     {% if complete %}
     <div class="card overflow-hidden">
         <div class="p-5 text-center">
-            <p class="text-sm font-semibold text-stone-800">Innings complete</p>
+            <p class="text-sm font-semibold text-stone-800">
+                {% if chase and score.runs >= chase.target %}Target reached — {{ innings.batting_team.name }} win!{% else %}Innings complete{% endif %}
+            </p>
             <p class="text-xs text-stone-500 mt-1">{{ innings.batting_team.name }} — {{ score.runs }}/{{ score.wickets }} ({{ score.overs }} ov)</p>
         </div>
         <form method="post" action="{% url 'end_innings' innings.id %}" class="px-5 pb-5">
@@ -117,13 +129,14 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
           x-data="{ mode: 'runs', wicket: false }"
           class="card p-3 sm:p-4 flex flex-col gap-3 sticky bottom-0 safe-bottom md:static z-10 shadow-md md:shadow-sm">
         {% csrf_token %}
-        <input type="hidden" name="mode" :value="mode">
+        <input type="hidden" name="mode" x-model="mode">
         <input type="hidden" name="uuid" value="{{ ball_uuid }}">
 
         {# armed-extra hint #}
         <p class="font-mono text-[10px] uppercase tracking-[0.08em] text-amber-700 text-center -mb-1"
            x-show="mode !== 'runs'" x-cloak>
-           <span x-text="mode"></span> armed — tap runs (0 = penalty only)
+           <span x-text="mode"></span> armed —
+           <span x-text="(mode === 'wide' || mode === 'noball') ? 'tap extra runs (0 = penalty only)' : 'tap how many were run'"></span>
         </p>
 
         {# runs #}

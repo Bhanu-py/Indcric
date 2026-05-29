@@ -215,20 +215,55 @@
         </div>
     </div>
 
-    <!-- ── Career Stats ── -->
-    {% if user.playerprofile %}
+    <!-- ── Career (derived from scored matches) ── -->
+    {% if career.has_data %}
     <div class="card overflow-hidden mb-4">
-        <div class="card-header">
-            {% include "_components/eyebrow.html" with label="Career Stats" %}
+        <div class="card-header flex items-center justify-between">
+            {% include "_components/eyebrow.html" with label="Career" %}
+            <span class="font-mono text-[10px] text-stone-400 uppercase tracking-[0.08em]">{{ career.matches }} match{{ career.matches|pluralize:"es" }}</span>
         </div>
-        <div class="card-body">
-            <div class="grid grid-cols-3 sm:grid-cols-5 gap-3">
-                {% include "_components/stat_tile.html" with tint="pitch"   label="Matches"   value=user.playerprofile.matches_played|default:0 %}
-                {% include "_components/stat_tile.html" with tint="sky"     label="Runs"      value=user.playerprofile.runs_scored|default:0 %}
-                {% include "_components/stat_tile.html" with tint="red"     label="Wickets"   value=user.playerprofile.wickets_taken|default:0 %}
-                {% include "_components/stat_tile.html" with tint="amber"   label="Catches"   value=user.playerprofile.catches_taken|default:0 %}
-                {% include "_components/stat_tile.html" with tint="stone"   label="Stumpings" value=user.playerprofile.stumps_taken|default:0 %}
+        <div class="card-body space-y-4">
+            {% if career.batting.innings %}
+            <div>
+                <p class="font-mono text-[10px] text-pitch-700 uppercase tracking-[0.08em] mb-3">Batting</p>
+                <div class="grid grid-cols-4 sm:grid-cols-7 gap-y-3 gap-x-2">
+                    {% include "_components/mini_stat.html" with label="Runs" value=career.batting.runs %}
+                    {% include "_components/mini_stat.html" with label="Inns" value=career.batting.innings %}
+                    {% include "_components/mini_stat.html" with label="HS" value=career.batting.hs_label %}
+                    {% include "_components/mini_stat.html" with label="Avg" value=career.batting.avg|default_if_none:"—" %}
+                    {% include "_components/mini_stat.html" with label="SR" value=career.batting.sr|default_if_none:"—" %}
+                    {% include "_components/mini_stat.html" with label="4s" value=career.batting.fours %}
+                    {% include "_components/mini_stat.html" with label="6s" value=career.batting.sixes %}
+                </div>
             </div>
+            {% endif %}
+            {% if career.bowling.innings %}
+            <div class="{% if career.batting.innings %}pt-4 border-t border-stone-100{% endif %}">
+                <p class="font-mono text-[10px] text-amber-700 uppercase tracking-[0.08em] mb-3">Bowling</p>
+                <div class="grid grid-cols-4 sm:grid-cols-6 gap-y-3 gap-x-2">
+                    {% include "_components/mini_stat.html" with label="Wkts" value=career.bowling.wickets %}
+                    {% include "_components/mini_stat.html" with label="Overs" value=career.bowling.overs %}
+                    {% include "_components/mini_stat.html" with label="Runs" value=career.bowling.runs %}
+                    {% include "_components/mini_stat.html" with label="Best" value=career.bowling.best|default_if_none:"—" %}
+                    {% include "_components/mini_stat.html" with label="Avg" value=career.bowling.avg|default_if_none:"—" %}
+                    {% include "_components/mini_stat.html" with label="Econ" value=career.bowling.econ|default_if_none:"—" %}
+                </div>
+            </div>
+            {% endif %}
+            {% if career.fielding.catches or career.fielding.runouts or career.fielding.stumpings %}
+            <div class="pt-4 border-t border-stone-100 flex flex-wrap gap-x-5 gap-y-1 font-mono text-[11px] text-stone-500 uppercase tracking-[0.06em]">
+                <span>Catches <span class="text-stone-800 font-semibold">{{ career.fielding.catches }}</span></span>
+                {% if career.fielding.runouts %}<span>Run-outs <span class="text-stone-800 font-semibold">{{ career.fielding.runouts }}</span></span>{% endif %}
+                {% if career.fielding.stumpings %}<span>Stumpings <span class="text-stone-800 font-semibold">{{ career.fielding.stumpings }}</span></span>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="card overflow-hidden mb-4">
+        <div class="card-header">{% include "_components/eyebrow.html" with label="Career" %}</div>
+        <div class="card-body">
+            <p class="text-sm text-stone-400">No match stats yet — they'll appear here once {% if user == request.user %}you play{% else %}they play{% endif %} a scored match.</p>
         </div>
     </div>
     {% endif %}

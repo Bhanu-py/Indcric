@@ -208,7 +208,13 @@ def profile_view(request, username=None):
                 return redirect('profile')
         context = {'user': user, 'form': form, 'edit_mode': True, 'is_profile_page': True}
     else:
-        context = {'user': user, 'is_profile_page': True, 'can_view_history': can_view_history}
+        from apps.matches import scoring
+        context = {
+            'user': user,
+            'is_profile_page': True,
+            'can_view_history': can_view_history,
+            'career': scoring.career_stats(user),  # derived batting/bowling/fielding
+        }
         if can_view_history:
             # Render the requested (or default Games) tab inline — no load flash.
             # ?tab= lets deep links (e.g. Member balances) land on Payments.

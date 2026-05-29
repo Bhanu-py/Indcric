@@ -82,6 +82,17 @@ def _console_context(innings):
     score = scoring.innings_score(innings)
     complete = scoring.is_innings_complete(innings)
 
+    # Chase info for the 2nd innings: target, runs needed, balls remaining.
+    chase = None
+    target = scoring.target_for(innings)
+    if target is not None:
+        limit = innings.match.overs_limit
+        chase = {
+            'target': target,
+            'needed': max(0, target - score['runs']),
+            'balls_left': (limit * 6 - score['legal_balls']) if limit else None,
+        }
+
     out_ids = set(
         innings.deliveries.filter(is_wicket=True).values_list('out_player_id', flat=True)
     )
@@ -116,6 +127,7 @@ def _console_context(innings):
         'match': innings.match,
         'score': score,
         'overs_limit': innings.match.overs_limit,
+        'chase': chase,
         'crr': round(score['runs'] * 6 / legal, 2) if legal else 0.0,
         'batting': batting,
         'bowling': bowling,
@@ -278,9 +290,9 @@ def score_ball_view(request, innings_id):
     elif mode == 'noball':
         kwargs.update(extra_type='noball', extra_runs=1, runs_off_bat=runs)
     elif mode == 'bye':
-        kwargs.update(extra_type='bye', extra_runs=max(1, runs))
+        kwargs.update(extra_type='bye', extra_runs=runs)
     elif mode == 'legbye':
-        kwargs.update(extra_type='legbye', extra_runs=max(1, runs))
+        kwargs.update(extra_type='legbye', extra_runs=runs)
     else:
         kwargs.update(runs_off_bat=runs)
 

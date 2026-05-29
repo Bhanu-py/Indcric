@@ -11,7 +11,7 @@ from django.utils import timezone
 from decimal import Decimal
 
 from .models import Session, SessionPlayer, Attendance
-from apps.matches.models import Match, Team, Player
+from apps.matches.models import Match, Team, Player, Delivery
 from apps.polls.models import Poll, Vote
 from apps.payments.models import Payment, Wallet
 
@@ -409,6 +409,65 @@ def close_poll_view(request, poll_id):
     return redirect('session_detail', session_id=session.id)
 
 
+def _int_ids(str_ids):
+    out = []
+    for pid in str_ids:
+        try:
+            out.append(int(pid))
+        except (ValueError, TypeError):
+            pass
+    return out
+
+
+@transaction.atomic
+def _sync_teams_in_place(match, teams, t1_name, t2_name, t1_ids, t2_ids, t1_cap_id, t2_cap_id):
+    """Reconcile an already-scored match's teams to the posted line-ups without
+    wiping anyone who has deliveries. Lets late players join mid-match (added to
+    the unassigned pool → dragged onto a team) while protecting the ledger:
+    players who've batted/bowled stay put and are never deleted or moved."""
+    team1, team2 = teams[0], teams[1]
+    team1.name = t1_name or team1.name
+    team2.name = t2_name or team2.name
+    if t1_cap_id:
+        team1.captain = User.objects.filter(id=t1_cap_id).first()
+    if t2_cap_id:
+        team2.captain = User.objects.filter(id=t2_cap_id).first()
+    team1.save(update_fields=['name', 'captain'])
+    team2.save(update_fields=['name', 'captain'])
+
+    want = {team1.id: set(_int_ids(t1_ids)), team2.id: set(_int_ids(t2_ids))}
+
+    # Players already involved in scoring — locked in place.
+    dq = Delivery.objects.filter(innings__match=match)
+    involved_player_ids = set()
+    for field in ('striker_id', 'non_striker_id', 'bowler_id', 'out_player_id', 'fielder_id'):
+        involved_player_ids.update(
+            dq.exclude(**{field + '__isnull': True}).values_list(field, flat=True)
+        )
+    involved_user_ids = set(
+        Player.objects.filter(id__in=involved_player_ids).values_list('user_id', flat=True)
+    )
+
+    # Drop only players with no deliveries who are no longer on their team's list.
+    for p in Player.objects.filter(team__in=(team1, team2)):
+        if p.id in involved_player_ids:
+            continue
+        if p.user_id not in want[p.team_id]:
+            p.delete()
+
+    # Add newly listed players (skip anyone already scored on the other team).
+    on_team = {}
+    for p in Player.objects.filter(team__in=(team1, team2)):
+        on_team.setdefault(p.team_id, set()).add(p.user_id)
+    for team in (team1, team2):
+        for uid in want[team.id]:
+            if uid in on_team.get(team.id, set()) or uid in involved_user_ids:
+                continue
+            u = User.objects.filter(id=uid).first()
+            if u:
+                Player.objects.get_or_create(user=u, team=team, defaults={'role': u.role or 'batsman'})
+
+
 @login_required
 def save_teams_view(request, session_id):
     if not request.user.is_staff:
@@ -448,25 +507,34 @@ def save_teams_view(request, session_id):
                 name=match_name or f"Match {match_number}",
             )
 
-        match.teams.all().delete()
+        existing_teams = list(match.teams.order_by('id'))
+        if existing_teams and Delivery.objects.filter(innings__match=match).exists():
+            # Scoring has started — sync safely so late joiners can be added and
+            # only unused players removed; never wipe someone who's already scored.
+            _sync_teams_in_place(
+                match, existing_teams,
+                team1_name, team2_name, team1_ids, team2_ids,
+                team1_captain_id, team2_captain_id,
+            )
+        else:
+            match.teams.all().delete()
+            team1_captain = User.objects.filter(id=team1_captain_id).first() if team1_captain_id else None
+            team1 = Team.objects.create(match=match, name=team1_name, captain=team1_captain)
+            for pid in team1_ids:
+                try:
+                    u = User.objects.get(id=int(pid))
+                    Player.objects.create(user=u, team=team1, role=u.role)
+                except (User.DoesNotExist, ValueError):
+                    pass
 
-        team1_captain = User.objects.filter(id=team1_captain_id).first() if team1_captain_id else None
-        team1 = Team.objects.create(match=match, name=team1_name, captain=team1_captain)
-        for pid in team1_ids:
-            try:
-                u = User.objects.get(id=int(pid))
-                Player.objects.create(user=u, team=team1, role=u.role)
-            except (User.DoesNotExist, ValueError):
-                pass
-
-        team2_captain = User.objects.filter(id=team2_captain_id).first() if team2_captain_id else None
-        team2 = Team.objects.create(match=match, name=team2_name, captain=team2_captain)
-        for pid in team2_ids:
-            try:
-                u = User.objects.get(id=int(pid))
-                Player.objects.create(user=u, team=team2, role=u.role)
-            except (User.DoesNotExist, ValueError):
-                pass
+            team2_captain = User.objects.filter(id=team2_captain_id).first() if team2_captain_id else None
+            team2 = Team.objects.create(match=match, name=team2_name, captain=team2_captain)
+            for pid in team2_ids:
+                try:
+                    u = User.objects.get(id=int(pid))
+                    Player.objects.create(user=u, team=team2, role=u.role)
+                except (User.DoesNotExist, ValueError):
+                    pass
 
         messages.success(request, f"Teams saved for {match.name}!")
 
