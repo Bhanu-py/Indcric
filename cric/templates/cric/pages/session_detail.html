@@ -289,15 +289,28 @@
                 {% endfor %}
             </div>
 
-            {% if user.is_staff %}
+            {% if user.is_staff or session.attendance_confirmed and session.cost %}
             <div class="px-5 py-4 border-t border-stone-100 flex items-center justify-between gap-3 flex-wrap bg-stone-50">
+                {% if user.is_staff %}
                 <p class="font-mono text-[10px] text-stone-500 uppercase tracking-[0.08em]">
                     Saving revises the per-player split and syncs payment records.
                 </p>
-                <button type="submit" class="btn btn-primary btn-md">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-                    Save attendance
-                </button>
+                {% endif %}
+                <div class="flex items-center gap-2 flex-wrap {% if not user.is_staff %}w-full{% endif %}">
+                    {% if user.is_staff %}
+                    <button type="submit" class="btn {% if session.attendance_confirmed and session.cost %}btn-secondary{% else %}btn-primary{% endif %} btn-md">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                        Save attendance
+                    </button>
+                    {% endif %}
+                    {% if session.attendance_confirmed and session.cost %}
+                    <a href="{% url 'manage-payments' %}?tab=session&session_id={{ session.id }}"
+                       class="btn btn-primary btn-md {% if not user.is_staff %}w-full justify-center{% endif %}">
+                        Go to payments
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </a>
+                    {% endif %}
+                </div>
             </div>
             {% endif %}
         </form>
