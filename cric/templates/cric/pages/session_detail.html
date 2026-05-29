@@ -1147,8 +1147,49 @@
         if (empty) empty.classList.toggle('hidden', count > 0);
     }
 
-    /* ───────── Snake-draft auto-balance ─────────
-       Sort by combined rating desc, then alternate-pick A B B A A B B A ... */
+    /* ───────── Snake-draft auto-balance + hill-climb ─────────
+       1. Sort by combined rating desc, snake-pick A B B A A B B A … (good seed).
+       2. Hill-climb: iteratively swap one player from each team if it lowers
+          the multi-objective gap |Δbatting| + |Δbowling| + |Δrating|.
+          Stops at the first local minimum (typically < ~30 iterations). */
+    const _meanOf = (rows, attr) =>
+        rows.length ? rows.reduce((a, r) => a + parseFloat(r.dataset[attr] || '0'), 0) / rows.length : 0;
+
+    function _teamGapScore(t1Rows, t2Rows) {
+        const dBat = _meanOf(t1Rows, 'batting') - _meanOf(t2Rows, 'batting');
+        const dBow = _meanOf(t1Rows, 'bowling') - _meanOf(t2Rows, 'bowling');
+        const dAvg = _meanOf(t1Rows, 'rating')  - _meanOf(t2Rows, 'rating');
+        return Math.abs(dBat) + Math.abs(dBow) + Math.abs(dAvg);
+    }
+
+    function hillClimbBalance(t1, t2) {
+        const EPS = 0.001;            // ignore float-noise non-improvements
+        const SAFETY = 200;
+        for (let pass = 0; pass < SAFETY; pass++) {
+            const t1Rows = Array.from(t1.querySelectorAll('[data-user-id]'));
+            const t2Rows = Array.from(t2.querySelectorAll('[data-user-id]'));
+            if (t1Rows.length === 0 || t2Rows.length === 0) return;
+            let bestScore = _teamGapScore(t1Rows, t2Rows);
+            let bestI = -1, bestJ = -1;
+            for (let i = 0; i < t1Rows.length; i++) {
+                for (let j = 0; j < t2Rows.length; j++) {
+                    const newT1 = t1Rows.slice(); newT1[i] = t2Rows[j];
+                    const newT2 = t2Rows.slice(); newT2[j] = t1Rows[i];
+                    const score = _teamGapScore(newT1, newT2);
+                    if (score < bestScore - EPS) {
+                        bestScore = score; bestI = i; bestJ = j;
+                    }
+                }
+            }
+            if (bestI < 0) return;   // local minimum
+            const elA = t1Rows[bestI], elB = t2Rows[bestJ];
+            t1.replaceChild(elB, elA);
+            t2.replaceChild(elA, elB);
+            renderAsTeamRow(elB, 'pitch');
+            renderAsTeamRow(elA, 'amber');
+        }
+    }
+
     function snakeBalance() {
         const avail = document.getElementById('available-users');
         const t1 = document.getElementById('team1-players');
@@ -1172,6 +1213,10 @@
             dest.appendChild(el);
             renderAsTeamRow(el, dest === t1 ? 'pitch' : 'amber');
         });
+
+        // Optimize across bat/bow/avg dimensions via local-swap hill climb.
+        hillClimbBalance(t1, t2);
+
         // Sort each team batsmen → all-rounders → bowlers, then mark first as captain
         sortTeamByRole('team1-players');
         sortTeamByRole('team2-players');
