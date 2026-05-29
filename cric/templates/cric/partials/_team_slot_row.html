@@ -14,7 +14,9 @@ Args:
      data-user-id="{{ player.user.id }}"
      data-username="{{ player.user.username }}"
      data-role="{{ player.user.role|default:'' }}"
-     data-rating="{{ player.rating }}">
+     data-rating="{{ player.rating }}"
+     data-batting="{{ player.batting }}"
+     data-bowling="{{ player.bowling }}">
     <div class="flex items-center gap-2 min-w-0 flex-1">
         {% comment %}role="button" instead of <button> so the chip's draggable parent isn't blocked from initiating drag when grabbed by the avatar (most natural drag handle).{% endcomment %}
         <div role="button" tabindex="0" onclick="promoteCaptain(this)" data-captain-avatar

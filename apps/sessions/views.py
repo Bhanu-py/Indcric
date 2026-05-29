@@ -240,6 +240,16 @@ def session_detail_view(request, session_id):
         fld  = u.fielding_rating if u.fielding_rating is not None else Decimal('2.5')
         return float(((bat + bowl + fld) / Decimal('3')).quantize(Decimal('0.01')))
 
+    def _player_skills(u):
+        """Per-skill numbers + combined rating for the team-balancer meter."""
+        bat  = float(u.batting_rating  if u.batting_rating  is not None else Decimal('2.5'))
+        bowl = float(u.bowling_rating  if u.bowling_rating  is not None else Decimal('2.5'))
+        return {
+            'batting': bat,
+            'bowling': bowl,
+            'rating': _combined_rating(u),
+        }
+
     _ROLE_ORDER = {'batsman': 0, 'allrounder': 1, 'all-rounder': 1, 'bowler': 2}
     def _role_sort_key(p):
         return _ROLE_ORDER.get((p['user'].role or '').lower(), 3)
@@ -258,7 +268,7 @@ def session_detail_view(request, session_id):
         total_votes = yes_votes + no_votes
         if total_votes > 0:
             yes_percentage = (yes_votes / total_votes) * 100
-        yes_voters = [{'user': v.user, 'team_assigned': False, 'rating': _combined_rating(v.user)}
+        yes_voters = [{'user': v.user, 'team_assigned': False, **_player_skills(v.user)}
                       for v in poll.votes.filter(choice='yes').select_related('user')]
         no_voters = [v.user for v in poll.votes.filter(choice='no').select_related('user')]
 
@@ -275,13 +285,13 @@ def session_detail_view(request, session_id):
         if len(teams) >= 1:
             edit_team1 = teams[0]
             edit_team1_players = sorted([
-                {'user': p.user, 'rating': _combined_rating(p.user)}
+                {'user': p.user, **_player_skills(p.user)}
                 for p in edit_team1.players.select_related('user').all()
             ], key=_role_sort_key)
         if len(teams) >= 2:
             edit_team2 = teams[1]
             edit_team2_players = sorted([
-                {'user': p.user, 'rating': _combined_rating(p.user)}
+                {'user': p.user, **_player_skills(p.user)}
                 for p in edit_team2.players.select_related('user').all()
             ], key=_role_sort_key)
 

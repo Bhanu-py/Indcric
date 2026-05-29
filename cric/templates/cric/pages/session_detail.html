@@ -683,8 +683,9 @@
                             <div class="text-[13px] font-semibold text-stone-900 -tracking-[0.005em] truncate">
                                 <span id="meter-team1-name">{% if edit_team1 %}{{ edit_team1.name }}{% else %}Team 1{% endif %}</span>
                             </div>
-                            <div class="font-mono text-[10px] text-stone-500 tabular-nums tracking-[0.04em]">
-                                <span id="meter-team1-count">0</span> players · avg <span id="meter-team1-avg">—</span>
+                            <div class="font-mono text-[10px] text-stone-500 tabular-nums tracking-[0.04em] leading-snug">
+                                <div><span id="meter-team1-count">0</span> players · avg <span id="meter-team1-avg">—</span></div>
+                                <div class="text-stone-400">bat <span id="meter-team1-bat">—</span> · bowl <span id="meter-team1-bowl">—</span></div>
                             </div>
                         </div>
                     </div>
@@ -700,8 +701,9 @@
                             <div class="text-[13px] font-semibold text-stone-900 -tracking-[0.005em] truncate">
                                 <span id="meter-team2-name">{% if edit_team2 %}{{ edit_team2.name }}{% else %}Team 2{% endif %}</span>
                             </div>
-                            <div class="font-mono text-[10px] text-stone-500 tabular-nums tracking-[0.04em]">
-                                <span id="meter-team2-count">0</span> players · avg <span id="meter-team2-avg">—</span>
+                            <div class="font-mono text-[10px] text-stone-500 tabular-nums tracking-[0.04em] leading-snug">
+                                <div><span id="meter-team2-count">0</span> players · avg <span id="meter-team2-avg">—</span></div>
+                                <div class="text-stone-400">bat <span id="meter-team2-bat">—</span> · bowl <span id="meter-team2-bowl">—</span></div>
                             </div>
                         </div>
                         <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
@@ -1095,20 +1097,29 @@
 
     /* ───────── Skill-gap meter ───────── */
     function updateMeter() {
-        const mean = id => {
-            const rows = Array.from(document.querySelectorAll(`#${id} [data-rating]`));
+        const meanOf = (id, attr) => {
+            const rows = Array.from(document.querySelectorAll(`#${id} [data-${attr}]`));
             if (!rows.length) return null;
-            const sum = rows.reduce((acc, r) => acc + parseFloat(r.dataset.rating || '0'), 0);
+            const sum = rows.reduce((acc, r) => acc + parseFloat(r.dataset[attr] || '0'), 0);
             return sum / rows.length;
         };
-        const a = mean('team1-players');
-        const b = mean('team2-players');
+        const fmt = (v, dp) => v === null ? '—' : v.toFixed(dp);
+        const a    = meanOf('team1-players', 'rating');
+        const b    = meanOf('team2-players', 'rating');
+        const aBat = meanOf('team1-players', 'batting');
+        const bBat = meanOf('team2-players', 'batting');
+        const aBow = meanOf('team1-players', 'bowling');
+        const bBow = meanOf('team2-players', 'bowling');
         const ac = document.querySelectorAll('#team1-players [data-user-id]').length;
         const bc = document.querySelectorAll('#team2-players [data-user-id]').length;
         document.getElementById('meter-team1-count').textContent = ac;
         document.getElementById('meter-team2-count').textContent = bc;
-        document.getElementById('meter-team1-avg').textContent = a === null ? '—' : a.toFixed(2);
-        document.getElementById('meter-team2-avg').textContent = b === null ? '—' : b.toFixed(2);
+        document.getElementById('meter-team1-avg').textContent  = fmt(a, 2);
+        document.getElementById('meter-team2-avg').textContent  = fmt(b, 2);
+        document.getElementById('meter-team1-bat').textContent  = fmt(aBat, 1);
+        document.getElementById('meter-team2-bat').textContent  = fmt(bBat, 1);
+        document.getElementById('meter-team1-bowl').textContent = fmt(aBow, 1);
+        document.getElementById('meter-team2-bowl').textContent = fmt(bBow, 1);
 
         const numEl = document.getElementById('meter-gap-num');
         const bdgEl = document.getElementById('meter-gap-badge');

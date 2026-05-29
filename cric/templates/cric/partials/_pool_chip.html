@@ -17,7 +17,9 @@ Args:
      data-user-id="{{ voter.user.id }}"
      data-username="{{ voter.user.username }}"
      data-role="{{ voter.user.role|default:'' }}"
-     data-rating="{{ voter.rating }}">
+     data-rating="{{ voter.rating }}"
+     data-batting="{{ voter.batting }}"
+     data-bowling="{{ voter.bowling }}">
     <span class="font-medium">{{ voter.user.username }}</span>
     <span class="font-mono text-[10px] opacity-70 tracking-[0.02em]">· <span class="rating-text">{{ voter.rating }}</span></span>
     <span class="inline-flex gap-1 sm:gap-0.5 ml-1">
