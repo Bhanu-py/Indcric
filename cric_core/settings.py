@@ -122,6 +122,9 @@ WHATSAPP_TEMPLATE_LANGUAGE = os.getenv("WHATSAPP_TEMPLATE_LANGUAGE", "en_GB")
 # wa.me/<number>?text=YES%20<session_id> deep links in the group share message
 # so members can tap-to-RSVP, which opens a free 24h service window for replies.
 WHATSAPP_BOT_NUMBER = os.getenv("WHATSAPP_BOT_NUMBER", "")
+# Public base URL of the site — used in bot replies (e.g. the sign-up link sent
+# to unrecognised numbers). Override per-environment via env.
+SITE_URL = os.getenv("SITE_URL", "https://indcric.onrender.com")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 # --- allauth account behavior ---

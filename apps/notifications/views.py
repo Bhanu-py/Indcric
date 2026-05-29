@@ -9,6 +9,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
 
+from . import bot_messages
 from .models import BotEvent
 
 
@@ -221,11 +222,7 @@ def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None):
 
     if user is None:
         logger.warning('WhatsApp RSVP from unknown phone %s', phone)
-        send_text_message(
-            phone,
-            "I don't recognise this number. Add your WhatsApp number to your "
-            "IndCric profile first, then try again."
-        )
+        send_text_message(phone, bot_messages.not_recognised())
         return
 
     poll_obj = None
@@ -245,7 +242,7 @@ def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None):
             .first()
         )
     if poll_obj is None:
-        send_text_message(phone, "No active session poll right now.")
+        send_text_message(phone, bot_messages.no_active_poll())
         return
 
     Vote.objects.update_or_create(
@@ -254,11 +251,9 @@ def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None):
 
     session = poll_obj.session
     date_str = session.date.strftime("%a %d %b")
-    opposite = 'NO' if choice == 'yes' else 'YES'
     send_text_message(
         phone,
-        f"Got it — recorded {choice.upper()} for {session.name} ({date_str}). "
-        f"Reply {opposite} to switch."
+        bot_messages.rsvp_confirmation(choice, session.name, date_str)
     )
 
 
@@ -282,10 +277,7 @@ def _handle_balance(wa_message_id, phone, raw):
         user = User.objects.get(phone=phone)
     except User.DoesNotExist:
         if _log_inbound(wa_message_id, phone, None, 'balance', raw):
-            send_text_message(
-                phone,
-                "I don't recognise this number. Please add your WhatsApp number to your IndCric profile first."
-            )
+            send_text_message(phone, bot_messages.not_recognised())
         return
 
     if not _log_inbound(wa_message_id, phone, user, 'balance', raw):
@@ -297,20 +289,8 @@ def _handle_balance(wa_message_id, phone, raw):
         .select_related('session')
         .order_by('session__date')
     )
-
-    lines = [f"Wallet balance: €{wallet_total:.2f}"]
-    if unpaid.exists():
-        lines.append("")
-        lines.append("Outstanding sessions:")
-        for p in unpaid:
-            lines.append(f"- {p.session.name}: €{p.amount:.2f}")
-        total_due = sum((p.amount for p in unpaid), start=0)
-        lines.append("")
-        lines.append(f"Total due: €{total_due:.2f}")
-    else:
-        lines.append("No outstanding payments.")
-
-    send_text_message(phone, "\n".join(lines))
+    unpaid_rows = [(p.session.name, p.amount) for p in unpaid]
+    send_text_message(phone, bot_messages.balance(wallet_total, unpaid_rows))
 
 
 def _display_name(user):
@@ -328,11 +308,7 @@ def _handle_status(wa_message_id, phone, raw):
         user = User.objects.get(phone=phone)
     except User.DoesNotExist:
         if _log_inbound(wa_message_id, phone, None, 'status', raw):
-            send_text_message(
-                phone,
-                "I don't recognise this number. Add your WhatsApp number to "
-                "your IndCric profile first."
-            )
+            send_text_message(phone, bot_messages.not_recognised())
         return
 
     if not _log_inbound(wa_message_id, phone, user, 'status', raw):
@@ -346,7 +322,7 @@ def _handle_status(wa_message_id, phone, raw):
         .first()
     )
     if poll is None:
-        send_text_message(phone, "No active session poll right now.")
+        send_text_message(phone, bot_messages.no_active_poll())
         return
 
     session = poll.session
@@ -366,13 +342,10 @@ def _handle_status(wa_message_id, phone, raw):
     yes_names = ', '.join(_display_name(v.user) for v in yes_voters) or '—'
     no_names = ', '.join(_display_name(v.user) for v in no_voters) or '—'
 
-    lines = [
-        f"🏏 {session.name} ({date_str})",
-        '',
-        f"✅ YES ({len(yes_voters)}): {yes_names}",
-        f"❌ NO ({len(no_voters)}): {no_names}",
-    ]
-    send_text_message(phone, '\n'.join(lines))
+    send_text_message(phone, bot_messages.status(
+        session.name, date_str, yes_names, no_names,
+        len(yes_voters), len(no_voters),
+    ))
 
 
 def _handle_help(wa_message_id, phone, raw):
@@ -385,15 +358,7 @@ def _handle_help(wa_message_id, phone, raw):
 
     if not _log_inbound(wa_message_id, phone, user, 'help', raw):
         return
-    send_text_message(
-        phone,
-        "IndCric bot commands:\n"
-        "- YES / NO: RSVP to the latest session poll\n"
-        "- YES <session id> / NO <session id>: RSVP to a specific session\n"
-        "- STATUS: show current poll counts + who voted YES / NO\n"
-        "- BALANCE: show wallet balance and outstanding payments\n"
-        "- HELP: show this message"
-    )
+    send_text_message(phone, bot_messages.help_text())
 
 
 def _handle_unknown(wa_message_id, phone, text, raw):
@@ -408,12 +373,7 @@ def _handle_unknown(wa_message_id, phone, text, raw):
         return
 
     safe_echo = text[:60] if text else ''
-    send_text_message(
-        phone,
-        f"I didn't understand '{safe_echo}'.\n"
-        f"Reply YES or NO to RSVP, STATUS for poll counts, BALANCE for your "
-        f"wallet, or HELP for options."
-    )
+    send_text_message(phone, bot_messages.unknown(safe_echo))
 
 
 def run_reminders_view(request):
