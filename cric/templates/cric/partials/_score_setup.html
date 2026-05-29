@@ -1,9 +1,21 @@
 {% comment %}
-Innings setup — choose batting side (toss) + overs (innings 1) + openers.
-Alpine drives the dependent opener/bowler lists from the chosen batting team.
-Context: match, number, teams_data (json), forced_batting.
+Innings setup — coin toss (innings 1) + overs + openers. Alpine drives the toss
+animation and the dependent opener/bowler lists. Context: match, number,
+teams_data (json), forced_batting.
 {% endcomment %}
 {{ teams_data|json_script:"teams-data" }}
+
+<style>
+  .coin3d { width: 92px; height: 92px; position: relative; transform-style: preserve-3d; }
+  .coin-face { position: absolute; inset: 0; border-radius: 9999px; display: flex;
+    align-items: center; justify-content: center; text-align: center; padding: 0 8px;
+    backface-visibility: hidden; font-weight: 700; font-size: 12px; line-height: 1.1;
+    color: #fff; letter-spacing: -0.01em;
+    box-shadow: 0 6px 16px rgb(0 0 0 / 0.18), inset 0 2px 6px rgb(255 255 255 / 0.3),
+                inset 0 -3px 8px rgb(0 0 0 / 0.18); }
+  .coin-front { background: radial-gradient(circle at 35% 30%, #3aa05c, #166534); }
+  .coin-back  { background: radial-gradient(circle at 35% 30%, #fcc468, #d97706); transform: rotateY(180deg); }
+</style>
 
 <form method="post" action="{% url 'start_innings' match.id %}"
       x-data="scoreSetup({{ forced_batting.id|default:'null' }})"
@@ -11,6 +23,8 @@ Context: match, number, teams_data (json), forced_batting.
     {% csrf_token %}
     <input type="hidden" name="number" value="{{ number }}">
     <input type="hidden" name="batting_team" :value="battingId">
+    <input type="hidden" name="toss_winner" :value="tossWinnerId">
+    <input type="hidden" name="toss_decision" :value="decision">
 
     {% if number == 1 %}
     <div class="card overflow-hidden">
@@ -21,13 +35,49 @@ Context: match, number, teams_data (json), forced_batting.
                 <input type="number" name="overs" id="overs" min="1" max="50" value="8"
                        inputmode="numeric" class="form-input w-28">
             </div>
+
+            {# Coin toss — random, animated; result decides who bats first. #}
             <div>
-                <span class="form-label">Batting first</span>
-                <div class="grid grid-cols-2 gap-2 mt-1">
-                    <template x-for="t in teams" :key="t.id">
-                        <button type="button" @click="battingId = t.id"
-                                :class="battingId == t.id ? 'bg-pitch-700 text-white border-pitch-700' : 'bg-white text-stone-700 border-stone-300'"
-                                class="btn btn-md justify-center border transition-colors" x-text="t.name"></button>
+                <span class="form-label">Toss</span>
+                <div class="mt-2 flex flex-col items-center gap-3.5 rounded-2xl bg-stone-50 border border-stone-100 py-5"
+                     style="perspective: 700px;">
+                    <div class="coin3d cursor-pointer select-none" @click="flip()"
+                         :class="flipping ? 'pointer-events-none' : ''" title="Tap to flip"
+                         :style="`transform: rotateY(${angle}deg); transition: transform 1.2s cubic-bezier(.2,.75,.25,1);`">
+                        <div class="coin-face coin-front" x-text="teams[0] ? teams[0].name : ''"></div>
+                        <div class="coin-face coin-back" x-text="teams[1] ? teams[1].name : ''"></div>
+                    </div>
+
+                    <template x-if="!tossWinnerId">
+                        <button type="button" @click="flip()" :disabled="flipping"
+                                class="btn btn-primary btn-md disabled:opacity-60"
+                                x-text="flipping ? 'Flipping…' : 'Flip the coin'"></button>
+                    </template>
+
+                    <template x-if="tossWinnerId">
+                        <div class="flex flex-col items-center gap-2">
+                            <p class="text-sm font-semibold text-stone-900" x-show="!flipping">
+                                <span x-text="tossWinnerName"></span> won the toss
+                            </p>
+                            <template x-if="!decision && !flipping">
+                                <div class="flex flex-col items-center gap-2">
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" @click="choose('bat')" class="btn btn-primary btn-md">Bat</button>
+                                        <button type="button" @click="choose('bowl')" class="btn btn-secondary btn-md">Bowl</button>
+                                    </div>
+                                    <button type="button" @click="flip()"
+                                            class="text-[11px] text-stone-400 hover:text-stone-700 underline">Flip again</button>
+                                </div>
+                            </template>
+                            <template x-if="decision">
+                                <p class="font-mono text-[11px] text-stone-500 uppercase tracking-[0.06em]">
+                                    elected to <span x-text="decision"></span> ·
+                                    <span class="text-stone-700" x-text="battingTeamName"></span> batting
+                                    <button type="button" @click="resetToss()"
+                                            class="ml-1.5 normal-case tracking-normal text-pitch-700 hover:text-pitch-900 underline">redo</button>
+                                </p>
+                            </template>
+                        </div>
                     </template>
                 </div>
             </div>
@@ -80,8 +130,35 @@ function scoreSetup(forcedId) {
     const teams = JSON.parse(document.getElementById('teams-data').textContent);
     return {
         teams,
-        battingId: forcedId || (teams[0] && teams[0].id) || null,
+        battingId: forcedId || null,
         striker: '', nonStriker: '', bowler: '',
+        // Toss (innings 1 only)
+        flipping: false,
+        angle: 0,
+        tossWinnerId: null,
+        decision: '',
+        flip() {
+            if (this.flipping) return;            // ignore taps mid-spin; never auto-flips
+            this.flipping = true;
+            this.decision = '';                    // a re-flip clears any prior choice
+            this.battingId = null;
+            const winner = this.teams[Math.floor(Math.random() * this.teams.length)];
+            const landBack = this.teams.length > 1 && winner.id === this.teams[1].id;
+            const turns = 5;  // full spins, then ease-out to a stop
+            this.angle = Math.ceil(this.angle / 360) * 360 + turns * 360 + (landBack ? 180 : 0);
+            setTimeout(() => { this.flipping = false; this.tossWinnerId = winner.id; }, 1250);
+        },
+        choose(dec) {
+            this.decision = dec;
+            const other = this.teams.find(t => t.id != this.tossWinnerId) || {};
+            this.battingId = dec === 'bat' ? this.tossWinnerId : other.id;
+        },
+        resetToss() {
+            this.tossWinnerId = null; this.decision = ''; this.battingId = null;
+            this.striker = ''; this.nonStriker = ''; this.bowler = '';
+        },
+        get tossWinnerName() { const t = this.teams.find(t => t.id == this.tossWinnerId); return t ? t.name : ''; },
+        get battingTeamName() { const t = this.teams.find(t => t.id == this.battingId); return t ? t.name : ''; },
         get battingPlayers() { return (this.teams.find(t => t.id == this.battingId) || {}).players || []; },
         get bowlingPlayers() { return (this.teams.find(t => t.id != this.battingId) || {}).players || []; },
         get ready() {

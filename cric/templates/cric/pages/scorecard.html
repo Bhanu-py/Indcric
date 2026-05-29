@@ -45,9 +45,16 @@
             {% endfor %}
         </div>
         <div class="px-5 py-3 border-t border-stone-100 flex items-center justify-between gap-3 flex-wrap">
-            <span class="text-[13px] font-medium {% if result_line %}text-stone-800{% else %}text-amber-700{% endif %}">
-                {{ result_line|default:"In progress" }}
-            </span>
+            <div class="min-w-0">
+                <span class="text-[13px] font-medium {% if result_line %}text-stone-800{% else %}text-amber-700{% endif %}">
+                    {{ result_line|default:"In progress" }}
+                </span>
+                {% if match.toss_winner %}
+                <p class="font-mono text-[10px] text-stone-400 uppercase tracking-[0.06em] mt-0.5">
+                    {{ match.toss_winner.name }} won the toss · chose to {{ match.toss_decision }}
+                </p>
+                {% endif %}
+            </div>
             {% if user.is_staff and in_progress %}
             <a href="{% url 'match_score' match.id %}" class="btn btn-primary btn-sm">Continue scoring</a>
             {% endif %}

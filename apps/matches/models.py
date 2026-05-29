@@ -19,6 +19,11 @@ class Match(models.Model):
     )
     # Fixed overs cap per innings for ball-by-ball scoring; null until scoring starts.
     overs_limit = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Toss result, set at innings-1 setup.
+    toss_winner = models.ForeignKey(
+        'Team', on_delete=models.SET_NULL, related_name='+', null=True, blank=True
+    )
+    toss_decision = models.CharField(max_length=4, blank=True)  # 'bat' | 'bowl'
 
     def __str__(self):
         return f"{self.name} in {self.session.name}"

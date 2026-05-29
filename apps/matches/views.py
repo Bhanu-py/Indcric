@@ -247,10 +247,15 @@ def start_innings_view(request, match_id):
     if number == 1:
         try:
             match.overs_limit = max(1, int(request.POST.get('overs', 0)))
-            match.save(update_fields=['overs_limit'])
         except (ValueError, TypeError):
             messages.error(request, "Enter a valid overs limit.")
             return redirect('match_score', match_id=match.id)
+        toss_winner_id = request.POST.get('toss_winner')
+        if toss_winner_id and int(toss_winner_id) in teams:
+            match.toss_winner = teams[int(toss_winner_id)]
+        decision = request.POST.get('toss_decision', '')
+        match.toss_decision = decision if decision in ('bat', 'bowl') else ''
+        match.save(update_fields=['overs_limit', 'toss_winner', 'toss_decision'])
 
     scoring.start_innings(
         match, number=number, batting_team=batting_team, bowling_team=bowling_team,
