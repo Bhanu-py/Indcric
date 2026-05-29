@@ -50,12 +50,16 @@ def no_active_poll():
     )
 
 
-def rsvp_confirmation(choice, session_name, date_str):
+def rsvp_recorded(choice, session_name, date_str, yes_names, no_names):
+    """Confirmation for an RSVP, with the updated poll tally shown above it so
+    the voter sees the effect of their vote. yes_names / no_names are lists."""
+    you_are = "IN" if choice == "yes" else "OUT"
     mark = "✅" if choice == "yes" else "❌"
     opposite = "NO" if choice == "yes" else "YES"
     return (
-        f"{mark} Got it — recorded *{choice.upper()}* for *{session_name}* ({date_str}).\n"
-        f"Changed your mind? Reply *{opposite}* to switch."
+        status(session_name, date_str, yes_names, no_names)
+        + "\n\n"
+        + f"{mark} You're *{you_are}* for this one. Reply *{opposite}* to switch."
     )
 
 
@@ -80,12 +84,21 @@ def balance(wallet_total, unpaid_rows):
     return "\n".join(lines)
 
 
-def status(session_name, date_str, yes_names, no_names, yes_count, no_count):
+def status(session_name, date_str, yes_names, no_names):
+    """Poll counts + voter lists, one name per line. yes_names / no_names are
+    lists of display names."""
+    def block(mark, label, names):
+        head = f"{mark} *{label}* ({len(names)})"
+        if not names:
+            return f"{head}\n• —"
+        return head + "\n" + "\n".join(f"• {n}" for n in names)
+
     return "\n".join([
         f"🏏 *{session_name}* ({date_str})",
         "",
-        f"✅ *IN* ({yes_count}): {yes_names}",
-        f"❌ *OUT* ({no_count}): {no_names}",
+        block("✅", "IN", yes_names),
+        "",
+        block("❌", "OUT", no_names),
     ])
 
 

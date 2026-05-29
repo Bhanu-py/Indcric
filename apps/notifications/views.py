@@ -251,9 +251,10 @@ def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None):
 
     session = poll_obj.session
     date_str = session.date.strftime("%a %d %b")
+    yes_names, no_names = _poll_voter_names(poll_obj)
     send_text_message(
         phone,
-        bot_messages.rsvp_confirmation(choice, session.name, date_str)
+        bot_messages.rsvp_recorded(choice, session.name, date_str, yes_names, no_names),
     )
 
 
@@ -299,6 +300,18 @@ def _display_name(user):
     return (user.first_name or user.username or '').strip() or '(unknown)'
 
 
+def _poll_voter_names(poll):
+    """(yes_names, no_names) display-name lists for a poll, name-sorted."""
+    def names(choice):
+        return [
+            _display_name(v.user)
+            for v in poll.votes.filter(choice=choice)
+            .select_related('user')
+            .order_by('user__first_name', 'user__username')
+        ]
+    return names('yes'), names('no')
+
+
 def _handle_status(wa_message_id, phone, raw):
     """Reply with the current open poll's vote counts and voter lists."""
     from apps.polls.models import Poll
@@ -327,24 +340,9 @@ def _handle_status(wa_message_id, phone, raw):
 
     session = poll.session
     date_str = session.date.strftime("%a %d %b")
-
-    yes_voters = list(
-        poll.votes.filter(choice='yes')
-        .select_related('user')
-        .order_by('user__first_name', 'user__username')
-    )
-    no_voters = list(
-        poll.votes.filter(choice='no')
-        .select_related('user')
-        .order_by('user__first_name', 'user__username')
-    )
-
-    yes_names = ', '.join(_display_name(v.user) for v in yes_voters) or '—'
-    no_names = ', '.join(_display_name(v.user) for v in no_voters) or '—'
-
+    yes_names, no_names = _poll_voter_names(poll)
     send_text_message(phone, bot_messages.status(
         session.name, date_str, yes_names, no_names,
-        len(yes_voters), len(no_voters),
     ))
 
 
