@@ -282,14 +282,19 @@ def score_ball_view(request, innings_id):
 
     kwargs = {'client_uuid': client_uuid}
     if request.POST.get('wicket'):
-        kwargs.update(
-            is_wicket=True,
-            dismissal_type=request.POST.get('dismissal', 'bowled'),
-            runs_off_bat=runs,
-        )
+        dismissal = request.POST.get('dismissal', 'bowled')
+        kwargs.update(is_wicket=True, dismissal_type=dismissal, runs_off_bat=runs)
+        fielder = None
         fielder_id = request.POST.get('fielder')
         if fielder_id:
-            kwargs['fielder'] = Player.objects.filter(pk=fielder_id).first()
+            fielder = Player.objects.filter(pk=fielder_id, team=innings.bowling_team).first()
+        # Fielding dismissals must name who did it — bounce invalid submits.
+        if dismissal in ('caught', 'runout', 'stumped') and fielder is None:
+            return _render_console(request, innings)
+        kwargs['fielder'] = fielder
+        # Run-out can dismiss either batter — honour the chosen end.
+        if request.POST.get('out_end') == 'nonstriker' and innings.current_non_striker_id:
+            kwargs['out_player'] = innings.current_non_striker
     elif mode == 'wide':
         kwargs.update(extra_type='wide', extra_runs=1 + runs)
     elif mode == 'noball':
