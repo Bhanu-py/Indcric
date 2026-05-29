@@ -23,7 +23,19 @@ from .models import Innings, Delivery
 # ── Derivation (pure reads) ──────────────────────────────────────────────────
 
 def _deliveries(innings):
-    return list(innings.deliveries.all())  # ordering = ['sequence']
+    # select_related the player→user chain so name access in the cards is cheap.
+    return list(
+        innings.deliveries.select_related(
+            'striker__user', 'non_striker__user', 'bowler__user',
+            'out_player__user', 'fielder__user',
+        )
+    )  # ordering = ['sequence']
+
+
+def _name(player):
+    if not player:
+        return ''
+    return player.user.first_name or player.user.username
 
 
 def _overs_str(legal_balls):
@@ -80,8 +92,8 @@ def batting_card(innings):
 
 def _how_out(d):
     kind = d.dismissal_type or 'out'
-    bowler = d.bowler.user.username if d.bowler_id else ''
-    fielder = d.fielder.user.username if d.fielder_id else ''
+    bowler = _name(d.bowler)
+    fielder = _name(d.fielder)
     if kind == 'caught':
         return f"c {fielder} b {bowler}" if fielder else f"c & b {bowler}"
     if kind == 'runout':
@@ -138,6 +150,35 @@ def fall_of_wickets(innings):
                 'overs': _overs_str(legal),
             })
     return out
+
+
+def extras_breakdown(innings):
+    """{wide, noball, bye, legbye, total} run counts for the innings."""
+    out = {'wide': 0, 'noball': 0, 'bye': 0, 'legbye': 0}
+    for d in _deliveries(innings):
+        if d.extra_type in out:
+            out[d.extra_type] += d.extra_runs
+    out['total'] = out['wide'] + out['noball'] + out['bye'] + out['legbye']
+    return out
+
+
+def result_line(match):
+    """Human result once both innings are closed, e.g. 'A won by 12 runs' or
+    'B won by 3 wickets'. Returns None while the match is still in progress."""
+    innings = list(match.innings.order_by('number'))
+    if len(innings) < 2 or not all(i.is_closed for i in innings):
+        return None
+    first, second = innings[0], innings[1]
+    r1 = innings_score(first)['runs']
+    s2 = innings_score(second)
+    if r1 > s2['runs']:
+        margin = r1 - s2['runs']
+        return f"{first.batting_team.name} won by {margin} run{'' if margin == 1 else 's'}"
+    if s2['runs'] > r1:
+        roster = second.batting_team.players.count()
+        left = max(0, roster - 1 - s2['wickets'])
+        return f"{second.batting_team.name} won by {left} wicket{'' if left == 1 else 's'}"
+    return "Match tied"
 
 
 def this_over(innings):

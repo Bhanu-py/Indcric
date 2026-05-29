@@ -9,34 +9,32 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
     <div class="card overflow-hidden">
         <div class="card-accent card-accent-pitch"></div>
         <div class="p-4 sm:p-5">
-            <div class="flex items-start justify-between gap-4">
-                <div class="min-w-0">
-                    <div class="micro-label">{{ innings.batting_team.name }} batting · innings {{ innings.number }}</div>
-                    <div class="flex items-baseline gap-2 mt-1">
-                        <span class="text-4xl font-semibold text-stone-900 -tracking-[0.025em] tabular-nums leading-none">
-                            {{ score.runs }}<span class="text-stone-400">/{{ score.wickets }}</span>
-                        </span>
-                        <span class="font-mono text-xs text-stone-500">
-                            ({{ score.overs }}{% if overs_limit %}/{{ overs_limit }}{% endif %} ov)
-                        </span>
-                    </div>
-                    <div class="font-mono text-[10px] text-stone-400 uppercase tracking-[0.06em] mt-1.5">
-                        CRR {{ crr }} · Extras {{ score.extras }}
-                    </div>
+            <div class="min-w-0">
+                <div class="micro-label">{{ innings.batting_team.name }} batting · innings {{ innings.number }}</div>
+                <div class="flex items-baseline gap-2 mt-1">
+                    <span class="text-4xl font-semibold text-stone-900 -tracking-[0.025em] tabular-nums leading-none">
+                        {{ score.runs }}<span class="text-stone-400">/{{ score.wickets }}</span>
+                    </span>
+                    <span class="font-mono text-xs text-stone-500">
+                        ({{ score.overs }}{% if overs_limit %}/{{ overs_limit }}{% endif %} ov)
+                    </span>
                 </div>
-                <div class="flex flex-col items-end gap-1.5 shrink-0">
-                    <span class="micro-label">This over</span>
-                    <div class="flex items-center gap-1 flex-wrap justify-end max-w-[160px]">
-                        {% for b in over_balls %}
-                        <span class="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full font-mono text-[11px] font-semibold tabular-nums
-                            {% if b.kind == 'wicket' %}bg-red-50 text-red-700{% elif b.token == '6' %}bg-purple-100 text-purple-800{% elif b.token == '4' %}bg-sky-100 text-sky-800{% elif b.kind == 'runs' and b.token == '0' %}bg-stone-100 text-stone-400{% elif b.kind == 'runs' %}bg-emerald-50 text-emerald-700{% else %}bg-amber-50 text-amber-700{% endif %}">
-                            {{ b.token }}
-                        </span>
-                        {% empty %}
-                        <span class="font-mono text-[11px] text-stone-300">—</span>
-                        {% endfor %}
-                    </div>
+                <div class="font-mono text-[10px] text-stone-400 uppercase tracking-[0.06em] mt-1.5">
+                    CRR {{ crr }} · Extras {{ score.extras }}
                 </div>
+            </div>
+
+            {# This over — one line; scrolls horizontally if the over runs long #}
+            <div class="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+                <span class="micro-label shrink-0 pr-1">Over</span>
+                {% for b in over_balls %}
+                <span class="inline-flex items-center justify-center shrink-0 h-7 min-w-[28px] px-2 rounded-full font-mono text-[11px] font-semibold tabular-nums
+                    {% if b.kind == 'wicket' %}bg-red-100 text-red-700{% elif b.token == '6' %}bg-purple-100 text-purple-800{% elif b.token == '4' %}bg-sky-100 text-sky-800{% elif b.kind == 'runs' and b.token == '0' %}bg-stone-100 text-stone-500{% elif b.kind == 'runs' %}bg-emerald-100 text-emerald-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+                    {{ b.token }}
+                </span>
+                {% empty %}
+                <span class="font-mono text-[11px] text-stone-300">No balls yet</span>
+                {% endfor %}
             </div>
 
             {# batters + bowler #}
@@ -44,7 +42,10 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                 <div class="flex flex-col gap-1.5">
                     {% if striker %}
                     <div class="flex items-center justify-between gap-2">
-                        <span class="text-[13px] text-stone-800 truncate"><span class="text-pitch-600 font-bold">*</span> {{ striker.user.first_name|default:striker.user.username }}</span>
+                        <span class="flex items-center gap-1.5 min-w-0">
+                            <svg class="w-4 h-4 text-pitch-600 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-label="on strike"><path d="M12 3v5"/><path d="M10 5.5h4"/><path d="M9 8.5h6v11a1.5 1.5 0 01-1.5 1.5h-3A1.5 1.5 0 019 19.5v-11z"/></svg>
+                            <span class="text-[13px] font-medium text-stone-900 truncate">{{ striker.user.first_name|default:striker.user.username }}</span>
+                        </span>
                         {% if striker_stat %}<span class="font-mono text-xs text-stone-500 tabular-nums shrink-0">{{ striker_stat.runs }} ({{ striker_stat.balls }})</span>{% endif %}
                     </div>
                     {% endif %}

@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path('match/<int:match_id>/', views.match_detail_view, name='match_detail'),
+    path('match/<int:match_id>/scorecard/', views.scorecard_view, name='scorecard'),
 
     # Live scoring
     path('match/<int:match_id>/score/', views.score_view, name='match_score'),

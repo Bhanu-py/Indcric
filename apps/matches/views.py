@@ -8,6 +8,36 @@ from .models import Match, Team, Player, Innings
 from . import scoring
 
 
+@login_required
+def scorecard_view(request, match_id):
+    """Read-only scorecard for everyone — both innings, batting/bowling cards,
+    fall of wickets, and the result."""
+    match = get_object_or_404(Match, id=match_id)
+    innings_list = list(match.innings.order_by('number'))
+
+    cards = []
+    for inn in innings_list:
+        score = scoring.innings_score(inn)
+        legal = score['legal_balls']
+        cards.append({
+            'innings': inn,
+            'batting_team': inn.batting_team,
+            'score': score,
+            'rr': round(score['runs'] * 6 / legal, 2) if legal else 0.0,
+            'batting': scoring.batting_card(inn),
+            'bowling': scoring.bowling_card(inn),
+            'fow': scoring.fall_of_wickets(inn),
+            'extras': scoring.extras_breakdown(inn),
+        })
+
+    return render(request, 'cric/pages/scorecard.html', {
+        'match': match,
+        'cards': cards,
+        'result_line': scoring.result_line(match),
+        'in_progress': bool(innings_list) and not all(i.is_closed for i in innings_list),
+    })
+
+
 def match_detail_view(request, match_id):
     match = get_object_or_404(Match, pk=match_id)
     teams = match.teams.all()
