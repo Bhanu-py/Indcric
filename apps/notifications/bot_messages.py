@@ -27,26 +27,19 @@ def not_recognised():
 
 
 def help_text():
-    """Full command reference — every command, its aliases, and an example."""
+    """Short, friendly command reference. Kept simple on purpose — the
+    session-id form (YES 42) is only used by the tap-to-RSVP group links, so
+    we don't ask users to type ids."""
     return (
-        "🏏 *IndCric Bot — Commands*\n"
+        "🏏 *IndCric Bot*\n"
         "\n"
-        "*RSVP to a session*\n"
-        "✅ *YES* / ❌ *NO* — reply to the latest poll\n"
-        "_(also: Y, N, 1, 2, ✅, ❌)_\n"
-        "*YES <id>* / *NO <id>* — RSVP to a specific session\n"
-        "_e.g. YES 42_\n"
+        "Just reply with:\n"
+        "✅ *YES* or ❌ *NO* — RSVP to the current poll\n"
+        "💰 *BALANCE* — your wallet + what you owe\n"
+        "📊 *STATUS* — who's in / out\n"
+        "❓ *HELP* — show this message\n"
         "\n"
-        "*Your money*\n"
-        "💰 *BALANCE* — wallet balance + what you owe\n"
-        "_(also: BAL, WALLET)_\n"
-        "\n"
-        "*Session info*\n"
-        "📊 *STATUS* — who's in / out for the open poll\n"
-        "_(also: POLL, WHO, COUNT)_\n"
-        "\n"
-        "*Other*\n"
-        "❓ *HELP* — show this message  _(also: ?)_"
+        "Playing a *specific* game? Just tap the *YES/NO* link in the group message — no need to type anything."
     )
 
 
