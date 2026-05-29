@@ -1198,8 +1198,14 @@
             }
             if (bestI < 0) return;   // local minimum
             const elA = t1Rows[bestI], elB = t2Rows[bestJ];
-            t1.replaceChild(elB, elA);
-            t2.replaceChild(elA, elB);
+            // Swap via placeholder markers — a naive two-step replaceChild drops a
+            // node, because moving elB into t1 first detaches it from t2.
+            const markA = document.createComment('');
+            const markB = document.createComment('');
+            elA.replaceWith(markA);   // elA out of t1, marker holds its slot
+            elB.replaceWith(markB);   // elB out of t2, marker holds its slot
+            markA.replaceWith(elB);   // elB into t1 at elA's old slot
+            markB.replaceWith(elA);   // elA into t2 at elB's old slot
             renderAsTeamRow(elB, 'pitch');
             renderAsTeamRow(elA, 'amber');
         }
