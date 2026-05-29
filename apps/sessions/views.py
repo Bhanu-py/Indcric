@@ -611,7 +611,11 @@ def delete_match_view(request, match_id):
     session_id = match.session.id
 
     if request.method == 'POST':
-        match.delete()
+        with transaction.atomic():
+            # Delete innings first — that cascade-removes their deliveries, which
+            # otherwise PROTECT the players and block the match delete.
+            match.innings.all().delete()
+            match.delete()
         messages.success(request, f"{match.name} deleted.")
 
     return redirect('session_detail', session_id=session_id)
