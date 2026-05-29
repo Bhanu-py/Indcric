@@ -509,8 +509,7 @@
             <!-- ── Match summary cards ── -->
             {% for match in matches %}
             {% with mteams=match.teams.all %}
-            {# Latest match expanded; older ones collapse (tap the title) — keeps a
-               multi-match session tidy on mobile. Editing match stays open. #}
+            {# Latest match expanded; older ones collapse (tap title); editing match stays open. #}
             <div class="card mb-4 overflow-hidden"
                  x-data="{ expanded: {% if forloop.last or edit_match and edit_match.id == match.id %}true{% else %}false{% endif %}, open: false, score: false }">
                 {% if edit_match and edit_match.id == match.id %}
