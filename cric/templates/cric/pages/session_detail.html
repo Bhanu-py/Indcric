@@ -608,6 +608,7 @@
                             <div class="flex items-center gap-2 mb-1.5">
                                 <span class="w-1.5 h-1.5 rounded-full {% if forloop.first %}bg-pitch-600{% else %}bg-amber-500{% endif %} shrink-0"></span>
                                 <p class="font-mono text-[10px] font-medium uppercase tracking-[0.08em] {% if forloop.first %}text-pitch-700{% else %}text-amber-700{% endif %} truncate">{{ team.name }}</p>
+                                <span class="ml-auto shrink-0 font-mono text-[10px] font-semibold tabular-nums {% if forloop.first %}text-pitch-700{% else %}text-amber-700{% endif %}">{{ team.players.all|length }}</span>
                             </div>
                             <div class="{% if forloop.first %}bg-pitch-50 border-pitch-100{% else %}bg-amber-50 border-amber-100{% endif %} rounded-xl px-1.5 py-2 sm:p-2 space-y-1 border">
                                 {% for player in team.players.all|sort_by_role %}
