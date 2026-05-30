@@ -104,15 +104,11 @@ def status(session_name, date_str, yes_names, no_names):
 
 
 def unknown(echo=""):
-    """Fallback when the message couldn't be parsed. Echoes the user's input."""
+    """Fallback when the message couldn't be parsed. Echoes the user's input
+    and follows it with the full command list so they don't have to type HELP
+    after a typo."""
     seen = f" — you sent: _{echo}_" if echo else ""
-    return (
-        f"🤔 I didn't catch that{seen}.\n"
-        "\n"
-        "Reply *YES* / *NO* to RSVP, *STATUS* for who's playing, "
-        "*SCORE* for live scores, *BALANCE* for your wallet, "
-        "or *HELP* to see everything I can do."
-    )
+    return f"🤔 I didn't catch that{seen}.\n\n" + help_text()
 
 
 def no_recent_session():
