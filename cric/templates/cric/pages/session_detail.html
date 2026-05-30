@@ -515,20 +515,19 @@
                 {% if edit_match and edit_match.id == match.id %}
                 <div class="h-1 bg-pitch-500"></div>
                 {% endif %}
-                <div class="card-header flex items-center justify-between gap-2">
-                    <button type="button" @click="expanded = !expanded" class="flex items-center gap-2 flex-wrap text-left min-w-0">
+                <div class="card-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+                    <button type="button" @click="expanded = !expanded" class="flex items-center gap-2 text-left min-w-0 w-full sm:w-auto">
                         <svg class="w-4 h-4 text-stone-400 transition-transform shrink-0" :class="expanded ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                        <h2 class="text-sm font-bold text-stone-800">{{ match.name }}</h2>
+                        <h2 class="text-sm font-bold text-stone-800 truncate">{{ match.name }}</h2>
                         {% if edit_match and edit_match.id == match.id %}
-                        <span class="badge badge-pitch text-xs">Editing</span>
+                        <span class="badge badge-pitch text-xs shrink-0">Editing</span>
                         {% elif match.winner %}
-                        <span class="badge badge-green text-xs">{{ match.winner.name }} Won</span>
+                        <span class="badge badge-green text-xs shrink-0 truncate max-w-[150px]">{{ match.winner.name }} Won</span>
                         {% endif %}
-                        <span x-show="!expanded" class="font-mono text-[10px] text-stone-400 uppercase tracking-[0.06em]">tap to open</span>
                     </button>
                     {% if user.is_staff %}
                     {% with locked=match.innings.exists %}
-                    <div class="flex items-center gap-2 shrink-0">
+                    <div class="flex items-center gap-2 shrink-0 flex-wrap w-full sm:w-auto sm:justify-end">
                         {% if match.teams.all|length >= 2 %}
                             {% if match.winner_id %}
                             <a href="{% url 'scorecard' match.id %}" class="btn btn-secondary btn-sm">
@@ -813,7 +812,7 @@
                             {# Staff: add any active member (e.g. a late arrival who didn't vote). #}
                             <select id="add-member-select" onchange="addMemberToPool(this.value); this.value='';"
                                     class="form-select !w-auto !py-1.5 !text-xs max-w-[190px]">
-                                <option value="">+ Add player…</option>
+                                <option value="">+ Add player</option>
                                 {% for m in addable_pool %}
                                 <option value="{{ m.id }}">{{ m.username }}</option>
                                 {% endfor %}
