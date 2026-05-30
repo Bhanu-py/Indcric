@@ -805,11 +805,22 @@
 
                     <!-- Available pool -->
                     <div class="mt-5">
-                        <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center justify-between mb-2 gap-2">
                             <span class="font-mono text-[10px] uppercase tracking-[0.08em] text-stone-400">
                                 Available pool · <span id="available-count">0</span>
                             </span>
+                            {% if addable_pool %}
+                            {# Staff: add any active member (e.g. a late arrival who didn't vote). #}
+                            <select id="add-member-select" onchange="addMemberToPool(this.value); this.value='';"
+                                    class="form-select !w-auto !py-1.5 !text-xs max-w-[190px]">
+                                <option value="">+ Add player…</option>
+                                {% for m in addable_pool %}
+                                <option value="{{ m.id }}">{{ m.username }}</option>
+                                {% endfor %}
+                            </select>
+                            {% endif %}
                         </div>
+                        {{ addable_pool|json_script:"addable-pool-data" }}
                         <div id="available-users"
                              class="rounded-[10px] border border-dashed border-stone-200 bg-stone-50 px-3 py-2.5 min-h-[60px]
                                     flex flex-wrap gap-1.5 transition-colors"
@@ -1080,6 +1091,34 @@
         const el = btn.closest('[data-user-id]');
         if (!el) return;
         moveChip(el, document.getElementById(teamSlug + '-players'));
+    }
+
+    /* Staff: drop any active member into the pool (late arrivals who didn't vote).
+       Builds a chip identical to the server-rendered pool chips. */
+    function addMemberToPool(userId) {
+        if (!userId) return;
+        const data = document.getElementById('addable-pool-data');
+        const members = data ? JSON.parse(data.textContent) : [];
+        const m = members.find(x => String(x.id) === String(userId));
+        const pool = document.getElementById('available-users');
+        if (!m || !pool || document.getElementById('user-' + m.id)) return;
+
+        const el = document.createElement('div');
+        el.id = 'user-' + m.id;
+        el.setAttribute('draggable', 'true');
+        el.setAttribute('ondragstart', 'drag(event)');
+        el.dataset.userId = m.id;
+        el.dataset.username = m.username;
+        el.dataset.role = m.role || '';
+        el.dataset.rating = m.rating;
+        el.dataset.batting = m.batting;
+        el.dataset.bowling = m.bowling;
+        pool.appendChild(el);
+        renderAsPoolChip(el);   // applies tint + name + A/B buttons
+
+        const opt = document.querySelector(`#add-member-select option[value="${m.id}"]`);
+        if (opt) opt.remove();
+        updatePoolDisplay();
     }
 
     /* ───────── Hidden fields for form submit ─────────

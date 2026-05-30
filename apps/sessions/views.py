@@ -299,6 +299,17 @@ def session_detail_view(request, session_id):
     for voter in yes_voters:
         voter['team_assigned'] = voter['user'].id in assigned_ids
 
+    # Staff can add any active member to the draft pool (e.g. late arrivals who
+    # never voted) — everyone not already shown in the editor (pool + teams).
+    addable_pool = []
+    if request.user.is_staff:
+        editor_ids = {v['user'].id for v in yes_voters} | assigned_ids
+        for u in User.objects.filter(is_active=True).exclude(id__in=editor_ids).order_by('first_name', 'username'):
+            addable_pool.append({
+                'id': u.id, 'username': u.username, 'role': u.role or '',
+                **_player_skills(u),
+            })
+
     cost_per_person_est = None
     if not session.cost_per_person and yes_votes > 0 and session.cost:
         cost_per_person_est = (session.cost / Decimal(yes_votes)).quantize(Decimal('0.01'))
@@ -351,6 +362,7 @@ def session_detail_view(request, session_id):
         'yes_voters': yes_voters,
         'no_voters': no_voters,
         'cost_per_person_est': cost_per_person_est,
+        'addable_pool': addable_pool,
         'matches': matches,
         'edit_match': edit_match,
         'edit_team1': edit_team1,
