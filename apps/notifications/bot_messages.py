@@ -37,6 +37,7 @@ def help_text():
         "✅ *YES* or ❌ *NO* — RSVP to the current poll\n"
         "💰 *BALANCE* — your wallet + what you owe\n"
         "📊 *STATUS* — who's in / out\n"
+        "🏆 *SCORE* — live score of the current match\n"
         "❓ *HELP* — show this message\n"
         "\n"
         "Playing a *specific* game? Just tap the *YES/NO* link in the group message — no need to type anything."
@@ -109,5 +110,40 @@ def unknown(echo=""):
         f"🤔 I didn't catch that{seen}.\n"
         "\n"
         "Reply *YES* / *NO* to RSVP, *STATUS* for who's playing, "
-        "*BALANCE* for your wallet, or *HELP* to see everything I can do."
+        "*SCORE* for live scores, *BALANCE* for your wallet, "
+        "or *HELP* to see everything I can do."
     )
+
+
+def no_recent_session():
+    return "📭 No sessions yet — nothing to score."
+
+
+def match_not_started(session_name, date_str):
+    return (
+        f"🏏 *{session_name}* ({date_str})\n"
+        "\n"
+        "Match hasn't started yet — no scoring entered."
+    )
+
+
+def score(session_name, date_str, match_blocks):
+    """Live score reply.
+
+    match_blocks: list of dicts with keys:
+      - name (str)
+      - innings (list[str], one line per innings; empty if not started)
+      - winner (str or None)
+    """
+    out = [f"🏆 *{session_name}* ({date_str})", ""]
+    for m in match_blocks:
+        out.append(f"*{m['name']}*")
+        if not m['innings']:
+            out.append("• Not started")
+        else:
+            for line in m['innings']:
+                out.append(f"• {line}")
+        if m.get('winner'):
+            out.append(f"🏅 Winner: *{m['winner']}*")
+        out.append("")
+    return "\n".join(out).rstrip()

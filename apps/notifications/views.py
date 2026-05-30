@@ -6,6 +6,7 @@ import re
 from django.conf import settings
 from django.db import IntegrityError
 from django.http import HttpResponse, JsonResponse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
 
@@ -196,6 +197,8 @@ def _process_message(msg, value):
         _handle_balance(wa_message_id, phone, msg)
     elif text_lower in ('status', 'poll', 'who', 'count', '/status'):
         _handle_status(wa_message_id, phone, msg)
+    elif text_lower in ('score', 'scores', '/score', 'live'):
+        _handle_score(wa_message_id, phone, msg)
     elif text_lower in ('help', '/help', '?'):
         _handle_help(wa_message_id, phone, msg)
     else:
@@ -235,12 +238,7 @@ def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None):
             )
 
     if poll_obj is None:
-        poll_obj = (
-            Poll.objects
-            .filter(is_open=True)
-            .order_by('-session__date')
-            .first()
-        )
+        poll_obj = _next_open_poll()
     if poll_obj is None:
         send_text_message(phone, bot_messages.no_active_poll())
         return
@@ -327,13 +325,7 @@ def _handle_status(wa_message_id, phone, raw):
     if not _log_inbound(wa_message_id, phone, user, 'status', raw):
         return
 
-    poll = (
-        Poll.objects
-        .filter(is_open=True)
-        .order_by('-session__date')
-        .select_related('session')
-        .first()
-    )
+    poll = _next_open_poll()
     if poll is None:
         send_text_message(phone, bot_messages.no_active_poll())
         return
@@ -344,6 +336,97 @@ def _handle_status(wa_message_id, phone, raw):
     send_text_message(phone, bot_messages.status(
         session.name, date_str, yes_names, no_names,
     ))
+
+
+def _next_open_poll():
+    """Pick the *next upcoming* open poll (closest future date+time first),
+    falling back to the most recent past open poll if nothing's upcoming."""
+    from apps.polls.models import Poll
+    today = timezone.localdate()
+    upcoming = (
+        Poll.objects
+        .filter(is_open=True, session__date__gte=today)
+        .order_by('session__date', 'session__time')
+        .select_related('session')
+        .first()
+    )
+    if upcoming is not None:
+        return upcoming
+    return (
+        Poll.objects
+        .filter(is_open=True)
+        .order_by('-session__date', '-session__time')
+        .select_related('session')
+        .first()
+    )
+
+
+def _handle_score(wa_message_id, phone, raw):
+    """Reply with live scores for the most relevant session.
+
+    Picks today's session if there is one, else the most recent past session,
+    else the next upcoming one. For each match in that session:
+      - no innings yet → 'not started'
+      - innings exist → totals derived from the Delivery ledger via scoring.innings_score
+    """
+    from apps.sessions.models import Session
+    from apps.matches.scoring import innings_score
+    from .services import send_text_message
+
+    user = User.objects.filter(phone=phone).first()
+    if user is None:
+        if _log_inbound(wa_message_id, phone, None, 'score', raw):
+            send_text_message(phone, bot_messages.not_recognised())
+        return
+
+    if not _log_inbound(wa_message_id, phone, user, 'score', raw):
+        return
+
+    today = timezone.localdate()
+    session = (
+        Session.objects
+        .filter(date__lte=today)
+        .order_by('-date', '-time')
+        .first()
+    )
+    if session is None:
+        session = (
+            Session.objects
+            .filter(date__gte=today)
+            .order_by('date', 'time')
+            .first()
+        )
+    if session is None:
+        send_text_message(phone, bot_messages.no_recent_session())
+        return
+
+    matches = list(
+        session.matches
+        .prefetch_related('innings__batting_team', 'teams')
+        .order_by('id')
+    )
+
+    if not matches:
+        date_str = session.date.strftime("%a %d %b")
+        send_text_message(phone, bot_messages.match_not_started(session.name, date_str))
+        return
+
+    match_blocks = []
+    for m in matches:
+        innings_lines = []
+        for inn in m.innings.order_by('number'):
+            s = innings_score(inn)
+            innings_lines.append(
+                f"{inn.batting_team.name}: {s['runs']}/{s['wickets']} ({s['overs']})"
+            )
+        match_blocks.append({
+            'name': m.name,
+            'innings': innings_lines,
+            'winner': m.winner.name if m.winner_id else None,
+        })
+
+    date_str = session.date.strftime("%a %d %b")
+    send_text_message(phone, bot_messages.score(session.name, date_str, match_blocks))
 
 
 def _handle_help(wa_message_id, phone, raw):
