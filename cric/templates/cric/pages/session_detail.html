@@ -468,29 +468,33 @@
                             </div>
                         </button>
 
-                        <!-- Voter names -->
-                        <div x-show="open" x-transition class="mt-3 grid grid-cols-2 gap-2 text-xs">
+                        <!-- Voter names — compact wrapping chips so a long list stays short -->
+                        <div x-show="open" x-transition class="mt-3 space-y-3 text-xs">
                             <div>
-                                <p class="font-semibold text-emerald-700 mb-1">Playing</p>
-                                {% for v in yes_voters %}
-                                <div class="flex items-center gap-1.5 py-0.5">
-                                    <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0">{{ v.user.username|first|upper }}</span>
-                                    <span class="text-stone-700 truncate">{{ v.user.username }}</span>
+                                <p class="font-semibold text-emerald-700 mb-1.5">Playing · {{ yes_votes }}</p>
+                                <div class="flex flex-wrap gap-1.5">
+                                    {% for v in yes_voters %}
+                                    <span class="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100">
+                                        <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[9px] font-bold">{{ v.user.username|first|upper }}</span>
+                                        <span class="text-emerald-800">{{ v.user.username }}</span>
+                                    </span>
+                                    {% empty %}
+                                    <span class="text-stone-400">None yet</span>
+                                    {% endfor %}
                                 </div>
-                                {% empty %}
-                                <span class="text-stone-400">None yet</span>
-                                {% endfor %}
                             </div>
                             <div>
-                                <p class="font-semibold text-red-500 mb-1">Out</p>
-                                {% for u in no_voters %}
-                                <div class="flex items-center gap-1.5 py-0.5">
-                                    <span class="w-5 h-5 rounded-full bg-red-100 text-red-500 flex items-center justify-center font-bold shrink-0">{{ u.username|first|upper }}</span>
-                                    <span class="text-stone-500 truncate">{{ u.username }}</span>
+                                <p class="font-semibold text-red-500 mb-1.5">Out · {{ no_votes }}</p>
+                                <div class="flex flex-wrap gap-1.5">
+                                    {% for u in no_voters %}
+                                    <span class="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full bg-red-50 border border-red-100">
+                                        <span class="w-4 h-4 rounded-full bg-red-100 text-red-500 flex items-center justify-center text-[9px] font-bold">{{ u.username|first|upper }}</span>
+                                        <span class="text-red-700">{{ u.username }}</span>
+                                    </span>
+                                    {% empty %}
+                                    <span class="text-stone-400">None yet</span>
+                                    {% endfor %}
                                 </div>
-                                {% empty %}
-                                <span class="text-stone-400">None yet</span>
-                                {% endfor %}
                             </div>
                         </div>
                     </div>
