@@ -175,7 +175,7 @@
         <div class="px-6 py-3">
             <div class="grid grid-cols-3 items-stretch">
                 {% with cost_str=session.cost|stringformat:"s" %}
-                    {% include "_components/stat_column.html" with dot="stone" label="Hall fee" value="€"|add:cost_str first=True %}
+                    {% include "_components/stat_column.html" with dot="stone" label="Venue fee" value="€"|add:cost_str first=True %}
                 {% endwith %}
                 {% include "_components/stat_column.html" with dot="sky" label="Voted in" value=yes_votes %}
                 {% if session.cost_per_person %}
@@ -323,12 +323,38 @@
     ═══════════════════════════════════ -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <!-- ── LEFT COLUMN: Poll + Admin ── -->
+        <!-- ── LEFT COLUMN: Poll + Admin ──
+             Once the user has voted, the poll card collapses to a slim status
+             strip but stays at the top, above the matches. -->
         <div class="space-y-4">
 
             <!-- Poll card -->
             {% if session.poll %}
-            <div class="card overflow-hidden">
+            <div class="card overflow-hidden" x-data="{ expanded: {% if user_vote %}false{% else %}true{% endif %} }">
+                {% if user_vote %}
+                {# Voted → header doubles as the summary + a toggle for the controls/voters below. #}
+                <button type="button" @click="expanded = !expanded"
+                        class="card-header w-full flex items-center justify-between gap-2 text-left">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <h2 class="text-sm font-bold text-stone-800 shrink-0">Availability</h2>
+                        {% if user_vote == 'yes' %}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-semibold shrink-0">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                            In
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-[11px] font-semibold shrink-0">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>
+                            Out
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="text-xs text-stone-400"><b class="text-emerald-600">{{ yes_votes }}</b> in · {{ no_votes }} out</span>
+                        <svg class="w-4 h-4 text-stone-400 transition-transform" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </div>
+                </button>
+                {% else %}
                 <div class="card-header flex items-center justify-between">
                     <h2 class="text-sm font-bold text-stone-800">Availability</h2>
                     {% if session.poll.is_open %}
@@ -346,8 +372,9 @@
                     </span>
                     {% endif %}
                 </div>
+                {% endif %}
 
-                <div class="card-body">
+                <div class="card-body" x-show="expanded" x-cloak>
 
                     {% if session.poll.is_open and not user_vote and not is_past %}
                     <!-- ── Not voted yet ── -->
