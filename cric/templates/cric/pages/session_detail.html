@@ -527,6 +527,8 @@
                         <span class="badge badge-pitch text-xs shrink-0">Editing</span>
                         {% elif match.winner %}
                         <span class="badge badge-green text-xs shrink-0 truncate max-w-[150px]">{{ match.winner.name }} Won</span>
+                        {% elif match.is_live %}
+                        {% include "_components/live_badge.html" %}
                         {% endif %}
                     </button>
                     {% if user.is_staff %}

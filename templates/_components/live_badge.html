@@ -1,0 +1,12 @@
+{% comment %}
+LIVE badge — pulsing red dot + "LIVE", for a match being scored right now.
+Shown on session cards / the next-up card while scoring is in progress and
+removed once the result is concluded. No args.
+{% endcomment %}
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-[11px] font-semibold uppercase tracking-[0.06em] ring-1 ring-red-200">
+    <span class="relative flex h-1.5 w-1.5">
+        <span class="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 motion-safe:animate-ping"></span>
+        <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500"></span>
+    </span>
+    Live
+</span>

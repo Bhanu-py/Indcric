@@ -18,13 +18,40 @@ from apps.payments.models import Payment, Wallet
 User = get_user_model()
 
 
+def _live_match_session_ids(sessions):
+    """Session ids that currently have a match being scored — scoring started
+    (≥1 innings) but not yet concluded (the result is declared only once both
+    innings exist and are closed, mirroring scoring.result_line/finalize)."""
+    session_ids = [s.id for s in sessions]
+    if not session_ids:
+        return set()
+    live = set()
+    matches = (
+        Match.objects.filter(session_id__in=session_ids)
+        .prefetch_related('innings')
+    )
+    for match in matches:
+        innings = list(match.innings.all())
+        if not innings:
+            continue  # scoring hasn't started
+        concluded = len(innings) >= 2 and all(i.is_closed for i in innings)
+        if not concluded:
+            live.add(match.session_id)
+    return live
+
+
 def home(request):
     today = timezone.now().date()
-    upcoming_sessions = Session.objects.filter(date__gte=today).order_by('date', 'time')
-    previous_sessions = Session.objects.filter(date__lt=today).order_by('-date', '-time')[:10]
+    upcoming_sessions = list(Session.objects.filter(date__gte=today).order_by('date', 'time'))
+    previous_sessions = list(Session.objects.filter(date__lt=today).order_by('-date', '-time')[:10])
+
+    all_sessions = upcoming_sessions + previous_sessions
+    live_session_ids = _live_match_session_ids(all_sessions)
+    for session in all_sessions:
+        session.is_live = session.id in live_session_ids
 
     session_vote_counts = {}
-    for session in list(upcoming_sessions) + list(previous_sessions):
+    for session in all_sessions:
         if hasattr(session, 'poll'):
             yes_votes = session.poll.votes.filter(choice='yes').count()
             no_votes = session.poll.votes.filter(choice='no').count()
@@ -37,7 +64,7 @@ def home(request):
                 'yes_percentage': yes_percentage,
             }
 
-    next_session = upcoming_sessions.first()
+    next_session = upcoming_sessions[0] if upcoming_sessions else None
     next_session_votes = (
         session_vote_counts.get(next_session.id) if next_session else None
     )
@@ -272,7 +299,16 @@ def session_detail_view(request, session_id):
                       for v in poll.votes.filter(choice='yes').select_related('user')]
         no_voters = [v.user for v in poll.votes.filter(choice='no').select_related('user')]
 
-    matches = list(session.matches.prefetch_related('teams__players__user').order_by('id'))
+    matches = list(
+        session.matches.prefetch_related('teams__players__user', 'innings').order_by('id')
+    )
+    # Per-match live flag: scoring started (≥1 innings) but not concluded
+    # (a result is declared only once both innings exist and are closed).
+    for match in matches:
+        innings = list(match.innings.all())
+        match.is_live = bool(innings) and not (
+            len(innings) >= 2 and all(i.is_closed for i in innings)
+        )
 
     edit_match_id = request.GET.get('edit_match')
     edit_match = edit_team1 = edit_team2 = None

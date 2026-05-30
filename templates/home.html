@@ -102,7 +102,10 @@
         <a href="{% url 'session_detail' next_session.id %}" class="card hover:shadow-md transition-shadow group block">
             <div class="card-accent card-accent-pitch"></div>
             <div class="p-4">
-                <div class="micro-label mb-2">Next up · {{ next_session.date|date:"D j M" }}</div>
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <div class="micro-label">Next up · {{ next_session.date|date:"D j M" }}</div>
+                    {% if next_session.is_live %}{% include "_components/live_badge.html" %}{% endif %}
+                </div>
                 <div class="text-lg font-semibold text-stone-900 leading-tight mb-1.5 group-hover:text-pitch-700 transition-colors">
                     {{ next_session.name|default:"Untitled session" }}
                 </div>
