@@ -81,7 +81,9 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
     <div class="card overflow-hidden">
         <div class="p-5 text-center">
             <p class="text-sm font-semibold text-stone-800">
-                {% if chase and score.runs >= chase.target %}Target reached — {{ innings.batting_team.name }} win!{% else %}Innings complete{% endif %}
+                {% if chase and score.runs >= chase.target %}Target reached — {{ innings.batting_team.name }} win!
+                {% elif chase and chase.needed == 1 %}Scores level — match tied
+                {% else %}Innings complete{% endif %}
             </p>
             <p class="text-xs text-stone-500 mt-1">{{ innings.batting_team.name }} — {{ score.runs }}/{{ score.wickets }} ({{ score.overs }} ov)</p>
         </div>

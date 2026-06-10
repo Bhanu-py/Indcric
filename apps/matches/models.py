@@ -25,6 +25,18 @@ class Match(models.Model):
     )
     toss_decision = models.CharField(max_length=4, blank=True)  # 'bat' | 'bowl'
 
+    @property
+    def is_completed(self):
+        """Both innings scored and closed — a result (win or tie) stands."""
+        innings = list(self.innings.all())
+        return len(innings) >= 2 and all(i.is_closed for i in innings)
+
+    @property
+    def is_tied(self):
+        """Completed with level scores: winner stays NULL, unlike an unfinished
+        match where winner is also NULL — templates need the distinction."""
+        return self.winner_id is None and self.is_completed
+
     def __str__(self):
         return f"{self.name} in {self.session.name}"
 

@@ -152,6 +152,25 @@ class ScoringEngineTests(TestCase):
         self.assertEqual(striker, a2)      # single → batters crossed
         self.assertEqual(non_striker, a1)
 
+    def test_tied_match_is_completed_not_live(self):
+        scoring.record_delivery(self.inn, striker=self.a[0], non_striker=self.a[1],
+                                bowler=self.b[0], runs_off_bat=4)
+        self.inn.is_closed = True
+        self.inn.save()
+        inn2 = Innings.objects.create(
+            match=self.match, number=2,
+            batting_team=self.team_b, bowling_team=self.team_a,
+        )
+        scoring.record_delivery(inn2, striker=self.b[0], non_striker=self.b[1],
+                                bowler=self.a[0], runs_off_bat=4)
+        inn2.is_closed = True
+        inn2.save()
+        self.assertIsNone(scoring.finalize_match_result(self.match))
+        self.match.refresh_from_db()
+        self.assertTrue(self.match.is_completed)
+        self.assertTrue(self.match.is_tied)
+        self.assertEqual(scoring.result_line(self.match), "Match tied")
+
     def test_finalize_match_result(self):
         # Innings 1 (A) = 16
         self._seven_ball_over()

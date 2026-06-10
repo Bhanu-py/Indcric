@@ -185,7 +185,8 @@ def score_view(request, match_id):
     if len(innings_list) >= 2:
         # Both innings done — send to the session where the result now shows.
         scoring.finalize_match_result(match)
-        messages.success(request, f"{match.name} complete.")
+        result = scoring.result_line(match)
+        messages.success(request, f"{match.name}: {result}" if result else f"{match.name} complete.")
         return redirect('session_detail', session_id=match.session_id)
 
     # Set up the next innings.
