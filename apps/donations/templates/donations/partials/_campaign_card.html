@@ -1,0 +1,30 @@
+{% comment %}
+One current fundraiser as a wrappable card: a tap-to-expand header (title +
+Active + raised/goal) over the body. The body (#fundraiser-body-<id>) is the
+HTMX swap unit and holds bar · how-to · supporters dropdown · log form.
+
+Args:
+  campaign           the DonationCampaign (fund_items + donations prefetched)
+  donation_settings  club N26 details (passed through to the body)
+  form               a DonationForm (staff only)
+{% endcomment %}
+<div class="card mb-4 overflow-hidden" x-data="{ open: true }">
+    <button type="button" @click="open = !open"
+            class="card-header w-full flex items-center justify-between gap-3 text-left">
+        <div class="flex items-center gap-2 min-w-0">
+            <svg class="w-4 h-4 text-stone-400 transition-transform shrink-0" :class="open ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            <h2 class="text-sm font-bold text-stone-800 truncate">{{ campaign.title }}</h2>
+            <span class="badge badge-green shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Active</span>
+        </div>
+        <div class="text-right shrink-0">
+            <div class="text-sm font-bold text-stone-900 tabular-nums">
+                €{{ campaign.raised|floatformat:2 }}{% if campaign.goal_amount %} <span class="text-stone-400 font-normal">/ €{{ campaign.goal_amount|floatformat:2 }}</span>{% endif %}
+            </div>
+            <div class="micro-label">{{ campaign.supporter_count }} supporter{{ campaign.supporter_count|pluralize }}</div>
+        </div>
+    </button>
+
+    <div x-show="open" x-cloak id="fundraiser-body-{{ campaign.id }}">
+        {% include "donations/partials/_donations_panel.html" with donations=campaign.donations.all can_log=True %}
+    </div>
+</div>
