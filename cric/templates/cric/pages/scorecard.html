@@ -87,7 +87,7 @@
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
                     <span class="text-[13px] font-medium text-stone-900 truncate">{{ b.player.user.first_name|default:b.player.user.username }}</span>
-                    {% if not b.out %}<span class="font-mono text-[10px] font-semibold text-emerald-700 tracking-[0.04em]">NOT OUT</span>{% endif %}
+                    {% if not b.out and not b.how_out %}<span class="font-mono text-[10px] font-semibold text-emerald-700 tracking-[0.04em]">NOT OUT</span>{% endif %}
                 </div>
                 <span class="font-mono text-[11px] text-stone-400">{{ b.how_out|default:"—" }}</span>
             </div>

@@ -232,6 +232,68 @@ class ScoreBallViewTests(MatchFixtureMixin, TestCase):
         self.assertEqual(d.out_player, self.a[1])
         self.assertEqual(d.fielder, self.b[1])
 
+    def test_nonstriker_runout_prompts_for_replacement(self):
+        from .views import _console_context
+        self._post({
+            'wicket': '1', 'dismissal': 'runout', 'fielder': self.b[1].id,
+            'wicket_runs': '0', 'out_end': 'nonstriker', 'uuid': 'ball-2',
+        })
+        self.inn.refresh_from_db()
+        self.assertIsNone(self.inn.current_non_striker)
+        ctx = _console_context(self.inn)
+        self.assertTrue(ctx['need_batter'])
+        self.assertEqual(ctx['vacant_end'], 'nonstriker')
+        # only the bench batter is offered: a1 is at the crease, a2 is out
+        self.assertEqual([p.id for p in ctx['available_batters']], [self.a[2].id])
+
+
+class RetiredHurtTests(MatchFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.inn.current_striker = self.a[0]
+        self.inn.current_non_striker = self.a[1]
+        self.inn.current_bowler = self.b[0]
+        self.inn.save()
+
+    def _ball(self, runs=0, striker=None, non_striker=None):
+        scoring.record_delivery(self.inn, striker=striker or self.a[0],
+                                non_striker=non_striker or self.a[1],
+                                bowler=self.b[0], runs_off_bat=runs)
+
+    def test_retire_vacates_end_without_a_wicket(self):
+        self._ball()
+        scoring.retire_batter(self.inn, self.a[0])
+        self.inn.refresh_from_db()
+        self.assertIsNone(self.inn.current_striker)
+        self.assertEqual(self.inn.current_non_striker, self.a[1])
+        self.assertEqual(scoring.innings_score(self.inn)['wickets'], 0)
+        card = {r['player'].user.username: r for r in scoring.batting_card(self.inn)}
+        self.assertEqual(card['a1']['how_out'], 'retired hurt')
+        self.assertFalse(card['a1']['out'])
+
+    def test_resuming_batter_clears_the_label(self):
+        self._ball()
+        scoring.retire_batter(self.inn, self.a[0])
+        self.assertEqual(scoring.active_retired_ids(self.inn), {self.a[0].id})
+        # a1 returns to the crease and faces another ball
+        self._ball()
+        self.assertEqual(scoring.active_retired_ids(self.inn), set())
+        card = {r['player'].user.username: r for r in scoring.batting_card(self.inn)}
+        self.assertEqual(card['a1']['how_out'], '')
+
+    def test_undo_does_not_restore_retired_batter(self):
+        self._ball()                                  # ball 1: a1 & a2
+        scoring.retire_batter(self.inn, self.a[1])    # a2 retires hurt
+        self.inn.refresh_from_db()
+        self.inn.current_non_striker = self.a[2]      # a3 comes in
+        self.inn.save()
+        self._ball(non_striker=self.a[2])             # ball 2: a1 & a3
+        scoring.undo_last(self.inn)
+        scoring.advance_after_delivery(self.inn)
+        self.inn.refresh_from_db()
+        # Rewinding to ball 1 must not put the retired a2 back at the crease.
+        self.assertIsNone(self.inn.current_non_striker)
+
 
 class ScoreAdjustViewTests(MatchFixtureMixin, TestCase):
     def setUp(self):

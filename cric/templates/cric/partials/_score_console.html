@@ -103,16 +103,16 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
         </div>
     </div>
 
-    {# ── State: pick incoming batter ── #}
+    {# ── State: pick incoming batter (for whichever end is vacant) ── #}
     {% elif need_batter %}
     {% include "_components/eyebrow.html" with label="Select next batter" %}
     <div class="grid grid-cols-2 gap-2">
         {% for p in available_batters %}
         <button type="button"
                 hx-post="{% url 'score_set_batter' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
-                hx-vals='{"player": "{{ p.id }}"}'
+                hx-vals='{"player": "{{ p.id }}", "end": "{{ vacant_end }}"}'
                 class="btn btn-secondary btn-md justify-start">
-            {{ p.user.first_name|default:p.user.username }}
+            {{ p.user.first_name|default:p.user.username }}{% if p.id in retired_ids %}&nbsp;<span class="font-mono text-[10px] text-amber-600 uppercase">resumes</span>{% endif %}
         </button>
         {% empty %}
         <p class="col-span-2 text-sm text-stone-400 text-center py-4">No batters left — innings is all out.</p>
@@ -291,6 +291,27 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                         hx-post="{% url 'score_change_bowler' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
                         hx-confirm="Hand the rest of this over to a different bowler?"
                         class="btn btn-secondary btn-md justify-center">Change bowler</button>
+            </div>
+
+            {# retired hurt — vacate an end without a wicket; the batter may resume later #}
+            <div>
+                <p class="form-label">Retired hurt</p>
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    {% if striker %}
+                    <button type="button"
+                            hx-post="{% url 'score_retire' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
+                            hx-vals='{"player": "{{ striker.id }}"}'
+                            hx-confirm="Retire {{ striker.user.first_name|default:striker.user.username }} hurt? They can resume batting later."
+                            class="btn btn-secondary btn-md justify-center truncate">{{ striker.user.first_name|default:striker.user.username }}</button>
+                    {% endif %}
+                    {% if non_striker %}
+                    <button type="button"
+                            hx-post="{% url 'score_retire' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
+                            hx-vals='{"player": "{{ non_striker.id }}"}'
+                            hx-confirm="Retire {{ non_striker.user.first_name|default:non_striker.user.username }} hurt? They can resume batting later."
+                            class="btn btn-secondary btn-md justify-center truncate">{{ non_striker.user.first_name|default:non_striker.user.username }}</button>
+                    {% endif %}
+                </div>
             </div>
         </div>
 

@@ -114,7 +114,11 @@ def _console_context(innings):
         if p.id != prev_bowler_id
     ]
 
-    need_batter = innings.current_striker_id is None and not complete
+    # Either end can be vacant: a wicket, a run-out of the non-striker, or a
+    # retired hurt all leave a hole the scorer must fill before the next ball.
+    need_batter = (
+        innings.current_striker_id is None or innings.current_non_striker_id is None
+    ) and not complete
     need_bowler = (not need_batter) and innings.current_bowler_id is None and not complete
 
     legal = score['legal_balls']
@@ -147,6 +151,8 @@ def _console_context(innings):
         'complete': complete,
         'need_batter': need_batter,
         'need_bowler': need_bowler,
+        'vacant_end': 'striker' if innings.current_striker_id is None else 'nonstriker',
+        'retired_ids': scoring.active_retired_ids(innings),
         'ready': (not complete) and not need_batter and not need_bowler,
         'available_batters': available_batters,
         'available_bowlers': available_bowlers,
@@ -349,6 +355,18 @@ def score_set_batter_view(request, innings_id):
                     innings.current_non_striker = innings.current_striker
                 innings.current_striker = player
             innings.save(update_fields=['current_striker', 'current_non_striker'])
+    return _render_console(request, innings)
+
+
+@login_required
+def score_retire_batter_view(request, innings_id):
+    """Retired hurt: vacate the chosen batter's end without a wicket. The
+    batter stays eligible to resume later from the next-batter picker."""
+    innings = get_object_or_404(Innings, id=innings_id)
+    if request.user.is_staff and request.method == 'POST' and not innings.is_closed:
+        player = Player.objects.filter(pk=request.POST.get('player'), team=innings.batting_team).first()
+        if player:
+            scoring.retire_batter(innings, player)
     return _render_console(request, innings)
 
 

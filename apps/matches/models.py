@@ -110,6 +110,24 @@ class Innings(models.Model):
         return f"{self.match.name} — innings {self.number}"
 
 
+class Retirement(models.Model):
+    """A batter leaving the crease without being dismissed (retired hurt).
+
+    Not a ball and not a wicket, so it can't live in the Delivery ledger —
+    but the batting card needs the label and the console must vacate the
+    right end. `at_sequence` anchors it in the ledger: the player counts as
+    "returned" once any later delivery shows them back at the crease, and
+    they stay eligible to resume batting while an end is vacant.
+    """
+    innings = models.ForeignKey(Innings, on_delete=models.CASCADE, related_name='retirements')
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='+')
+    at_sequence = models.PositiveIntegerField(default=0)  # last ledger sequence when retired
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.player} retired hurt — {self.innings}"
+
+
 class Delivery(models.Model):
     """One ball. Immutable append-only ledger — the source of truth for scoring.
 
