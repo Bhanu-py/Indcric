@@ -17,7 +17,7 @@ Cricket conventions used here:
 """
 from django.db import transaction
 
-from .models import Innings, Delivery
+from .models import Innings, Delivery, Retirement
 
 
 # ── Derivation (pure reads) ──────────────────────────────────────────────────
@@ -56,6 +56,22 @@ def innings_score(innings):
     }
 
 
+def active_retired_ids(innings, rows=None):
+    """Players currently retired hurt: retired with no later delivery showing
+    them back at the crease. They remain eligible to resume batting."""
+    if rows is None:
+        rows = _deliveries(innings)
+    retired = set()
+    for r in innings.retirements.all():
+        returned = any(
+            d.sequence > r.at_sequence and r.player_id in (d.striker_id, d.non_striker_id)
+            for d in rows
+        )
+        if not returned:
+            retired.add(r.player_id)
+    return retired
+
+
 def batting_card(innings):
     """Per-batter rows in the order they first appeared. Each: player, runs,
     balls, fours, sixes, strike_rate, out (bool), how_out."""
@@ -82,6 +98,10 @@ def batting_card(innings):
             o = stats[d.out_player_id]
             o['out'] = True
             o['how_out'] = _how_out(d)
+    # Retired hurt is not a dismissal: out stays False, only the label changes.
+    for pid in active_retired_ids(innings, rows):
+        if pid in stats and not stats[pid]['out']:
+            stats[pid]['how_out'] = 'retired hurt'
     cards = []
     for pid in order:
         s = stats[pid]
@@ -247,7 +267,8 @@ def result_line(match):
         return f"{first.batting_team.name} won by {margin} run{'' if margin == 1 else 's'}"
     if s2['runs'] > r1:
         roster = second.batting_team.players.count()
-        left = max(0, roster - 1 - s2['wickets'])
+        allowed = roster if second.single_batting else roster - 1
+        left = max(0, allowed - s2['wickets'])
         return f"{second.batting_team.name} won by {left} wicket{'' if left == 1 else 's'}"
     return "Match tied"
 
@@ -271,6 +292,13 @@ def on_strike_for_next(innings):
         return None
     last = rows[-1]
     striker, non_striker = last.striker, last.non_striker
+
+    # Lone batter (last man stands): no partner to cross with — they keep
+    # the strike for every ball until out.
+    if non_striker is None:
+        if last.is_wicket and last.out_player_id == striker.id:
+            striker = None
+        return striker, None
 
     # Runs physically run by the batters cause them to cross (odd → swap).
     crossing = last.runs_off_bat
@@ -313,7 +341,10 @@ def is_innings_complete(innings):
         return True
     score = innings_score(innings)
     roster = innings.batting_team.players.count()
-    if roster and score['wickets'] >= roster - 1:
+    # Normally the innings ends one wicket early (no partner left); with
+    # last-man-stands it runs until every batter is out.
+    allowed_wickets = roster if innings.single_batting else roster - 1
+    if roster and score['wickets'] >= allowed_wickets:
         return True
     limit = innings.match.overs_limit
     if limit and score['legal_balls'] >= limit * 6:
@@ -406,10 +437,37 @@ def advance_after_delivery(innings):
     last = rows[-1]
     pair = on_strike_for_next(innings)
     if pair is not None:
-        innings.current_striker, innings.current_non_striker = pair
+        striker, non_striker = pair
+        # An undo must not silently restore a retired-hurt batter to the
+        # crease — leave their end vacant so the scorer re-picks.
+        retired = active_retired_ids(innings, rows)
+        if striker is not None and striker.id in retired:
+            striker = None
+        if non_striker is not None and non_striker.id in retired:
+            non_striker = None
+        innings.current_striker, innings.current_non_striker = striker, non_striker
     legal = sum(1 for d in rows if d.is_legal)
     innings.current_bowler = None if (last.is_legal and legal % 6 == 0) else last.bowler
     innings.save(update_fields=['current_striker', 'current_non_striker', 'current_bowler'])
+
+
+@transaction.atomic
+def retire_batter(innings, player):
+    """Record a retired-hurt for a batter at the crease and vacate that end.
+    Returns the Retirement, or None if the player isn't currently batting."""
+    if innings.current_striker_id == player.id:
+        innings.current_striker = None
+    elif innings.current_non_striker_id == player.id:
+        innings.current_non_striker = None
+    else:
+        return None
+    last = innings.deliveries.order_by('-sequence').first()
+    retirement = Retirement.objects.create(
+        innings=innings, player=player,
+        at_sequence=last.sequence if last else 0,
+    )
+    innings.save(update_fields=['current_striker', 'current_non_striker'])
+    return retirement
 
 
 @transaction.atomic

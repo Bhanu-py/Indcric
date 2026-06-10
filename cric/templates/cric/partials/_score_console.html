@@ -20,7 +20,7 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                     </span>
                 </div>
                 <div class="font-mono text-[10px] text-stone-400 uppercase tracking-[0.06em] mt-1.5">
-                    CRR {{ crr }} · Extras {{ score.extras }}
+                    CRR {{ crr }}{% if chase and chase.rrr is not None and not complete %} · <span class="text-amber-600">RRR {{ chase.rrr }}</span>{% endif %} · Extras {{ score.extras }}
                 </div>
                 {% if chase %}
                 <div class="mt-2 inline-flex items-center gap-2 rounded-lg bg-amber-50 px-2.5 py-1.5">
@@ -64,6 +64,8 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                         <span class="text-[13px] text-stone-500 truncate">{{ non_striker.user.first_name|default:non_striker.user.username }}</span>
                         {% if non_striker_stat %}<span class="font-mono text-xs text-stone-400 tabular-nums shrink-0">{{ non_striker_stat.runs }} ({{ non_striker_stat.balls }})</span>{% endif %}
                     </div>
+                    {% elif innings.single_batting and striker %}
+                    <span class="font-mono text-[10px] text-amber-600 uppercase tracking-[0.06em]">Last batter — batting alone</span>
                     {% endif %}
                 </div>
                 {% if bowler %}
@@ -81,28 +83,44 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
     <div class="card overflow-hidden">
         <div class="p-5 text-center">
             <p class="text-sm font-semibold text-stone-800">
-                {% if chase and score.runs >= chase.target %}Target reached — {{ innings.batting_team.name }} win!{% else %}Innings complete{% endif %}
+                {% if chase and score.runs >= chase.target %}Target reached — {{ innings.batting_team.name }} win!
+                {% elif chase and chase.needed == 1 %}Scores level — match tied
+                {% else %}Innings complete{% endif %}
             </p>
             <p class="text-xs text-stone-500 mt-1">{{ innings.batting_team.name }} — {{ score.runs }}/{{ score.wickets }} ({{ score.overs }} ov)</p>
         </div>
-        <form method="post" action="{% url 'end_innings' innings.id %}" class="px-5 pb-5">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-primary btn-md w-full justify-center">
-                {% if is_first_innings %}Start 2nd innings{% else %}Finish match{% endif %}
-            </button>
-        </form>
+        <div class="px-5 pb-5 flex flex-col gap-2">
+            <form method="post" action="{% url 'end_innings' innings.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-md w-full justify-center">
+                    {% if is_first_innings %}Start 2nd innings{% else %}Finish match{% endif %}
+                </button>
+            </form>
+            {% if can_single_bat %}
+            <button type="button"
+                    hx-post="{% url 'score_single_batting' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
+                    hx-confirm="Let the last batter continue alone? The innings then runs until all out."
+                    class="btn btn-secondary btn-md w-full justify-center">Continue — last batter stands</button>
+            {% endif %}
+            {% if score.balls %}
+            <button type="button"
+                    hx-post="{% url 'score_undo' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
+                    hx-confirm="Undo the last ball? The innings will reopen."
+                    class="btn btn-secondary btn-md w-full justify-center">Undo last ball</button>
+            {% endif %}
+        </div>
     </div>
 
-    {# ── State: pick incoming batter ── #}
+    {# ── State: pick incoming batter (for whichever end is vacant) ── #}
     {% elif need_batter %}
     {% include "_components/eyebrow.html" with label="Select next batter" %}
     <div class="grid grid-cols-2 gap-2">
         {% for p in available_batters %}
         <button type="button"
                 hx-post="{% url 'score_set_batter' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
-                hx-vals='{"player": "{{ p.id }}"}'
+                hx-vals='{"player": "{{ p.id }}", "end": "{{ vacant_end }}"}'
                 class="btn btn-secondary btn-md justify-start">
-            {{ p.user.first_name|default:p.user.username }}
+            {{ p.user.first_name|default:p.user.username }}{% if p.id in retired_ids %}&nbsp;<span class="font-mono text-[10px] text-amber-600 uppercase">resumes</span>{% endif %}
         </button>
         {% empty %}
         <p class="col-span-2 text-sm text-stone-400 text-center py-4">No batters left — innings is all out.</p>
@@ -126,7 +144,7 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
     {# ── State: ready — the tap grid ── #}
     {% else %}
     <form hx-post="{% url 'score_ball' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
-          x-data="{ mode: 'runs', wicket: false, dismissal: '', fielder: '', outEnd: 'striker' }"
+          x-data="{ mode: 'runs', wicket: false, dismissal: '', fielder: '', outEnd: 'striker', wktRuns: 0 }"
           class="card p-3 sm:p-4 flex flex-col gap-3 sticky bottom-0 safe-bottom md:static z-10 shadow-md md:shadow-sm">
         {% csrf_token %}
         <input type="hidden" name="mode" x-model="mode">
@@ -162,7 +180,7 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
 
         {# wicket + undo #}
         <div class="flex gap-2" x-show="!wicket">
-            <button type="button" @click="wicket = true; mode='runs'; dismissal=''; fielder=''; outEnd='striker'"
+            <button type="button" @click="wicket = true; mode='runs'; dismissal=''; fielder=''; outEnd='striker'; wktRuns=0"
                     class="btn btn-danger btn-md flex-1 justify-center">Wicket</button>
             <button type="button"
                     hx-post="{% url 'score_undo' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
@@ -188,7 +206,7 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                 {% endfor %}
             </div>
 
-            {# run out can dismiss either batter #}
+            {# run out can dismiss either batter, after any number of completed runs #}
             <template x-if="dismissal === 'runout'">
                 <div>
                     <p class="form-label">Who's out?</p>
@@ -196,10 +214,21 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                         <button type="button" @click="outEnd='striker'"
                                 :class="outEnd === 'striker' ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-700 border border-stone-300'"
                                 class="btn btn-md justify-center text-sm truncate">Striker{% if striker %} · {{ striker.user.first_name|default:striker.user.username }}{% endif %}</button>
+                        {% if non_striker %}
                         <button type="button" @click="outEnd='nonstriker'"
                                 :class="outEnd === 'nonstriker' ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-700 border border-stone-300'"
-                                class="btn btn-md justify-center text-sm truncate">Non-striker{% if non_striker %} · {{ non_striker.user.first_name|default:non_striker.user.username }}{% endif %}</button>
+                                class="btn btn-md justify-center text-sm truncate">Non-striker · {{ non_striker.user.first_name|default:non_striker.user.username }}</button>
+                        {% endif %}
                     </div>
+                    <p class="form-label mt-2.5">Runs completed before the run out</p>
+                    <div class="grid grid-cols-4 gap-2 mt-1">
+                        {% for r in "0123" %}
+                        <button type="button" @click="wktRuns = {{ r }}"
+                                :class="wktRuns === {{ r }} ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-700 border border-stone-300'"
+                                class="btn btn-md justify-center text-sm font-semibold tabular-nums">{{ r }}</button>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" name="wicket_runs" :value="wktRuns">
                 </div>
             </template>
 
@@ -221,13 +250,90 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
         </div>
     </form>
 
-    {# bottom bar — sibling of the scoring form (no nested forms) #}
-    <div class="flex items-center justify-between px-1">
-        <a href="{% url 'session_detail' match.session_id %}" class="text-xs text-stone-400 hover:text-stone-700">Exit scoring</a>
-        <form method="post" action="{% url 'end_innings' innings.id %}" onsubmit="return confirm('End this innings now?')">
-            {% csrf_token %}
-            <button type="submit" class="text-xs text-stone-400 hover:text-red-600">End innings early</button>
-        </form>
+    {# bottom bar + adjust drawer — siblings of the scoring form (no nested forms) #}
+    <div x-data="{ adjust: false }" class="flex flex-col gap-3">
+        <div x-show="adjust" x-cloak class="card p-4 flex flex-col gap-3">
+            {% include "_components/eyebrow.html" with label="Adjust" %}
+
+            {# total overs — floored at overs already begun #}
+            <form hx-post="{% url 'score_set_overs' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
+                  class="flex items-end gap-2">
+                {% csrf_token %}
+                <div class="flex-1">
+                    <label class="form-label" for="adjust-overs">Total overs</label>
+                    <input id="adjust-overs" type="number" name="overs" value="{{ overs_limit }}"
+                           min="{{ min_overs }}" max="50" inputmode="numeric" class="form-input">
+                </div>
+                <button type="submit" class="btn btn-secondary btn-md shrink-0">Update</button>
+            </form>
+
+            {# openers can be re-picked until the first ball is bowled #}
+            {% if score.balls == 0 %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                    <label class="form-label" for="adjust-striker">Striker</label>
+                    <select id="adjust-striker" name="player" class="form-select"
+                            hx-post="{% url 'score_set_batter' innings.id %}" hx-vals='{"end": "striker"}'
+                            hx-target="#score-console" hx-swap="outerHTML">
+                        {% for p in batting_players %}
+                        <option value="{{ p.id }}" {% if p.id == striker.id %}selected{% endif %}>{{ p.user.first_name|default:p.user.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label" for="adjust-nonstriker">Non-striker</label>
+                    <select id="adjust-nonstriker" name="player" class="form-select"
+                            hx-post="{% url 'score_set_batter' innings.id %}" hx-vals='{"end": "nonstriker"}'
+                            hx-target="#score-console" hx-swap="outerHTML">
+                        {% for p in batting_players %}
+                        <option value="{{ p.id }}" {% if p.id == non_striker.id %}selected{% endif %}>{{ p.user.first_name|default:p.user.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="grid grid-cols-2 gap-2">
+                <button type="button"
+                        hx-post="{% url 'score_swap_strike' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
+                        class="btn btn-secondary btn-md justify-center">Swap strike</button>
+                <button type="button"
+                        hx-post="{% url 'score_change_bowler' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
+                        hx-confirm="Hand the rest of this over to a different bowler?"
+                        class="btn btn-secondary btn-md justify-center">Change bowler</button>
+            </div>
+
+            {# retired hurt — vacate an end without a wicket; the batter may resume later #}
+            <div>
+                <p class="form-label">Retired hurt</p>
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    {% if striker %}
+                    <button type="button"
+                            hx-post="{% url 'score_retire' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
+                            hx-vals='{"player": "{{ striker.id }}"}'
+                            hx-confirm="Retire {{ striker.user.first_name|default:striker.user.username }} hurt? They can resume batting later."
+                            class="btn btn-secondary btn-md justify-center truncate">{{ striker.user.first_name|default:striker.user.username }}</button>
+                    {% endif %}
+                    {% if non_striker %}
+                    <button type="button"
+                            hx-post="{% url 'score_retire' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
+                            hx-vals='{"player": "{{ non_striker.id }}"}'
+                            hx-confirm="Retire {{ non_striker.user.first_name|default:non_striker.user.username }} hurt? They can resume batting later."
+                            class="btn btn-secondary btn-md justify-center truncate">{{ non_striker.user.first_name|default:non_striker.user.username }}</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between px-1">
+            <a href="{% url 'session_detail' match.session_id %}" class="text-xs text-stone-400 hover:text-stone-700">Exit scoring</a>
+            <button type="button" @click="adjust = !adjust"
+                    class="text-xs text-stone-500 hover:text-stone-800" :class="adjust && 'font-semibold text-stone-800'">Adjust</button>
+            <form method="post" action="{% url 'end_innings' innings.id %}" onsubmit="return confirm('End this innings now?')">
+                {% csrf_token %}
+                <button type="submit" class="text-xs text-stone-400 hover:text-red-600">End innings early</button>
+            </form>
+        </div>
     </div>
     {% endif %}
 </div>

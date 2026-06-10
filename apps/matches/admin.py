@@ -1,9 +1,10 @@
 from django.contrib import admin
-from .models import Match, Team, Player, Innings, Delivery
+from .models import Match, Team, Player, Innings, Delivery, Retirement
 
 admin.site.register(Match)
 admin.site.register(Team)
 admin.site.register(Player)
+admin.site.register(Retirement)
 
 
 @admin.register(Innings)

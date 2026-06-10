@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.sessions.models import Session
@@ -12,7 +13,8 @@ from . import scoring
 User = get_user_model()
 
 
-class ScoringEngineTests(TestCase):
+class MatchFixtureMixin:
+    """A 3-a-side match with innings 1 ready to score (team A batting)."""
     def setUp(self):
         self.session = Session.objects.create(
             name="Test", cost=Decimal('0'), duration=Decimal('3'),
@@ -32,6 +34,8 @@ class ScoringEngineTests(TestCase):
         user = User.objects.create_user(username=username, password="x")
         return Player.objects.create(user=user, team=team, role="batsman")
 
+
+class ScoringEngineTests(MatchFixtureMixin, TestCase):
     def _seven_ball_over(self):
         """Records the hand-computed scenario used by several tests."""
         a1, a2, a3 = self.a
@@ -95,6 +99,20 @@ class ScoringEngineTests(TestCase):
         self.assertEqual(scoring.bowling_card(self.inn)[0]['wickets'], 0)
         self.assertEqual(scoring.innings_score(self.inn)['wickets'], 1)
 
+    def test_runout_counts_completed_runs(self):
+        # Out going for the 2nd: 1 completed run counts to the striker and total.
+        a1, a2, _ = self.a
+        b1 = self.b[0]
+        scoring.record_delivery(self.inn, striker=a1, non_striker=a2, bowler=b1,
+                                runs_off_bat=1, is_wicket=True,
+                                dismissal_type='runout', out_player=a1)
+        score = scoring.innings_score(self.inn)
+        self.assertEqual(score['runs'], 1)
+        self.assertEqual(score['wickets'], 1)
+        card = {row['player'].user.username: row for row in scoring.batting_card(self.inn)}
+        self.assertEqual(card['a1']['runs'], 1)
+        self.assertTrue(card['a1']['out'])
+
     def test_complete_on_overs_limit(self):
         self.match.overs_limit = 1  # one over
         self.match.save()
@@ -152,6 +170,25 @@ class ScoringEngineTests(TestCase):
         self.assertEqual(striker, a2)      # single → batters crossed
         self.assertEqual(non_striker, a1)
 
+    def test_tied_match_is_completed_not_live(self):
+        scoring.record_delivery(self.inn, striker=self.a[0], non_striker=self.a[1],
+                                bowler=self.b[0], runs_off_bat=4)
+        self.inn.is_closed = True
+        self.inn.save()
+        inn2 = Innings.objects.create(
+            match=self.match, number=2,
+            batting_team=self.team_b, bowling_team=self.team_a,
+        )
+        scoring.record_delivery(inn2, striker=self.b[0], non_striker=self.b[1],
+                                bowler=self.a[0], runs_off_bat=4)
+        inn2.is_closed = True
+        inn2.save()
+        self.assertIsNone(scoring.finalize_match_result(self.match))
+        self.match.refresh_from_db()
+        self.assertTrue(self.match.is_completed)
+        self.assertTrue(self.match.is_tied)
+        self.assertEqual(scoring.result_line(self.match), "Match tied")
+
     def test_finalize_match_result(self):
         # Innings 1 (A) = 16
         self._seven_ball_over()
@@ -169,3 +206,243 @@ class ScoringEngineTests(TestCase):
         self.assertEqual(winner, self.team_a)
         self.match.refresh_from_db()
         self.assertEqual(self.match.winner, self.team_a)
+
+
+class ScoreBallViewTests(MatchFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.staff = User.objects.create_user(username="staff", password="x", is_staff=True)
+        self.inn.current_striker = self.a[0]
+        self.inn.current_non_striker = self.a[1]
+        self.inn.current_bowler = self.b[0]
+        self.inn.save()
+        self.client.force_login(self.staff)
+
+    def _post(self, data):
+        return self.client.post(reverse('score_ball', args=[self.inn.id]), data)
+
+    def test_runout_posts_completed_runs(self):
+        self._post({
+            'wicket': '1', 'dismissal': 'runout', 'fielder': self.b[1].id,
+            'wicket_runs': '1', 'out_end': 'nonstriker', 'uuid': 'ball-1',
+        })
+        d = self.inn.deliveries.get()
+        self.assertTrue(d.is_wicket)
+        self.assertEqual(d.runs_off_bat, 1)
+        self.assertEqual(d.out_player, self.a[1])
+        self.assertEqual(d.fielder, self.b[1])
+
+    def test_nonstriker_runout_prompts_for_replacement(self):
+        from .views import _console_context
+        self._post({
+            'wicket': '1', 'dismissal': 'runout', 'fielder': self.b[1].id,
+            'wicket_runs': '0', 'out_end': 'nonstriker', 'uuid': 'ball-2',
+        })
+        self.inn.refresh_from_db()
+        self.assertIsNone(self.inn.current_non_striker)
+        ctx = _console_context(self.inn)
+        self.assertTrue(ctx['need_batter'])
+        self.assertEqual(ctx['vacant_end'], 'nonstriker')
+        # only the bench batter is offered: a1 is at the crease, a2 is out
+        self.assertEqual([p.id for p in ctx['available_batters']], [self.a[2].id])
+
+
+class RetiredHurtTests(MatchFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.inn.current_striker = self.a[0]
+        self.inn.current_non_striker = self.a[1]
+        self.inn.current_bowler = self.b[0]
+        self.inn.save()
+
+    def _ball(self, runs=0, striker=None, non_striker=None):
+        scoring.record_delivery(self.inn, striker=striker or self.a[0],
+                                non_striker=non_striker or self.a[1],
+                                bowler=self.b[0], runs_off_bat=runs)
+
+    def test_retire_vacates_end_without_a_wicket(self):
+        self._ball()
+        scoring.retire_batter(self.inn, self.a[0])
+        self.inn.refresh_from_db()
+        self.assertIsNone(self.inn.current_striker)
+        self.assertEqual(self.inn.current_non_striker, self.a[1])
+        self.assertEqual(scoring.innings_score(self.inn)['wickets'], 0)
+        card = {r['player'].user.username: r for r in scoring.batting_card(self.inn)}
+        self.assertEqual(card['a1']['how_out'], 'retired hurt')
+        self.assertFalse(card['a1']['out'])
+
+    def test_resuming_batter_clears_the_label(self):
+        self._ball()
+        scoring.retire_batter(self.inn, self.a[0])
+        self.assertEqual(scoring.active_retired_ids(self.inn), {self.a[0].id})
+        # a1 returns to the crease and faces another ball
+        self._ball()
+        self.assertEqual(scoring.active_retired_ids(self.inn), set())
+        card = {r['player'].user.username: r for r in scoring.batting_card(self.inn)}
+        self.assertEqual(card['a1']['how_out'], '')
+
+    def test_undo_does_not_restore_retired_batter(self):
+        self._ball()                                  # ball 1: a1 & a2
+        scoring.retire_batter(self.inn, self.a[1])    # a2 retires hurt
+        self.inn.refresh_from_db()
+        self.inn.current_non_striker = self.a[2]      # a3 comes in
+        self.inn.save()
+        self._ball(non_striker=self.a[2])             # ball 2: a1 & a3
+        scoring.undo_last(self.inn)
+        scoring.advance_after_delivery(self.inn)
+        self.inn.refresh_from_db()
+        # Rewinding to ball 1 must not put the retired a2 back at the crease.
+        self.assertIsNone(self.inn.current_non_striker)
+
+
+class SingleBattingTests(MatchFixtureMixin, TestCase):
+    """Last man stands: roster of 3 normally ends the innings at 2 wickets."""
+    def setUp(self):
+        super().setUp()
+        self.inn.current_striker = self.a[0]
+        self.inn.current_non_striker = self.a[1]
+        self.inn.current_bowler = self.b[0]
+        self.inn.save()
+        self.staff = User.objects.create_user(username="staff", password="x", is_staff=True)
+        self.client.force_login(self.staff)
+
+    def _two_down(self):
+        scoring.score_ball(self.inn, is_wicket=True, dismissal_type='bowled')  # a1 out
+        self.inn.current_striker = self.a[2]
+        self.inn.save()
+        scoring.score_ball(self.inn, is_wicket=True, dismissal_type='bowled')  # a3 out
+
+    def test_offer_appears_then_innings_continues_until_all_out(self):
+        from .views import _console_context
+        self._two_down()
+        self.inn.refresh_from_db()
+        self.assertTrue(scoring.is_innings_complete(self.inn))
+        self.assertTrue(_console_context(self.inn)['can_single_bat'])
+
+        self.client.post(reverse('score_single_batting', args=[self.inn.id]))
+        self.inn.refresh_from_db()
+        self.assertTrue(self.inn.single_batting)
+        self.assertEqual(self.inn.current_striker, self.a[1])  # survivor takes strike
+        self.assertIsNone(self.inn.current_non_striker)
+        self.assertFalse(scoring.is_innings_complete(self.inn))
+        ctx = _console_context(self.inn)
+        self.assertFalse(ctx['need_batter'])  # empty non-striker end is normal now
+
+        scoring.score_ball(self.inn, is_wicket=True, dismissal_type='bowled')  # a2 out
+        self.assertTrue(scoring.is_innings_complete(self.inn))
+        self.assertEqual(scoring.innings_score(self.inn)['wickets'], 3)
+
+    def test_lone_batter_keeps_strike(self):
+        self._two_down()
+        self.client.post(reverse('score_single_batting', args=[self.inn.id]))
+        self.inn.refresh_from_db()
+        scoring.score_ball(self.inn, runs_off_bat=1)  # single would normally rotate
+        self.inn.refresh_from_db()
+        self.assertEqual(self.inn.current_striker, self.a[1])
+        self.assertIsNone(self.inn.current_non_striker)
+
+    def test_no_offer_when_overs_are_done(self):
+        from .views import _console_context
+        self.match.overs_limit = 1
+        self.match.save()
+        for _ in range(5):
+            scoring.score_ball(self.inn, runs_off_bat=0)
+        scoring.score_ball(self.inn, is_wicket=True, dismissal_type='bowled')
+        self.inn.refresh_from_db()
+        # one wicket down but the over allowance is finished — no continue offer
+        self.assertTrue(scoring.is_innings_complete(self.inn))
+        self.assertFalse(_console_context(self.inn)['can_single_bat'])
+
+
+class ScoreAdjustViewTests(MatchFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.staff = User.objects.create_user(username="staff", password="x", is_staff=True)
+        self.inn.current_striker = self.a[0]
+        self.inn.current_non_striker = self.a[1]
+        self.inn.current_bowler = self.b[0]
+        self.inn.save()
+        self.client.force_login(self.staff)
+
+    def _dot_ball(self):
+        scoring.record_delivery(self.inn, striker=self.a[0], non_striker=self.a[1],
+                                bowler=self.b[0], runs_off_bat=0)
+
+    def test_swap_strike(self):
+        self.client.post(reverse('score_swap_strike', args=[self.inn.id]))
+        self.inn.refresh_from_db()
+        self.assertEqual(self.inn.current_striker, self.a[1])
+        self.assertEqual(self.inn.current_non_striker, self.a[0])
+
+    def test_set_nonstriker_to_current_striker_swaps(self):
+        self.client.post(reverse('score_set_batter', args=[self.inn.id]),
+                         {'player': self.a[0].id, 'end': 'nonstriker'})
+        self.inn.refresh_from_db()
+        self.assertEqual(self.inn.current_striker, self.a[1])
+        self.assertEqual(self.inn.current_non_striker, self.a[0])
+
+    def test_change_bowler_clears_pointer(self):
+        self.client.post(reverse('score_change_bowler', args=[self.inn.id]))
+        self.inn.refresh_from_db()
+        self.assertIsNone(self.inn.current_bowler)
+
+    def test_midover_bowler_picker_has_no_exclusion(self):
+        from .views import _console_context
+        self._dot_ball()  # 0.1 ov — mid-over
+        self.inn.current_bowler = None
+        ids = {p.id for p in _console_context(self.inn)['available_bowlers']}
+        self.assertIn(self.b[0].id, ids)  # mis-tap recovery: same bowler may resume
+
+    def test_over_boundary_excludes_previous_bowler(self):
+        from .views import _console_context
+        for _ in range(6):
+            self._dot_ball()
+        ids = {p.id for p in _console_context(self.inn)['available_bowlers']}
+        self.assertNotIn(self.b[0].id, ids)  # no consecutive overs
+
+    def test_player_added_mid_innings_appears_in_pickers(self):
+        # Late joiners added via Edit Teams surface immediately: the console
+        # derives both pickers from team.players on every render (#34 item 7).
+        from .views import _console_context
+        self._dot_ball()
+        bat_user = User.objects.create_user(username="late-bat", password="x")
+        late_bat = Player.objects.create(user=bat_user, team=self.team_a, role="batsman")
+        bowl_user = User.objects.create_user(username="late-bowl", password="x")
+        late_bowl = Player.objects.create(user=bowl_user, team=self.team_b, role="bowler")
+        ctx = _console_context(self.inn)
+        self.assertIn(late_bat.id, [p.id for p in ctx['available_batters']])
+        self.assertIn(late_bowl.id, [p.id for p in ctx['available_bowlers']])
+
+    def test_reopen_scoring_reopens_latest_and_clears_winner(self):
+        self._dot_ball()
+        self.inn.is_closed = True
+        self.inn.save()
+        inn2 = Innings.objects.create(
+            match=self.match, number=2,
+            batting_team=self.team_b, bowling_team=self.team_a,
+        )
+        scoring.record_delivery(inn2, striker=self.b[0], non_striker=self.b[1],
+                                bowler=self.a[0], runs_off_bat=4)
+        inn2.is_closed = True
+        inn2.save()
+        scoring.finalize_match_result(self.match)
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.winner, self.team_b)
+
+        self.client.post(reverse('reopen_scoring', args=[self.match.id]))
+        inn2.refresh_from_db()
+        self.inn.refresh_from_db()
+        self.match.refresh_from_db()
+        self.assertFalse(inn2.is_closed)      # latest innings reopened
+        self.assertTrue(self.inn.is_closed)   # innings 1 untouched — target can't shift
+        self.assertIsNone(self.match.winner)  # result cleared until re-finished
+
+    def test_set_overs_floored_at_overs_begun(self):
+        for _ in range(7):  # 1.1 ov
+            self._dot_ball()
+        self.client.post(reverse('score_set_overs', args=[self.inn.id]), {'overs': '1'})
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.overs_limit, 2)
+        self.client.post(reverse('score_set_overs', args=[self.inn.id]), {'overs': '5'})
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.overs_limit, 5)

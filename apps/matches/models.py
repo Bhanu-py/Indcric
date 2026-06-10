@@ -25,6 +25,18 @@ class Match(models.Model):
     )
     toss_decision = models.CharField(max_length=4, blank=True)  # 'bat' | 'bowl'
 
+    @property
+    def is_completed(self):
+        """Both innings scored and closed — a result (win or tie) stands."""
+        innings = list(self.innings.all())
+        return len(innings) >= 2 and all(i.is_closed for i in innings)
+
+    @property
+    def is_tied(self):
+        """Completed with level scores: winner stays NULL, unlike an unfinished
+        match where winner is also NULL — templates need the distinction."""
+        return self.winner_id is None and self.is_completed
+
     def __str__(self):
         return f"{self.name} in {self.session.name}"
 
@@ -74,6 +86,10 @@ class Innings(models.Model):
         Team, on_delete=models.CASCADE, related_name='bowling_innings'
     )
     is_closed = models.BooleanField(default=False)  # all out / overs done / manual end
+    # Last man stands: when the would-be-final wicket falls the scorer may let
+    # the surviving batter continue alone; the innings then runs until every
+    # batter is out instead of ending one wicket early.
+    single_batting = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     # Live scorer working-state: who faces / bowls the NEXT ball. Mutable pointers
@@ -96,6 +112,24 @@ class Innings(models.Model):
 
     def __str__(self):
         return f"{self.match.name} — innings {self.number}"
+
+
+class Retirement(models.Model):
+    """A batter leaving the crease without being dismissed (retired hurt).
+
+    Not a ball and not a wicket, so it can't live in the Delivery ledger —
+    but the batting card needs the label and the console must vacate the
+    right end. `at_sequence` anchors it in the ledger: the player counts as
+    "returned" once any later delivery shows them back at the crease, and
+    they stay eligible to resume batting while an end is vacant.
+    """
+    innings = models.ForeignKey(Innings, on_delete=models.CASCADE, related_name='retirements')
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='+')
+    at_sequence = models.PositiveIntegerField(default=0)  # last ledger sequence when retired
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.player} retired hurt — {self.innings}"
 
 
 class Delivery(models.Model):

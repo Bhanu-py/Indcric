@@ -57,6 +57,12 @@
             </div>
             {% if user.is_staff and in_progress %}
             <a href="{% url 'match_score' match.id %}" class="btn btn-primary btn-sm">Continue scoring</a>
+            {% elif user.is_staff %}
+            <form method="post" action="{% url 'reopen_scoring' match.id %}"
+                  onsubmit="return confirm('Reopen the last innings for corrections? The result is recalculated when you finish again.')">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary btn-sm">Reopen scoring</button>
+            </form>
             {% endif %}
         </div>
     </div>
@@ -81,7 +87,7 @@
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
                     <span class="text-[13px] font-medium text-stone-900 truncate">{{ b.player.user.first_name|default:b.player.user.username }}</span>
-                    {% if not b.out %}<span class="font-mono text-[10px] font-semibold text-emerald-700 tracking-[0.04em]">NOT OUT</span>{% endif %}
+                    {% if not b.out and not b.how_out %}<span class="font-mono text-[10px] font-semibold text-emerald-700 tracking-[0.04em]">NOT OUT</span>{% endif %}
                 </div>
                 <span class="font-mono text-[11px] text-stone-400">{{ b.how_out|default:"—" }}</span>
             </div>

@@ -72,7 +72,7 @@ def _ball_token(d):
     if d.extra_type == d.EXTRA_LEGBYE:
         return ('legbye', f"{d.extra_runs}lb")
     if d.is_wicket:
-        return ('wicket', 'W')
+        return ('wicket', f"W{('+' + str(d.runs_off_bat)) if d.runs_off_bat else ''}")
     if d.runs_off_bat in (4, 6):
         return ('boundary', str(d.runs_off_bat))
     return ('runs', str(d.runs_off_bat))
@@ -87,10 +87,13 @@ def _console_context(innings):
     target = scoring.target_for(innings)
     if target is not None:
         limit = innings.match.overs_limit
+        needed = max(0, target - score['runs'])
+        balls_left = (limit * 6 - score['legal_balls']) if limit else None
         chase = {
             'target': target,
-            'needed': max(0, target - score['runs']),
-            'balls_left': (limit * 6 - score['legal_balls']) if limit else None,
+            'needed': needed,
+            'balls_left': balls_left,
+            'rrr': round(needed * 6 / balls_left, 2) if balls_left else None,
         }
 
     out_ids = set(
@@ -102,14 +105,36 @@ def _console_context(innings):
         if p.id not in out_ids and p.id not in crease_ids
     ]
     last = innings.deliveries.order_by('-sequence').first()
-    prev_bowler_id = last.bowler_id if last else None
+    # The consecutive-overs rule only bites at an over boundary; mid-over (an
+    # injury replacement or a mis-tapped "change bowler") anyone may take over.
+    at_over_boundary = score['legal_balls'] % 6 == 0
+    prev_bowler_id = last.bowler_id if (last and at_over_boundary) else None
     available_bowlers = [
         p for p in innings.bowling_team.players.select_related('user').order_by('id')
         if p.id != prev_bowler_id
     ]
 
-    need_batter = innings.current_striker_id is None and not complete
+    # Either end can be vacant: a wicket, a run-out of the non-striker, or a
+    # retired hurt all leave a hole the scorer must fill before the next ball.
+    # Under last-man-stands the empty non-striker end is the normal state.
+    need_batter = (
+        innings.current_striker_id is None
+        or (innings.current_non_striker_id is None and not innings.single_batting)
+    ) and not complete
     need_bowler = (not need_batter) and innings.current_bowler_id is None and not complete
+
+    # Last-man-stands offer: the innings just ended on its final wicket (not
+    # overs / target), a survivor is still at the crease, and the option
+    # hasn't been taken yet.
+    roster = innings.batting_team.players.count()
+    overs_done = bool(innings.match.overs_limit) and score['legal_balls'] >= innings.match.overs_limit * 6
+    chased = chase is not None and chase['needed'] == 0
+    can_single_bat = (
+        complete and not innings.is_closed and not innings.single_batting
+        and not overs_done and not chased
+        and roster and score['wickets'] == roster - 1
+        and (innings.current_striker_id or innings.current_non_striker_id)
+    )
 
     legal = score['legal_balls']
     over_balls = [
@@ -141,11 +166,16 @@ def _console_context(innings):
         'complete': complete,
         'need_batter': need_batter,
         'need_bowler': need_bowler,
+        'can_single_bat': can_single_bat,
+        'vacant_end': 'striker' if innings.current_striker_id is None else 'nonstriker',
+        'retired_ids': scoring.active_retired_ids(innings),
         'ready': (not complete) and not need_batter and not need_bowler,
         'available_batters': available_batters,
         'available_bowlers': available_bowlers,
         'fielders': list(innings.bowling_team.players.select_related('user').order_by('id')),
         'is_first_innings': innings.number == 1,
+        'min_overs': max(1, (score['legal_balls'] + 5) // 6),  # floor for mid-innings overs change
+        'batting_players': list(innings.batting_team.players.select_related('user').order_by('id')),
         'ball_uuid': uuid.uuid4().hex,  # fresh per render → idempotent ball POST
         'extras_buttons': [('wide', 'Wd'), ('noball', 'NB'), ('bye', 'B'), ('legbye', 'LB')],
         'dismissals': [
@@ -185,7 +215,8 @@ def score_view(request, match_id):
     if len(innings_list) >= 2:
         # Both innings done — send to the session where the result now shows.
         scoring.finalize_match_result(match)
-        messages.success(request, f"{match.name} complete.")
+        result = scoring.result_line(match)
+        messages.success(request, f"{match.name}: {result}" if result else f"{match.name} complete.")
         return redirect('session_detail', session_id=match.session_id)
 
     # Set up the next innings.
@@ -283,7 +314,10 @@ def score_ball_view(request, innings_id):
     kwargs = {'client_uuid': client_uuid}
     if request.POST.get('wicket'):
         dismissal = request.POST.get('dismissal', 'bowled')
-        kwargs.update(is_wicket=True, dismissal_type=dismissal, runs_off_bat=runs)
+        # Runs completed before the dismissal (run out going for the 2nd/3rd) —
+        # the wicket panel posts its own field so the run buttons can't collide.
+        wicket_runs = max(0, min(7, int(request.POST.get('wicket_runs') or 0)))
+        kwargs.update(is_wicket=True, dismissal_type=dismissal, runs_off_bat=wicket_runs)
         fielder = None
         fielder_id = request.POST.get('fielder')
         if fielder_id:
@@ -321,12 +355,89 @@ def score_undo_view(request, innings_id):
 
 @login_required
 def score_set_batter_view(request, innings_id):
+    """Set the batter at either end. Default end=striker (the incoming-batter
+    picker); end=nonstriker is used by the pre-first-ball opener fix. Picking
+    the player already at the other end swaps them instead of duplicating."""
     innings = get_object_or_404(Innings, id=innings_id)
     if request.user.is_staff and request.method == 'POST':
         player = Player.objects.filter(pk=request.POST.get('player'), team=innings.batting_team).first()
         if player:
-            innings.current_striker = player
-            innings.save(update_fields=['current_striker'])
+            if request.POST.get('end') == 'nonstriker':
+                if innings.current_striker_id == player.id:
+                    innings.current_striker = innings.current_non_striker
+                innings.current_non_striker = player
+            else:
+                if innings.current_non_striker_id == player.id:
+                    innings.current_non_striker = innings.current_striker
+                innings.current_striker = player
+            innings.save(update_fields=['current_striker', 'current_non_striker'])
+    return _render_console(request, innings)
+
+
+@login_required
+def score_single_batting_view(request, innings_id):
+    """Last man stands: let the surviving batter continue alone after the
+    would-be-final wicket. The lone batter always takes strike."""
+    innings = get_object_or_404(Innings, id=innings_id)
+    if request.user.is_staff and request.method == 'POST' and not innings.is_closed:
+        innings.single_batting = True
+        if innings.current_striker_id is None:
+            innings.current_striker = innings.current_non_striker
+        innings.current_non_striker = None
+        innings.save(update_fields=['single_batting', 'current_striker', 'current_non_striker'])
+    return _render_console(request, innings)
+
+
+@login_required
+def score_retire_batter_view(request, innings_id):
+    """Retired hurt: vacate the chosen batter's end without a wicket. The
+    batter stays eligible to resume later from the next-batter picker."""
+    innings = get_object_or_404(Innings, id=innings_id)
+    if request.user.is_staff and request.method == 'POST' and not innings.is_closed:
+        player = Player.objects.filter(pk=request.POST.get('player'), team=innings.batting_team).first()
+        if player:
+            scoring.retire_batter(innings, player)
+    return _render_console(request, innings)
+
+
+@login_required
+def score_swap_strike_view(request, innings_id):
+    innings = get_object_or_404(Innings, id=innings_id)
+    if (request.user.is_staff and request.method == 'POST' and not innings.is_closed
+            and innings.current_striker_id and innings.current_non_striker_id):
+        innings.current_striker, innings.current_non_striker = (
+            innings.current_non_striker, innings.current_striker
+        )
+        innings.save(update_fields=['current_striker', 'current_non_striker'])
+    return _render_console(request, innings)
+
+
+@login_required
+def score_change_bowler_view(request, innings_id):
+    """Clear the current bowler so the console shows the bowler picker — covers
+    a mid-over replacement and fixing a mistaken opening pick."""
+    innings = get_object_or_404(Innings, id=innings_id)
+    if request.user.is_staff and request.method == 'POST' and not innings.is_closed:
+        innings.current_bowler = None
+        innings.save(update_fields=['current_bowler'])
+    return _render_console(request, innings)
+
+
+@login_required
+def score_set_overs_view(request, innings_id):
+    """Change the match overs cap mid-innings, floored at overs already begun."""
+    innings = get_object_or_404(Innings, id=innings_id)
+    if request.user.is_staff and request.method == 'POST' and not innings.is_closed:
+        try:
+            new_limit = int(request.POST.get('overs', ''))
+        except (TypeError, ValueError):
+            new_limit = 0
+        if new_limit:
+            legal = scoring.innings_score(innings)['legal_balls']
+            floor_overs = max(1, (legal + 5) // 6)
+            match = innings.match
+            match.overs_limit = max(floor_overs, min(50, new_limit))
+            match.save(update_fields=['overs_limit'])
     return _render_console(request, innings)
 
 
@@ -339,6 +450,28 @@ def score_set_bowler_view(request, innings_id):
             innings.current_bowler = player
             innings.save(update_fields=['current_bowler'])
     return _render_console(request, innings)
+
+
+@login_required
+def reopen_scoring_view(request, match_id):
+    """Reopen the latest innings after it was closed, for last-ball mistakes
+    noticed late. Only the most recent innings can reopen, so an earlier
+    innings' total (the chase target) can never change retroactively. The
+    result is cleared and recomputed when the innings is finished again."""
+    match = get_object_or_404(Match, id=match_id)
+    redirect_resp = _staff_or_redirect(request, match)
+    if redirect_resp:
+        return redirect_resp
+    if request.method == 'POST':
+        latest = match.innings.order_by('-number').first()
+        if latest and latest.is_closed:
+            latest.is_closed = False
+            latest.save(update_fields=['is_closed'])
+            if match.winner_id is not None:
+                match.winner = None
+                match.save(update_fields=['winner'])
+        return redirect('match_score', match_id=match.id)
+    return redirect('scorecard', match_id=match.id)
 
 
 @login_required
