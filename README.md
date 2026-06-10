@@ -2,6 +2,13 @@
 
 This is a Django-based web application for managing cricket matches, teams, players, and payments.
 
+## Features
+
+- **Sessions & attendance** — create sessions, poll availability, confirm attendance, split the cost per head
+- **Teams & scoring** — assign teams and run ball-by-ball live scoring with full scorecards
+- **Payments & wallet** — per-session payments, wallet balances, and settlement
+- **Donations** — a public "Support the club" page at `/support/` to fundraise for club costs (see [Donations](#donations--support-the-club) below)
+
 ## Prerequisites
 
 *   [Python 3.10+](https://www.python.org/downloads/)
@@ -116,6 +123,23 @@ Choose the setup path that matches your environment:
     - Access at [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 
 ---
+
+## Donations / Support the club
+
+A public page at `/support/` lets members and visitors fund club costs (hosting, a
+bigger database, drinks, equipment). Money is collected **off-app** by SEPA transfer
+to the club's single N26 account; the app tracks a transparent goal bar and a
+contributor wall.
+
+**One-time admin setup:**
+
+1. `/admin/donations/donationsettings/` → **Add** → enter the club's **account holder**,
+   **IBAN**, and a payment **reference**. (Held in the DB, never hardcoded in source.)
+2. `/admin/donations/donationcampaign/` → **Add** a campaign (title, blurb, goal). Add
+   **Fund items** inline for campaign-specific cause tiles. Untick **is active** to retire it.
+
+Logged-in members self-log their own donations (auto-attributed); staff can log on
+behalf of anyone — a member, an external name, or anonymous.
 
 ## Stopping the Application
 
