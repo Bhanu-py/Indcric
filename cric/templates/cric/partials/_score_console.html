@@ -20,7 +20,7 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                     </span>
                 </div>
                 <div class="font-mono text-[10px] text-stone-400 uppercase tracking-[0.06em] mt-1.5">
-                    CRR {{ crr }} · Extras {{ score.extras }}
+                    CRR {{ crr }}{% if chase and chase.rrr is not None and not complete %} · <span class="text-amber-600">RRR {{ chase.rrr }}</span>{% endif %} · Extras {{ score.extras }}
                 </div>
                 {% if chase %}
                 <div class="mt-2 inline-flex items-center gap-2 rounded-lg bg-amber-50 px-2.5 py-1.5">

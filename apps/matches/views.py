@@ -87,10 +87,13 @@ def _console_context(innings):
     target = scoring.target_for(innings)
     if target is not None:
         limit = innings.match.overs_limit
+        needed = max(0, target - score['runs'])
+        balls_left = (limit * 6 - score['legal_balls']) if limit else None
         chase = {
             'target': target,
-            'needed': max(0, target - score['runs']),
-            'balls_left': (limit * 6 - score['legal_balls']) if limit else None,
+            'needed': needed,
+            'balls_left': balls_left,
+            'rrr': round(needed * 6 / balls_left, 2) if balls_left else None,
         }
 
     out_ids = set(
