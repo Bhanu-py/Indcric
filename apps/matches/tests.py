@@ -400,6 +400,19 @@ class ScoreAdjustViewTests(MatchFixtureMixin, TestCase):
         ids = {p.id for p in _console_context(self.inn)['available_bowlers']}
         self.assertNotIn(self.b[0].id, ids)  # no consecutive overs
 
+    def test_player_added_mid_innings_appears_in_pickers(self):
+        # Late joiners added via Edit Teams surface immediately: the console
+        # derives both pickers from team.players on every render (#34 item 7).
+        from .views import _console_context
+        self._dot_ball()
+        bat_user = User.objects.create_user(username="late-bat", password="x")
+        late_bat = Player.objects.create(user=bat_user, team=self.team_a, role="batsman")
+        bowl_user = User.objects.create_user(username="late-bowl", password="x")
+        late_bowl = Player.objects.create(user=bowl_user, team=self.team_b, role="bowler")
+        ctx = _console_context(self.inn)
+        self.assertIn(late_bat.id, [p.id for p in ctx['available_batters']])
+        self.assertIn(late_bowl.id, [p.id for p in ctx['available_bowlers']])
+
     def test_reopen_scoring_reopens_latest_and_clears_winner(self):
         self._dot_ball()
         self.inn.is_closed = True
