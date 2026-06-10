@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Support ICG{% endblock %}
+
+{% block content %}
+<div class="page-content-narrow">
+
+    <!-- ── Hero ── -->
+    <header class="mb-6">
+        <div class="section-eyebrow">
+            <div class="section-eyebrow-bar"></div>
+            <h2 class="eyebrow text-stone-800 !mb-0">Support the club</h2>
+        </div>
+        <h1 class="text-2xl">Back Indian Cricket Ghent</h1>
+        <p class="text-sm text-stone-600 mt-2 leading-relaxed">
+            ICG runs on the goodwill of its players. Chip in to keep the lights on and the
+            kit fresh — here's what your donations go toward.
+        </p>
+    </header>
+
+    <!-- ── Default causes (always shown — the club's standing donation causes) ── -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+        {% include "_components/fund_item.html" with tint="pitch" title="Always-on hosting" body="A paid server that never sleeps — no more cold-start lag." icon="server" %}
+        {% include "_components/fund_item.html" with tint="sky" title="A bigger database" body="More than the current 0.5 GB, with room to grow." icon="db" %}
+        {% include "_components/fund_item.html" with tint="amber" title="Drinks & snacks" body="Beers, water and bites for match days." icon="cup" %}
+        {% include "_components/fund_item.html" with tint="emerald" title="Balls, bats & gear" body="Replacing kit as it wears out through the season." icon="ball" %}
+    </div>
+
+    <!-- ── Current fundraiser(s) ── -->
+    {% if active_campaigns %}
+    <section>
+        {% include "_components/eyebrow.html" with label="Current fundraiser" %}
+        {% for campaign in active_campaigns %}
+        {% include "donations/partials/_campaign_card.html" %}
+        {% endfor %}
+    </section>
+    {% else %}
+    <!-- No active fundraiser — friendly placeholder; donations still possible to the club account -->
+    <div class="card p-8 text-center mb-6">
+        <svg class="w-10 h-10 text-stone-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+        <h2 class="text-base font-bold text-stone-800">No active fundraiser right now</h2>
+        <p class="text-sm text-stone-500 mt-1">Check back soon — but you can still chip in to the club any time.</p>
+        {% if user.is_staff %}
+        <a href="/admin/donations/donationcampaign/add/" class="btn btn-primary btn-md mt-4 inline-flex">Start a campaign</a>
+        {% endif %}
+    </div>
+    {% include "donations/partials/_how_to_donate.html" %}
+    {% endif %}
+
+</div>
+{% endblock %}

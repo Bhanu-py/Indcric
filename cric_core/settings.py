@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     "apps.polls",
     "apps.payments",
     "apps.notifications",
+    "apps.donations",
 ]
 SITE_ID = 1
 

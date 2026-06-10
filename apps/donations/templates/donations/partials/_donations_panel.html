@@ -1,0 +1,140 @@
+{% comment %}
+Current-fundraiser body — the HTMX swap unit (inside #fundraiser-body-<id>).
+Order, top→bottom: progress bar · how to donate (N26) · supporters (collapsible
+dropdown) · log donation (staff, bottom). Logging posts to
+{% url 'log-donation' campaign.id %} with hx-target="#fundraiser-body-<id>"
+hx-swap="innerHTML", re-rendering this body (updated bar + wall + fresh form).
+
+Args:
+  campaign           the DonationCampaign
+  donations          its donations (newest first)
+  donation_settings  club N26 details (for the how-to block)
+  form               a DonationForm (staff only)
+  just_logged        optional Donation just recorded (auto-opens the wall + thanks)
+  can_log            if True (and staff), show the log form (active campaigns only)
+{% endcomment %}
+<div class="card-body space-y-5">
+
+    <!-- 1 · Goal progress (top) -->
+    <div>
+        <div class="flex items-end justify-between gap-3 mb-2">
+            <div>
+                <div class="micro-label">Raised so far</div>
+                <div class="text-2xl font-bold text-stone-900 tabular-nums leading-none mt-1">€{{ campaign.raised|floatformat:2 }}</div>
+            </div>
+            {% if campaign.goal_amount %}
+            <div class="text-right">
+                <div class="micro-label">Goal</div>
+                <div class="text-sm font-semibold text-stone-500 tabular-nums mt-1">€{{ campaign.goal_amount|floatformat:2 }}</div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="h-2.5 rounded-full bg-stone-100 overflow-hidden">
+            <div class="h-full rounded-full bg-emerald-500 transition-all duration-500" style="width:{{ campaign.progress_pct }}%"></div>
+        </div>
+        <div class="flex items-center justify-between mt-2 text-xs text-stone-500">
+            <span>{{ campaign.supporter_count }} supporter{{ campaign.supporter_count|pluralize }}</span>
+            {% if campaign.goal_amount %}<span class="font-semibold text-emerald-700">{{ campaign.progress_pct }}%</span>{% endif %}
+        </div>
+    </div>
+
+    {% if campaign.blurb %}
+    <p class="text-sm text-stone-600 leading-relaxed whitespace-pre-line">{{ campaign.blurb }}</p>
+    {% endif %}
+
+    {% if campaign.fund_items.all %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {% for item in campaign.fund_items.all %}
+        {% include "_components/fund_item.html" with tint=item.color title=item.title body=item.description icon=item.icon %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 2 · How to donate (club N26) -->
+    {% include "donations/partials/_how_to_donate.html" %}
+
+    <!-- 3 · Supporters — collapsible dropdown -->
+    <div class="border-t border-stone-100 pt-4" x-data="{ openSup: {% if just_logged %}true{% else %}false{% endif %} }">
+        <button type="button" @click="openSup = !openSup" class="w-full flex items-center justify-between text-left">
+            <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-stone-800">Supporters</h3>
+                {% include "_components/badge.html" with variant="green" label=campaign.supporter_count|stringformat:"s" %}
+            </div>
+            <svg class="w-4 h-4 text-stone-400 transition-transform" :class="openSup ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div x-show="openSup" x-cloak class="mt-3">
+            {% if just_logged %}
+            <div class="alert alert-success-box mb-3">Logged €{{ just_logged.amount|floatformat:2 }} from {{ just_logged.display_name }}. 🙏</div>
+            {% endif %}
+            {% if donations %}
+            <ul class="divide-y divide-stone-100 -my-2">
+                {% for d in donations %}
+                <li class="flex items-center gap-3 py-2.5">
+                    <span class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold shrink-0">{{ d.display_name|first|upper }}</span>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-sm font-semibold text-stone-800 truncate">{{ d.display_name }}</div>
+                        {% if d.note %}<div class="text-xs text-stone-400 truncate">{{ d.note }}</div>{% endif %}
+                    </div>
+                    <div class="text-right shrink-0">
+                        <div class="text-sm font-bold text-stone-900 tabular-nums">€{{ d.amount|floatformat:2 }}</div>
+                        <div class="text-[11px] text-stone-400">{{ d.donated_on|date:"j M" }}</div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-sm text-stone-400 text-center py-3">Be the first to support this. 🏏</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 4 · Log a donation (bottom) — staff log for anyone; members log their own -->
+    {% if can_log and user.is_authenticated and form %}
+    <div class="border-t border-stone-100 pt-4">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold text-stone-800">{% if user.is_staff %}Log a donation{% else %}Add your donation{% endif %}</h3>
+            {% if user.is_staff %}<span class="badge badge-stone">Staff</span>{% else %}<span class="badge badge-green">You</span>{% endif %}
+        </div>
+        <form hx-post="{% url 'log-donation' campaign.id %}"
+              hx-target="#fundraiser-body-{{ campaign.id }}" hx-swap="innerHTML"
+              class="space-y-3">
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="alert alert-error-box">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+            {% if user.is_staff %}
+            <div>
+                <label class="form-label" for="{{ form.user.id_for_label }}">Member</label>
+                {{ form.user }}
+            </div>
+            <div>
+                <label class="form-label" for="{{ form.donor_name.id_for_label }}">…or external donor name</label>
+                {{ form.donor_name }}
+            </div>
+            {% endif %}
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="form-label" for="{{ form.amount.id_for_label }}">Amount (€)</label>
+                    {{ form.amount }}
+                    {% if form.amount.errors %}<p class="text-xs text-red-600 mt-1">{{ form.amount.errors|join:" " }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="form-label" for="{{ form.donated_on.id_for_label }}">Date</label>
+                    {{ form.donated_on }}
+                </div>
+            </div>
+            <div>
+                <label class="form-label" for="{{ form.note.id_for_label }}">Note</label>
+                {{ form.note }}
+            </div>
+            <label class="flex items-center gap-2.5 py-1 cursor-pointer">
+                {{ form.is_anonymous }}
+                <span class="text-sm text-stone-700">Show as “Anonymous” on the wall</span>
+            </label>
+            {% if not user.is_staff %}
+            <p class="text-xs text-stone-400">Recorded under {{ user.get_full_name|default:user.username }} — tick anonymous to hide your name on the wall.</p>
+            {% endif %}
+            <button type="submit" class="btn btn-primary btn-md w-full">{% if user.is_staff %}Log donation{% else %}Add my donation{% endif %}</button>
+        </form>
+    </div>
+    {% endif %}
+
+</div>

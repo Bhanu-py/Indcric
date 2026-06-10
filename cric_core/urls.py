@@ -28,5 +28,6 @@ urlpatterns = [
     path('', include('apps.payments.urls')),
     path('', include('apps.accounts.urls')),
     path('', include('apps.notifications.urls')),
+    path('', include('apps.donations.urls')),
     path("accounts/", include("allauth.urls")),
 ]
