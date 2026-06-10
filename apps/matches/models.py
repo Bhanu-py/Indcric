@@ -86,6 +86,10 @@ class Innings(models.Model):
         Team, on_delete=models.CASCADE, related_name='bowling_innings'
     )
     is_closed = models.BooleanField(default=False)  # all out / overs done / manual end
+    # Last man stands: when the would-be-final wicket falls the scorer may let
+    # the surviving batter continue alone; the innings then runs until every
+    # batter is out instead of ending one wicket early.
+    single_batting = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     # Live scorer working-state: who faces / bowls the NEXT ball. Mutable pointers

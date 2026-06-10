@@ -13,6 +13,7 @@ urlpatterns = [
     path('innings/<int:innings_id>/batter/', views.score_set_batter_view, name='score_set_batter'),
     path('innings/<int:innings_id>/bowler/', views.score_set_bowler_view, name='score_set_bowler'),
     path('innings/<int:innings_id>/retire/', views.score_retire_batter_view, name='score_retire'),
+    path('innings/<int:innings_id>/single-batting/', views.score_single_batting_view, name='score_single_batting'),
     path('innings/<int:innings_id>/swap-strike/', views.score_swap_strike_view, name='score_swap_strike'),
     path('innings/<int:innings_id>/change-bowler/', views.score_change_bowler_view, name='score_change_bowler'),
     path('innings/<int:innings_id>/overs/', views.score_set_overs_view, name='score_set_overs'),

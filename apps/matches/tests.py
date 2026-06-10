@@ -295,6 +295,65 @@ class RetiredHurtTests(MatchFixtureMixin, TestCase):
         self.assertIsNone(self.inn.current_non_striker)
 
 
+class SingleBattingTests(MatchFixtureMixin, TestCase):
+    """Last man stands: roster of 3 normally ends the innings at 2 wickets."""
+    def setUp(self):
+        super().setUp()
+        self.inn.current_striker = self.a[0]
+        self.inn.current_non_striker = self.a[1]
+        self.inn.current_bowler = self.b[0]
+        self.inn.save()
+        self.staff = User.objects.create_user(username="staff", password="x", is_staff=True)
+        self.client.force_login(self.staff)
+
+    def _two_down(self):
+        scoring.score_ball(self.inn, is_wicket=True, dismissal_type='bowled')  # a1 out
+        self.inn.current_striker = self.a[2]
+        self.inn.save()
+        scoring.score_ball(self.inn, is_wicket=True, dismissal_type='bowled')  # a3 out
+
+    def test_offer_appears_then_innings_continues_until_all_out(self):
+        from .views import _console_context
+        self._two_down()
+        self.inn.refresh_from_db()
+        self.assertTrue(scoring.is_innings_complete(self.inn))
+        self.assertTrue(_console_context(self.inn)['can_single_bat'])
+
+        self.client.post(reverse('score_single_batting', args=[self.inn.id]))
+        self.inn.refresh_from_db()
+        self.assertTrue(self.inn.single_batting)
+        self.assertEqual(self.inn.current_striker, self.a[1])  # survivor takes strike
+        self.assertIsNone(self.inn.current_non_striker)
+        self.assertFalse(scoring.is_innings_complete(self.inn))
+        ctx = _console_context(self.inn)
+        self.assertFalse(ctx['need_batter'])  # empty non-striker end is normal now
+
+        scoring.score_ball(self.inn, is_wicket=True, dismissal_type='bowled')  # a2 out
+        self.assertTrue(scoring.is_innings_complete(self.inn))
+        self.assertEqual(scoring.innings_score(self.inn)['wickets'], 3)
+
+    def test_lone_batter_keeps_strike(self):
+        self._two_down()
+        self.client.post(reverse('score_single_batting', args=[self.inn.id]))
+        self.inn.refresh_from_db()
+        scoring.score_ball(self.inn, runs_off_bat=1)  # single would normally rotate
+        self.inn.refresh_from_db()
+        self.assertEqual(self.inn.current_striker, self.a[1])
+        self.assertIsNone(self.inn.current_non_striker)
+
+    def test_no_offer_when_overs_are_done(self):
+        from .views import _console_context
+        self.match.overs_limit = 1
+        self.match.save()
+        for _ in range(5):
+            scoring.score_ball(self.inn, runs_off_bat=0)
+        scoring.score_ball(self.inn, is_wicket=True, dismissal_type='bowled')
+        self.inn.refresh_from_db()
+        # one wicket down but the over allowance is finished — no continue offer
+        self.assertTrue(scoring.is_innings_complete(self.inn))
+        self.assertFalse(_console_context(self.inn)['can_single_bat'])
+
+
 class ScoreAdjustViewTests(MatchFixtureMixin, TestCase):
     def setUp(self):
         super().setUp()

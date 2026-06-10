@@ -267,7 +267,8 @@ def result_line(match):
         return f"{first.batting_team.name} won by {margin} run{'' if margin == 1 else 's'}"
     if s2['runs'] > r1:
         roster = second.batting_team.players.count()
-        left = max(0, roster - 1 - s2['wickets'])
+        allowed = roster if second.single_batting else roster - 1
+        left = max(0, allowed - s2['wickets'])
         return f"{second.batting_team.name} won by {left} wicket{'' if left == 1 else 's'}"
     return "Match tied"
 
@@ -291,6 +292,13 @@ def on_strike_for_next(innings):
         return None
     last = rows[-1]
     striker, non_striker = last.striker, last.non_striker
+
+    # Lone batter (last man stands): no partner to cross with — they keep
+    # the strike for every ball until out.
+    if non_striker is None:
+        if last.is_wicket and last.out_player_id == striker.id:
+            striker = None
+        return striker, None
 
     # Runs physically run by the batters cause them to cross (odd → swap).
     crossing = last.runs_off_bat
@@ -333,7 +341,10 @@ def is_innings_complete(innings):
         return True
     score = innings_score(innings)
     roster = innings.batting_team.players.count()
-    if roster and score['wickets'] >= roster - 1:
+    # Normally the innings ends one wicket early (no partner left); with
+    # last-man-stands it runs until every batter is out.
+    allowed_wickets = roster if innings.single_batting else roster - 1
+    if roster and score['wickets'] >= allowed_wickets:
         return True
     limit = innings.match.overs_limit
     if limit and score['legal_balls'] >= limit * 6:

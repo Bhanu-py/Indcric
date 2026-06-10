@@ -116,10 +116,25 @@ def _console_context(innings):
 
     # Either end can be vacant: a wicket, a run-out of the non-striker, or a
     # retired hurt all leave a hole the scorer must fill before the next ball.
+    # Under last-man-stands the empty non-striker end is the normal state.
     need_batter = (
-        innings.current_striker_id is None or innings.current_non_striker_id is None
+        innings.current_striker_id is None
+        or (innings.current_non_striker_id is None and not innings.single_batting)
     ) and not complete
     need_bowler = (not need_batter) and innings.current_bowler_id is None and not complete
+
+    # Last-man-stands offer: the innings just ended on its final wicket (not
+    # overs / target), a survivor is still at the crease, and the option
+    # hasn't been taken yet.
+    roster = innings.batting_team.players.count()
+    overs_done = bool(innings.match.overs_limit) and score['legal_balls'] >= innings.match.overs_limit * 6
+    chased = chase is not None and chase['needed'] == 0
+    can_single_bat = (
+        complete and not innings.is_closed and not innings.single_batting
+        and not overs_done and not chased
+        and roster and score['wickets'] == roster - 1
+        and (innings.current_striker_id or innings.current_non_striker_id)
+    )
 
     legal = score['legal_balls']
     over_balls = [
@@ -151,6 +166,7 @@ def _console_context(innings):
         'complete': complete,
         'need_batter': need_batter,
         'need_bowler': need_bowler,
+        'can_single_bat': can_single_bat,
         'vacant_end': 'striker' if innings.current_striker_id is None else 'nonstriker',
         'retired_ids': scoring.active_retired_ids(innings),
         'ready': (not complete) and not need_batter and not need_bowler,
@@ -359,6 +375,20 @@ def score_set_batter_view(request, innings_id):
 
 
 @login_required
+def score_single_batting_view(request, innings_id):
+    """Last man stands: let the surviving batter continue alone after the
+    would-be-final wicket. The lone batter always takes strike."""
+    innings = get_object_or_404(Innings, id=innings_id)
+    if request.user.is_staff and request.method == 'POST' and not innings.is_closed:
+        innings.single_batting = True
+        if innings.current_striker_id is None:
+            innings.current_striker = innings.current_non_striker
+        innings.current_non_striker = None
+        innings.save(update_fields=['single_batting', 'current_striker', 'current_non_striker'])
+    return _render_console(request, innings)
+
+
+@login_required
 def score_retire_batter_view(request, innings_id):
     """Retired hurt: vacate the chosen batter's end without a wicket. The
     batter stays eligible to resume later from the next-batter picker."""
@@ -373,7 +403,8 @@ def score_retire_batter_view(request, innings_id):
 @login_required
 def score_swap_strike_view(request, innings_id):
     innings = get_object_or_404(Innings, id=innings_id)
-    if request.user.is_staff and request.method == 'POST' and not innings.is_closed:
+    if (request.user.is_staff and request.method == 'POST' and not innings.is_closed
+            and innings.current_striker_id and innings.current_non_striker_id):
         innings.current_striker, innings.current_non_striker = (
             innings.current_non_striker, innings.current_striker
         )

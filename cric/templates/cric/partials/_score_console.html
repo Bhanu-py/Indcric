@@ -64,6 +64,8 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                         <span class="text-[13px] text-stone-500 truncate">{{ non_striker.user.first_name|default:non_striker.user.username }}</span>
                         {% if non_striker_stat %}<span class="font-mono text-xs text-stone-400 tabular-nums shrink-0">{{ non_striker_stat.runs }} ({{ non_striker_stat.balls }})</span>{% endif %}
                     </div>
+                    {% elif innings.single_batting and striker %}
+                    <span class="font-mono text-[10px] text-amber-600 uppercase tracking-[0.06em]">Last batter — batting alone</span>
                     {% endif %}
                 </div>
                 {% if bowler %}
@@ -94,6 +96,12 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                     {% if is_first_innings %}Start 2nd innings{% else %}Finish match{% endif %}
                 </button>
             </form>
+            {% if can_single_bat %}
+            <button type="button"
+                    hx-post="{% url 'score_single_batting' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
+                    hx-confirm="Let the last batter continue alone? The innings then runs until all out."
+                    class="btn btn-secondary btn-md w-full justify-center">Continue — last batter stands</button>
+            {% endif %}
             {% if score.balls %}
             <button type="button"
                     hx-post="{% url 'score_undo' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
@@ -206,9 +214,11 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                         <button type="button" @click="outEnd='striker'"
                                 :class="outEnd === 'striker' ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-700 border border-stone-300'"
                                 class="btn btn-md justify-center text-sm truncate">Striker{% if striker %} · {{ striker.user.first_name|default:striker.user.username }}{% endif %}</button>
+                        {% if non_striker %}
                         <button type="button" @click="outEnd='nonstriker'"
                                 :class="outEnd === 'nonstriker' ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-700 border border-stone-300'"
-                                class="btn btn-md justify-center text-sm truncate">Non-striker{% if non_striker %} · {{ non_striker.user.first_name|default:non_striker.user.username }}{% endif %}</button>
+                                class="btn btn-md justify-center text-sm truncate">Non-striker · {{ non_striker.user.first_name|default:non_striker.user.username }}</button>
+                        {% endif %}
                     </div>
                     <p class="form-label mt-2.5">Runs completed before the run out</p>
                     <div class="grid grid-cols-4 gap-2 mt-1">
