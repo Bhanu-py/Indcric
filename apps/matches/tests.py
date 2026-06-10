@@ -279,6 +279,30 @@ class ScoreAdjustViewTests(MatchFixtureMixin, TestCase):
         ids = {p.id for p in _console_context(self.inn)['available_bowlers']}
         self.assertNotIn(self.b[0].id, ids)  # no consecutive overs
 
+    def test_reopen_scoring_reopens_latest_and_clears_winner(self):
+        self._dot_ball()
+        self.inn.is_closed = True
+        self.inn.save()
+        inn2 = Innings.objects.create(
+            match=self.match, number=2,
+            batting_team=self.team_b, bowling_team=self.team_a,
+        )
+        scoring.record_delivery(inn2, striker=self.b[0], non_striker=self.b[1],
+                                bowler=self.a[0], runs_off_bat=4)
+        inn2.is_closed = True
+        inn2.save()
+        scoring.finalize_match_result(self.match)
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.winner, self.team_b)
+
+        self.client.post(reverse('reopen_scoring', args=[self.match.id]))
+        inn2.refresh_from_db()
+        self.inn.refresh_from_db()
+        self.match.refresh_from_db()
+        self.assertFalse(inn2.is_closed)      # latest innings reopened
+        self.assertTrue(self.inn.is_closed)   # innings 1 untouched — target can't shift
+        self.assertIsNone(self.match.winner)  # result cleared until re-finished
+
     def test_set_overs_floored_at_overs_begun(self):
         for _ in range(7):  # 1.1 ov
             self._dot_ball()

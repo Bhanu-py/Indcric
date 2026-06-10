@@ -404,6 +404,28 @@ def score_set_bowler_view(request, innings_id):
 
 
 @login_required
+def reopen_scoring_view(request, match_id):
+    """Reopen the latest innings after it was closed, for last-ball mistakes
+    noticed late. Only the most recent innings can reopen, so an earlier
+    innings' total (the chase target) can never change retroactively. The
+    result is cleared and recomputed when the innings is finished again."""
+    match = get_object_or_404(Match, id=match_id)
+    redirect_resp = _staff_or_redirect(request, match)
+    if redirect_resp:
+        return redirect_resp
+    if request.method == 'POST':
+        latest = match.innings.order_by('-number').first()
+        if latest and latest.is_closed:
+            latest.is_closed = False
+            latest.save(update_fields=['is_closed'])
+            if match.winner_id is not None:
+                match.winner = None
+                match.save(update_fields=['winner'])
+        return redirect('match_score', match_id=match.id)
+    return redirect('scorecard', match_id=match.id)
+
+
+@login_required
 def end_innings_view(request, innings_id):
     innings = get_object_or_404(Innings, id=innings_id)
     if request.user.is_staff and request.method == 'POST':
