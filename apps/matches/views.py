@@ -105,7 +105,10 @@ def _console_context(innings):
         if p.id not in out_ids and p.id not in crease_ids
     ]
     last = innings.deliveries.order_by('-sequence').first()
-    prev_bowler_id = last.bowler_id if last else None
+    # The consecutive-overs rule only bites at an over boundary; mid-over (an
+    # injury replacement or a mis-tapped "change bowler") anyone may take over.
+    at_over_boundary = score['legal_balls'] % 6 == 0
+    prev_bowler_id = last.bowler_id if (last and at_over_boundary) else None
     available_bowlers = [
         p for p in innings.bowling_team.players.select_related('user').order_by('id')
         if p.id != prev_bowler_id
@@ -149,6 +152,8 @@ def _console_context(innings):
         'available_bowlers': available_bowlers,
         'fielders': list(innings.bowling_team.players.select_related('user').order_by('id')),
         'is_first_innings': innings.number == 1,
+        'min_overs': max(1, (score['legal_balls'] + 5) // 6),  # floor for mid-innings overs change
+        'batting_players': list(innings.batting_team.players.select_related('user').order_by('id')),
         'ball_uuid': uuid.uuid4().hex,  # fresh per render → idempotent ball POST
         'extras_buttons': [('wide', 'Wd'), ('noball', 'NB'), ('bye', 'B'), ('legbye', 'LB')],
         'dismissals': [
@@ -328,12 +333,62 @@ def score_undo_view(request, innings_id):
 
 @login_required
 def score_set_batter_view(request, innings_id):
+    """Set the batter at either end. Default end=striker (the incoming-batter
+    picker); end=nonstriker is used by the pre-first-ball opener fix. Picking
+    the player already at the other end swaps them instead of duplicating."""
     innings = get_object_or_404(Innings, id=innings_id)
     if request.user.is_staff and request.method == 'POST':
         player = Player.objects.filter(pk=request.POST.get('player'), team=innings.batting_team).first()
         if player:
-            innings.current_striker = player
-            innings.save(update_fields=['current_striker'])
+            if request.POST.get('end') == 'nonstriker':
+                if innings.current_striker_id == player.id:
+                    innings.current_striker = innings.current_non_striker
+                innings.current_non_striker = player
+            else:
+                if innings.current_non_striker_id == player.id:
+                    innings.current_non_striker = innings.current_striker
+                innings.current_striker = player
+            innings.save(update_fields=['current_striker', 'current_non_striker'])
+    return _render_console(request, innings)
+
+
+@login_required
+def score_swap_strike_view(request, innings_id):
+    innings = get_object_or_404(Innings, id=innings_id)
+    if request.user.is_staff and request.method == 'POST' and not innings.is_closed:
+        innings.current_striker, innings.current_non_striker = (
+            innings.current_non_striker, innings.current_striker
+        )
+        innings.save(update_fields=['current_striker', 'current_non_striker'])
+    return _render_console(request, innings)
+
+
+@login_required
+def score_change_bowler_view(request, innings_id):
+    """Clear the current bowler so the console shows the bowler picker — covers
+    a mid-over replacement and fixing a mistaken opening pick."""
+    innings = get_object_or_404(Innings, id=innings_id)
+    if request.user.is_staff and request.method == 'POST' and not innings.is_closed:
+        innings.current_bowler = None
+        innings.save(update_fields=['current_bowler'])
+    return _render_console(request, innings)
+
+
+@login_required
+def score_set_overs_view(request, innings_id):
+    """Change the match overs cap mid-innings, floored at overs already begun."""
+    innings = get_object_or_404(Innings, id=innings_id)
+    if request.user.is_staff and request.method == 'POST' and not innings.is_closed:
+        try:
+            new_limit = int(request.POST.get('overs', ''))
+        except (TypeError, ValueError):
+            new_limit = 0
+        if new_limit:
+            legal = scoring.innings_score(innings)['legal_balls']
+            floor_overs = max(1, (legal + 5) // 6)
+            match = innings.match
+            match.overs_limit = max(floor_overs, min(50, new_limit))
+            match.save(update_fields=['overs_limit'])
     return _render_console(request, innings)
 
 

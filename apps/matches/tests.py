@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.sessions.models import Session
@@ -218,7 +219,6 @@ class ScoreBallViewTests(MatchFixtureMixin, TestCase):
         self.client.force_login(self.staff)
 
     def _post(self, data):
-        from django.urls import reverse
         return self.client.post(reverse('score_ball', args=[self.inn.id]), data)
 
     def test_runout_posts_completed_runs(self):
@@ -231,3 +231,60 @@ class ScoreBallViewTests(MatchFixtureMixin, TestCase):
         self.assertEqual(d.runs_off_bat, 1)
         self.assertEqual(d.out_player, self.a[1])
         self.assertEqual(d.fielder, self.b[1])
+
+
+class ScoreAdjustViewTests(MatchFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.staff = User.objects.create_user(username="staff", password="x", is_staff=True)
+        self.inn.current_striker = self.a[0]
+        self.inn.current_non_striker = self.a[1]
+        self.inn.current_bowler = self.b[0]
+        self.inn.save()
+        self.client.force_login(self.staff)
+
+    def _dot_ball(self):
+        scoring.record_delivery(self.inn, striker=self.a[0], non_striker=self.a[1],
+                                bowler=self.b[0], runs_off_bat=0)
+
+    def test_swap_strike(self):
+        self.client.post(reverse('score_swap_strike', args=[self.inn.id]))
+        self.inn.refresh_from_db()
+        self.assertEqual(self.inn.current_striker, self.a[1])
+        self.assertEqual(self.inn.current_non_striker, self.a[0])
+
+    def test_set_nonstriker_to_current_striker_swaps(self):
+        self.client.post(reverse('score_set_batter', args=[self.inn.id]),
+                         {'player': self.a[0].id, 'end': 'nonstriker'})
+        self.inn.refresh_from_db()
+        self.assertEqual(self.inn.current_striker, self.a[1])
+        self.assertEqual(self.inn.current_non_striker, self.a[0])
+
+    def test_change_bowler_clears_pointer(self):
+        self.client.post(reverse('score_change_bowler', args=[self.inn.id]))
+        self.inn.refresh_from_db()
+        self.assertIsNone(self.inn.current_bowler)
+
+    def test_midover_bowler_picker_has_no_exclusion(self):
+        from .views import _console_context
+        self._dot_ball()  # 0.1 ov — mid-over
+        self.inn.current_bowler = None
+        ids = {p.id for p in _console_context(self.inn)['available_bowlers']}
+        self.assertIn(self.b[0].id, ids)  # mis-tap recovery: same bowler may resume
+
+    def test_over_boundary_excludes_previous_bowler(self):
+        from .views import _console_context
+        for _ in range(6):
+            self._dot_ball()
+        ids = {p.id for p in _console_context(self.inn)['available_bowlers']}
+        self.assertNotIn(self.b[0].id, ids)  # no consecutive overs
+
+    def test_set_overs_floored_at_overs_begun(self):
+        for _ in range(7):  # 1.1 ov
+            self._dot_ball()
+        self.client.post(reverse('score_set_overs', args=[self.inn.id]), {'overs': '1'})
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.overs_limit, 2)
+        self.client.post(reverse('score_set_overs', args=[self.inn.id]), {'overs': '5'})
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.overs_limit, 5)
