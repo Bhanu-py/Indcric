@@ -72,7 +72,7 @@ def _ball_token(d):
     if d.extra_type == d.EXTRA_LEGBYE:
         return ('legbye', f"{d.extra_runs}lb")
     if d.is_wicket:
-        return ('wicket', 'W')
+        return ('wicket', f"W{('+' + str(d.runs_off_bat)) if d.runs_off_bat else ''}")
     if d.runs_off_bat in (4, 6):
         return ('boundary', str(d.runs_off_bat))
     return ('runs', str(d.runs_off_bat))
@@ -284,7 +284,10 @@ def score_ball_view(request, innings_id):
     kwargs = {'client_uuid': client_uuid}
     if request.POST.get('wicket'):
         dismissal = request.POST.get('dismissal', 'bowled')
-        kwargs.update(is_wicket=True, dismissal_type=dismissal, runs_off_bat=runs)
+        # Runs completed before the dismissal (run out going for the 2nd/3rd) —
+        # the wicket panel posts its own field so the run buttons can't collide.
+        wicket_runs = max(0, min(7, int(request.POST.get('wicket_runs') or 0)))
+        kwargs.update(is_wicket=True, dismissal_type=dismissal, runs_off_bat=wicket_runs)
         fielder = None
         fielder_id = request.POST.get('fielder')
         if fielder_id:

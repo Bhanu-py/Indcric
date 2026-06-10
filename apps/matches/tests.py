@@ -12,7 +12,8 @@ from . import scoring
 User = get_user_model()
 
 
-class ScoringEngineTests(TestCase):
+class MatchFixtureMixin:
+    """A 3-a-side match with innings 1 ready to score (team A batting)."""
     def setUp(self):
         self.session = Session.objects.create(
             name="Test", cost=Decimal('0'), duration=Decimal('3'),
@@ -32,6 +33,8 @@ class ScoringEngineTests(TestCase):
         user = User.objects.create_user(username=username, password="x")
         return Player.objects.create(user=user, team=team, role="batsman")
 
+
+class ScoringEngineTests(MatchFixtureMixin, TestCase):
     def _seven_ball_over(self):
         """Records the hand-computed scenario used by several tests."""
         a1, a2, a3 = self.a
@@ -94,6 +97,20 @@ class ScoringEngineTests(TestCase):
                                 is_wicket=True, dismissal_type='runout', out_player=a1)
         self.assertEqual(scoring.bowling_card(self.inn)[0]['wickets'], 0)
         self.assertEqual(scoring.innings_score(self.inn)['wickets'], 1)
+
+    def test_runout_counts_completed_runs(self):
+        # Out going for the 2nd: 1 completed run counts to the striker and total.
+        a1, a2, _ = self.a
+        b1 = self.b[0]
+        scoring.record_delivery(self.inn, striker=a1, non_striker=a2, bowler=b1,
+                                runs_off_bat=1, is_wicket=True,
+                                dismissal_type='runout', out_player=a1)
+        score = scoring.innings_score(self.inn)
+        self.assertEqual(score['runs'], 1)
+        self.assertEqual(score['wickets'], 1)
+        card = {row['player'].user.username: row for row in scoring.batting_card(self.inn)}
+        self.assertEqual(card['a1']['runs'], 1)
+        self.assertTrue(card['a1']['out'])
 
     def test_complete_on_overs_limit(self):
         self.match.overs_limit = 1  # one over
@@ -188,3 +205,29 @@ class ScoringEngineTests(TestCase):
         self.assertEqual(winner, self.team_a)
         self.match.refresh_from_db()
         self.assertEqual(self.match.winner, self.team_a)
+
+
+class ScoreBallViewTests(MatchFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.staff = User.objects.create_user(username="staff", password="x", is_staff=True)
+        self.inn.current_striker = self.a[0]
+        self.inn.current_non_striker = self.a[1]
+        self.inn.current_bowler = self.b[0]
+        self.inn.save()
+        self.client.force_login(self.staff)
+
+    def _post(self, data):
+        from django.urls import reverse
+        return self.client.post(reverse('score_ball', args=[self.inn.id]), data)
+
+    def test_runout_posts_completed_runs(self):
+        self._post({
+            'wicket': '1', 'dismissal': 'runout', 'fielder': self.b[1].id,
+            'wicket_runs': '1', 'out_end': 'nonstriker', 'uuid': 'ball-1',
+        })
+        d = self.inn.deliveries.get()
+        self.assertTrue(d.is_wicket)
+        self.assertEqual(d.runs_off_bat, 1)
+        self.assertEqual(d.out_player, self.a[1])
+        self.assertEqual(d.fielder, self.b[1])

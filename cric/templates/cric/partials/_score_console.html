@@ -128,7 +128,7 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
     {# ── State: ready — the tap grid ── #}
     {% else %}
     <form hx-post="{% url 'score_ball' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
-          x-data="{ mode: 'runs', wicket: false, dismissal: '', fielder: '', outEnd: 'striker' }"
+          x-data="{ mode: 'runs', wicket: false, dismissal: '', fielder: '', outEnd: 'striker', wktRuns: 0 }"
           class="card p-3 sm:p-4 flex flex-col gap-3 sticky bottom-0 safe-bottom md:static z-10 shadow-md md:shadow-sm">
         {% csrf_token %}
         <input type="hidden" name="mode" x-model="mode">
@@ -164,7 +164,7 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
 
         {# wicket + undo #}
         <div class="flex gap-2" x-show="!wicket">
-            <button type="button" @click="wicket = true; mode='runs'; dismissal=''; fielder=''; outEnd='striker'"
+            <button type="button" @click="wicket = true; mode='runs'; dismissal=''; fielder=''; outEnd='striker'; wktRuns=0"
                     class="btn btn-danger btn-md flex-1 justify-center">Wicket</button>
             <button type="button"
                     hx-post="{% url 'score_undo' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
@@ -190,7 +190,7 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                 {% endfor %}
             </div>
 
-            {# run out can dismiss either batter #}
+            {# run out can dismiss either batter, after any number of completed runs #}
             <template x-if="dismissal === 'runout'">
                 <div>
                     <p class="form-label">Who's out?</p>
@@ -202,6 +202,15 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                                 :class="outEnd === 'nonstriker' ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-700 border border-stone-300'"
                                 class="btn btn-md justify-center text-sm truncate">Non-striker{% if non_striker %} · {{ non_striker.user.first_name|default:non_striker.user.username }}{% endif %}</button>
                     </div>
+                    <p class="form-label mt-2.5">Runs completed before the run out</p>
+                    <div class="grid grid-cols-4 gap-2 mt-1">
+                        {% for r in "0123" %}
+                        <button type="button" @click="wktRuns = {{ r }}"
+                                :class="wktRuns === {{ r }} ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-700 border border-stone-300'"
+                                class="btn btn-md justify-center text-sm font-semibold tabular-nums">{{ r }}</button>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" name="wicket_runs" :value="wktRuns">
                 </div>
             </template>
 
