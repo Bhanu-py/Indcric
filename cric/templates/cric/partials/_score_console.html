@@ -47,31 +47,41 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                 {% endfor %}
             </div>
 
-            {# batters + bowler #}
+            {# batters + bowler — striker & bowler are strongly highlighted so the
+               scorer can't enter a ball against the wrong player #}
             <div class="mt-4 pt-3 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
                 <div class="flex flex-col gap-1.5">
                     {% if striker %}
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="flex items-center gap-1.5 min-w-0">
-                            <svg class="w-4 h-4 text-pitch-600 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-label="on strike"><path d="M12 3v5"/><path d="M10 5.5h4"/><path d="M9 8.5h6v11a1.5 1.5 0 01-1.5 1.5h-3A1.5 1.5 0 019 19.5v-11z"/></svg>
-                            <span class="text-[13px] font-medium text-stone-900 truncate">{{ striker.user.first_name|default:striker.user.username }}</span>
+                    <div class="flex items-center justify-between gap-2 rounded-lg bg-pitch-50 ring-1 ring-pitch-200 px-3 py-2">
+                        <span class="flex items-center gap-2 min-w-0">
+                            <svg class="w-4 h-4 text-pitch-700 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-label="on strike"><path d="M12 3v5"/><path d="M10 5.5h4"/><path d="M9 8.5h6v11a1.5 1.5 0 01-1.5 1.5h-3A1.5 1.5 0 019 19.5v-11z"/></svg>
+                            <span class="min-w-0">
+                                <span class="block text-[13px] font-bold text-stone-900 truncate leading-tight">{{ striker.user.first_name|default:striker.user.username }}</span>
+                                <span class="block font-mono text-[9px] uppercase tracking-[0.08em] text-pitch-600 leading-tight">On strike</span>
+                            </span>
                         </span>
-                        {% if striker_stat %}<span class="font-mono text-xs text-stone-500 tabular-nums shrink-0">{{ striker_stat.runs }} ({{ striker_stat.balls }})</span>{% endif %}
+                        {% if striker_stat %}<span class="font-mono text-xs font-semibold text-stone-700 tabular-nums shrink-0">{{ striker_stat.runs }} ({{ striker_stat.balls }})</span>{% endif %}
                     </div>
                     {% endif %}
                     {% if non_striker %}
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="text-[13px] text-stone-500 truncate">{{ non_striker.user.first_name|default:non_striker.user.username }}</span>
+                    <div class="flex items-center justify-between gap-2 px-3">
+                        <span class="text-[13px] text-stone-500 truncate">{{ non_striker.user.first_name|default:non_striker.user.username }}<span class="text-stone-300"> · non-striker</span></span>
                         {% if non_striker_stat %}<span class="font-mono text-xs text-stone-400 tabular-nums shrink-0">{{ non_striker_stat.runs }} ({{ non_striker_stat.balls }})</span>{% endif %}
                     </div>
                     {% elif innings.single_batting and striker %}
-                    <span class="font-mono text-[10px] text-amber-600 uppercase tracking-[0.06em]">Last batter — batting alone</span>
+                    <span class="font-mono text-[10px] text-amber-600 uppercase tracking-[0.06em] px-3">Last batter — batting alone</span>
                     {% endif %}
                 </div>
                 {% if bowler %}
-                <div class="flex items-center justify-between gap-2 sm:justify-end sm:gap-3">
-                    <span class="text-[13px] text-stone-800 truncate">{{ bowler.user.first_name|default:bowler.user.username }}</span>
-                    {% if bowler_stat %}<span class="font-mono text-xs text-stone-500 tabular-nums shrink-0">{{ bowler_stat.overs }}–{{ bowler_stat.runs }}–{{ bowler_stat.wickets }}</span>{% endif %}
+                <div class="flex items-center justify-between gap-2 rounded-lg bg-red-50 ring-1 ring-red-200 px-3 py-2 sm:self-start">
+                    <span class="flex items-center gap-2 min-w-0">
+                        <svg class="w-4 h-4 text-red-600 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-label="bowling"><circle cx="12" cy="12" r="8.5"/><path d="M5 14c3.5 2.5 10.5 2.5 14 0"/></svg>
+                        <span class="min-w-0">
+                            <span class="block text-[13px] font-bold text-stone-900 truncate leading-tight">{{ bowler.user.first_name|default:bowler.user.username }}</span>
+                            <span class="block font-mono text-[9px] uppercase tracking-[0.08em] text-red-600 leading-tight">Bowling</span>
+                        </span>
+                    </span>
+                    {% if bowler_stat %}<span class="font-mono text-xs font-semibold text-stone-700 tabular-nums shrink-0">{{ bowler_stat.overs }}–{{ bowler_stat.runs }}–{{ bowler_stat.wickets }}</span>{% endif %}
                 </div>
                 {% endif %}
             </div>
@@ -149,6 +159,27 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
         {% csrf_token %}
         <input type="hidden" name="mode" x-model="mode">
         <input type="hidden" name="uuid" value="{{ ball_uuid }}">
+
+        {# always-visible reminder of who's facing / bowling — pinned to the sticky
+           tap grid so the scorer can't tap a ball for the wrong player #}
+        {% if striker or bowler %}
+        <div class="flex items-center justify-between gap-2 rounded-lg bg-stone-50 px-2.5 py-1.5 text-[11px]">
+            {% if striker %}
+            <span class="inline-flex items-center gap-1 min-w-0">
+                <svg class="w-3.5 h-3.5 text-pitch-600 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 3v5"/><path d="M10 5.5h4"/><path d="M9 8.5h6v11a1.5 1.5 0 01-1.5 1.5h-3A1.5 1.5 0 019 19.5v-11z"/></svg>
+                <span class="font-semibold text-stone-800 truncate">{{ striker.user.first_name|default:striker.user.username }}</span>
+                <span class="text-stone-400 shrink-0">on strike</span>
+            </span>
+            {% endif %}
+            {% if bowler %}
+            <span class="inline-flex items-center gap-1 min-w-0">
+                <svg class="w-3.5 h-3.5 text-red-600 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M5 14c3.5 2.5 10.5 2.5 14 0"/></svg>
+                <span class="font-semibold text-stone-800 truncate">{{ bowler.user.first_name|default:bowler.user.username }}</span>
+                <span class="text-stone-400 shrink-0">bowling</span>
+            </span>
+            {% endif %}
+        </div>
+        {% endif %}
 
         {# armed-extra hint #}
         <p class="font-mono text-[10px] uppercase tracking-[0.08em] text-amber-700 text-center -mb-1"

@@ -54,16 +54,19 @@ HISTORY_TABS = ('games', 'payments', 'wallet')
 
 
 def _games_history(user):
-    """Sessions the user was rostered for, newest first, with attendance,
-    team, their vote, the result, and (when scored ball-by-ball) their batting
-    and bowling figures for that session."""
+    """Sessions the user was rostered for, newest first, with attendance and
+    their vote, plus a per-MATCH breakdown of team, result, and (when scored
+    ball-by-ball) batting/bowling figures.
+
+    Figures are keyed by match — not session — so a session with several matches
+    lists each one, and every line reconciles with that match's scorecard."""
     from apps.sessions.models import SessionPlayer, Attendance
     from apps.polls.models import Vote
-    from apps.matches.models import Delivery
+    from apps.matches.models import Delivery, Player
 
     session_players = (
         SessionPlayer.objects.filter(user=user)
-        .select_related('session', 'team', 'team__match')
+        .select_related('session')
         .order_by('-session__date', '-session__time')
     )
     attended_ids = set(
@@ -75,41 +78,57 @@ def _games_history(user):
         for v in Vote.objects.filter(user=user).select_related('poll')
     }
 
-    # Per-session batting / bowling figures from the delivery ledger.
-    batting = {}
-    for d in Delivery.objects.filter(striker__user=user).select_related('innings__match'):
-        sid = d.innings.match.session_id
-        e = batting.setdefault(sid, {'runs': 0, 'balls': 0})
+    # Per-MATCH batting / bowling from the delivery ledger.
+    batting = {}   # match_id -> {runs, balls}
+    for d in Delivery.objects.filter(striker__user=user).select_related('innings'):
+        e = batting.setdefault(d.innings.match_id, {'runs': 0, 'balls': 0})
         e['runs'] += d.runs_off_bat
         if d.extra_type != Delivery.EXTRA_WIDE:
             e['balls'] += 1
-    bowling = {}
-    for d in Delivery.objects.filter(bowler__user=user).select_related('innings__match'):
-        sid = d.innings.match.session_id
-        e = bowling.setdefault(sid, {'balls': 0, 'runs': 0, 'wkts': 0})
+    bowling = {}   # match_id -> {balls, runs, wkts}
+    for d in Delivery.objects.filter(bowler__user=user).select_related('innings'):
+        e = bowling.setdefault(d.innings.match_id, {'balls': 0, 'runs': 0, 'wkts': 0})
         if d.is_legal:
             e['balls'] += 1
         e['runs'] += d.runs_conceded
         if d.is_wicket and d.dismissal_type in Delivery.BOWLER_DISMISSALS:
             e['wkts'] += 1
 
-    rows = []
-    for sp in session_players:
+    # The user's matches (one Player row per match-team), grouped by session.
+    matches_by_session = {}
+    player_rows = (
+        Player.objects.filter(user=user)
+        .select_related('team', 'team__match')
+    )
+    for p in player_rows:
+        match = p.team.match
+        if not match:
+            continue
+        bowl = bowling.get(match.id)
         result = None
-        if sp.team and sp.team.match and sp.team.match.winner_id:
-            result = 'won' if sp.team.match.winner_id == sp.team_id else 'lost'
-        bowl = bowling.get(sp.session_id)
-        rows.append({
-            'session': sp.session,
-            'attended': sp.id in attended_ids,
-            'team': sp.team,
-            'vote': votes.get(sp.session_id),
+        if match.winner_id:
+            result = 'won' if match.winner_id == p.team_id else 'lost'
+        matches_by_session.setdefault(match.session_id, []).append({
+            'match_id': match.id,
+            'name': match.name,
+            'team': p.team,
             'result': result,
-            'bat': batting.get(sp.session_id),
+            'bat': batting.get(match.id),
             'bowl': {
                 'overs': f"{bowl['balls'] // 6}.{bowl['balls'] % 6}",
                 'runs': bowl['runs'], 'wkts': bowl['wkts'],
             } if bowl else None,
+        })
+    for lst in matches_by_session.values():
+        lst.sort(key=lambda m: m['match_id'])  # creation order within the session
+
+    rows = []
+    for sp in session_players:
+        rows.append({
+            'session': sp.session,
+            'attended': sp.id in attended_ids,
+            'vote': votes.get(sp.session_id),
+            'matches': matches_by_session.get(sp.session_id, []),
         })
     return rows
 
