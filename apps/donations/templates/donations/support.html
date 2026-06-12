@@ -47,16 +47,27 @@ supporter wall together so the page reads as one flow per campaign.
     {% for campaign in active_campaigns %}
         {% if campaign.is_default and user.is_staff %}
         {% comment %}
-        Inline shortcut for staff: jumps to the admin campaign-creation form.
-        Sits right above the always-on General Donations card, so any specific
-        drives loop past first and the new-fundraiser button reads as "or, you
-        could spin up another one of these".
+        Staff-only action bar above the General Donations card.
+          - Run import: fires the same /banking/run-import-now/ endpoint the
+            link page uses; result swaps into #support-import-result below.
+          - + Start a fundraiser: jumps to the admin campaign-creation form.
         {% endcomment %}
-        <div class="flex justify-end mb-3">
+        <div class="flex justify-end gap-2 mb-3">
+            <form hx-post="{% url 'banking_run_import_now' %}"
+                  hx-target="#support-import-result"
+                  hx-swap="innerHTML"
+                  hx-disabled-elt="this button">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary btn-sm">
+                    <span class="htmx-show">Run import</span>
+                    <span class="htmx-indicator">Importing…</span>
+                </button>
+            </form>
             <a href="/admin/donations/donationcampaign/add/" class="btn btn-secondary btn-sm">
                 + Start a fundraiser
             </a>
         </div>
+        <div id="support-import-result" class="mb-3"></div>
         {% endif %}
         {% include "donations/partials/_campaign_card.html" %}
     {% endfor %}
