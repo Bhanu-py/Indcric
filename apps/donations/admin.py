@@ -38,7 +38,7 @@ class DonationCampaignAdmin(admin.ModelAdmin):
 
 @admin.register(Donation)
 class DonationAdmin(admin.ModelAdmin):
-    list_display = ('display_name', 'amount', 'campaign', 'is_anonymous', 'donated_on', 'logged_by')
-    list_filter = ('campaign', 'is_anonymous', 'donated_on')
+    list_display = ('display_name', 'amount', 'campaign', 'source', 'donated_on', 'logged_by')
+    list_filter = ('source', 'campaign', 'is_anonymous', 'donated_on')
     search_fields = ('donor_name', 'user__username', 'user__first_name', 'note')
     autocomplete_fields = ('user',)
