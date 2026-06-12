@@ -16,11 +16,14 @@ def support_view(request):
     the one bank account up top, then the current fundraiser(s) as wrappable
     cards with goal progress + contributor wall. Logged-in members get an inline
     log-donation form (staff can log for anyone; members log their own)."""
+    # Specific fundraisers first (newest at the top), General Donations last as
+    # the always-on catch-all. is_default sorts False -> True, so the default
+    # row naturally floats to the bottom regardless of when it was created.
     active_campaigns = list(
         DonationCampaign.objects
         .filter(is_active=True)
         .prefetch_related('fund_items', 'donations__user')
-        .order_by('-created_at')
+        .order_by('is_default', '-created_at')
     )
     context = {
         'active_campaigns': active_campaigns,

@@ -166,30 +166,21 @@ def _store(link, txn):
 def _maybe_create_donation(bt: BankTransaction):
     """Convert a MATCHED BankTransaction into a Donation.
 
-    Downgrades to REVIEW when DONATIONS_AUTO_CREATE is off, or when no active
-    campaign exists — the treasurer attaches the donation manually from the
-    review page in those cases.
+    Always lands on the General Donations catch-all campaign — created lazily
+    by DonationCampaign.get_default(). The future reference-suffix parser will
+    override this with a specific campaign when the remittance carries a tag
+    like 'ICG-server'; the seam is `_pick_campaign(bt)` below.
+
+    The only path that still moves a matched txn to REVIEW is admin-disabled
+    auto-create (DONATIONS_AUTO_CREATE=False) — a deliberate review-everything
+    mode for clubs that want a treasurer eyeball on every entry.
     """
     if not getattr(settings, 'DONATIONS_AUTO_CREATE', True):
         bt.status = BankTransaction.STATUS_REVIEW
         bt.save(update_fields=['status'])
         return
 
-    campaign = (
-        DonationCampaign.objects
-        .filter(is_active=True)
-        .order_by('-created_at')
-        .first()
-    )
-    if campaign is None:
-        logger.info(
-            "BankTransaction %s matched ICG but no active campaign — moving to review.",
-            bt.id,
-        )
-        bt.status = BankTransaction.STATUS_REVIEW
-        bt.save(update_fields=['status'])
-        return
-
+    campaign = _pick_campaign(bt)
     user = _match_user(bt)
     donation = Donation.objects.create(
         campaign=campaign,
@@ -203,6 +194,17 @@ def _maybe_create_donation(bt: BankTransaction):
     )
     bt.donation = donation
     bt.save(update_fields=['donation'])
+
+
+def _pick_campaign(bt: BankTransaction) -> DonationCampaign:
+    """Decide which campaign a matched donation belongs to.
+
+    Today: always the default General Donations bucket. Tomorrow: parse a
+    suffix like 'ICG-server' out of bt.remittance and look up a campaign with
+    a matching reference tag (field doesn't exist yet — add it when the
+    routing feature ships).
+    """
+    return DonationCampaign.get_default()
 
 
 def _match_user(bt: BankTransaction):

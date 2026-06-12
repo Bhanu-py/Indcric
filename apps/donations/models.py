@@ -33,16 +33,38 @@ class DonationCampaign(models.Model):
     once in DonationSettings); this model only tracks the goal and the donations
     a treasurer logs, so the page can show transparent progress + a thank-you
     wall.
+
+    One campaign is the always-on **General Donations** bucket (is_default=True).
+    Bank-imported transactions that have 'ICG' in the reference but no specific
+    campaign suffix land here, so /support/ always shows something even when
+    there's no active fundraiser. Specific campaigns sit *above* the default on
+    the page and will eventually be routed to via reference suffixes
+    (e.g. 'ICG-server' -> the server campaign) — that part is future work.
     """
     title = models.CharField(max_length=120)
     blurb = models.TextField(blank=True, help_text="The 'why' — what the money is for.")
     goal_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
 
     is_active = models.BooleanField(default=True)
+    is_default = models.BooleanField(
+        default=False,
+        help_text=(
+            "The General Donations catch-all bucket. ICG-matched bank transfers "
+            "without a specific campaign reference land here. At most one row "
+            "may have this set."
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['is_default'],
+                condition=models.Q(is_default=True),
+                name='one_default_campaign',
+            ),
+        ]
 
     def __str__(self):
         return self.title
@@ -60,6 +82,28 @@ class DonationCampaign(models.Model):
 
     def supporter_count(self):
         return self.donations.count()
+
+    @classmethod
+    def get_default(cls):
+        """Return the General Donations catch-all, creating it lazily if missing.
+
+        The 0005 data migration seeds this on deploy, so `get_or_create` is
+        purely a safety net for environments where the migration hasn't run or
+        the row was deleted by hand.
+        """
+        obj, _ = cls.objects.get_or_create(
+            is_default=True,
+            defaults={
+                'title': 'General Donations',
+                'blurb': (
+                    "Support Indian Cricket Ghent — running costs, kit, drinks, "
+                    "hosting, and everything else that keeps the club going."
+                ),
+                'is_active': True,
+                'goal_amount': Decimal('0.00'),
+            },
+        )
+        return obj
 
 
 class Donation(models.Model):
