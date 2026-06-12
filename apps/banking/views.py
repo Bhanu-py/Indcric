@@ -175,6 +175,55 @@ def run_import_now(request):
     return JsonResponse({'ok': error is None, 'summary': summary, 'error': error})
 
 
+@staff_member_required
+def diagnose_transactions(request):
+    """Diagnostic view — fetches transactions from every active BankLink with
+    each Enable Banking transaction_status value in turn and reports how many
+    rows came back per status, without storing anything.
+
+    Use this to investigate the 'I made a transfer but fetched=0' case — a
+    non-zero count under 'PDNG' (pending) means Enable Banking has the txn
+    but our import filter is correctly skipping it until it books.
+
+    Staff-only. Returns JSON.
+    """
+    from datetime import date, timedelta
+    statuses = ['BOOK', 'PDNG', 'BOTH']
+    date_from = date.today() - timedelta(days=7)
+
+    out = {'date_from': date_from.isoformat(), 'links': []}
+    for link in BankLink.objects.filter(is_active=True):
+        per_status = {}
+        for s in statuses:
+            try:
+                txns = list(enable_banking.get_transactions(
+                    account_id=link.provider_account_id,
+                    date_from=date_from,
+                    transaction_status=s,
+                ))
+                per_status[s] = {
+                    'count': len(txns),
+                    'sample': [
+                        {
+                            'booked_on': str(t.booked_on),
+                            'amount': str(t.amount),
+                            'name': t.counterparty_name,
+                            'remittance': t.remittance[:80],
+                        }
+                        for t in txns[:5]
+                    ],
+                }
+            except enable_banking.EnableBankingError as e:
+                per_status[s] = {'error': f"HTTP {e.status}: {e.body[:200]}"}
+        out['links'].append({
+            'id': link.id,
+            'label': link.label,
+            'iban': link.iban,
+            'per_status': per_status,
+        })
+    return JsonResponse(out, json_dumps_params={'indent': 2})
+
+
 @csrf_exempt
 def run_import_view(request):
     """Cron-callable bank import. Token-authed via ?token=$BOT_WEBHOOK_TOKEN.
