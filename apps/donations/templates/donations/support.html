@@ -4,10 +4,12 @@
 {% block title %}Support ICG{% endblock %}
 
 {% block content %}
-{# General Donations is always present (seeded in migration 0005); specific
-   fundraisers appear above it when active and disappear when closed.
-   The campaign card pulls fund_items, the bank-details block, and the
-   supporter wall together so the page reads as one flow per campaign. #}
+{% comment %}
+General Donations is always present (seeded in migration 0005); specific
+fundraisers appear above it when active and disappear when closed.
+The campaign card pulls fund_items, the bank-details block, and the
+supporter wall together so the page reads as one flow per campaign.
+{% endcomment %}
 <div class="page-content-narrow">
 
     <header class="mb-6">

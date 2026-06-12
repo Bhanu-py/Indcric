@@ -15,9 +15,11 @@ Args:
 {% endcomment %}
 <div class="card-body space-y-5">
 
-    {# Goal-progress block only shows when a goal is set — for catch-all
-       campaigns like General Donations the card header already shows
-       raised + supporter count, so the bar would be redundant noise. #}
+    {% comment %}
+    Goal-progress block only shows when a goal is set — for catch-all
+    campaigns like General Donations the card header already shows
+    raised + supporter count, so the bar would be redundant noise.
+    {% endcomment %}
     {% if campaign.goal_amount %}
     <div>
         <div class="flex items-end justify-between gap-3 mb-2">
