@@ -30,7 +30,21 @@
 
     {% if links %}
     <section class="mb-8">
-        {% include "_components/eyebrow.html" with label="Already linked" %}
+        <div class="flex items-center justify-between gap-3 mb-3">
+            {% include "_components/eyebrow.html" with label="Already linked" %}
+            <form hx-post="{% url 'banking_run_import_now' %}"
+                  hx-target="#import-result"
+                  hx-swap="innerHTML"
+                  hx-indicator="#import-spinner"
+                  hx-disabled-elt="this button"
+                  class="shrink-0">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary btn-sm">
+                    <span class="htmx-show">Run import now</span>
+                    <span id="import-spinner" class="htmx-indicator">Importing…</span>
+                </button>
+            </form>
+        </div>
         <div class="grid grid-cols-1 gap-2">
             {% for link in links %}
             <div class="card p-4 flex items-center justify-between gap-3">
@@ -48,6 +62,7 @@
             </div>
             {% endfor %}
         </div>
+        <div id="import-result" class="mt-3"></div>
     </section>
     {% endif %}
 

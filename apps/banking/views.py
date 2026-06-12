@@ -22,7 +22,9 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
 from .models import BankLink
 from .services import enable_banking
@@ -143,6 +145,34 @@ def link_callback(request):
     )
     messages.success(request, f"Linked {link.label} successfully.")
     return render(request, 'banking/link_success.html', {'link': link})
+
+
+@staff_member_required
+@require_POST
+def run_import_now(request):
+    """In-app manual trigger for staff — the "Run import now" button on the
+    banking link page. Same import path as the cron endpoint, but auth via
+    session + staff flag instead of the shared token.
+
+    Returns the result partial when called via HTMX (the button case) so the
+    page can swap a result panel inline without a full reload; JSON otherwise
+    for any non-HTMX caller that wants a programmatic response.
+    """
+    try:
+        summary = import_all_links()
+        error = None
+    except Exception as e:
+        logger.exception("run_import_now: import_all_links failed")
+        summary = {}
+        error = str(e)
+
+    if request.htmx:
+        return render(request, 'banking/partials/_import_result.html', {
+            'summary': summary,
+            'error': error,
+            'now': timezone.now(),
+        })
+    return JsonResponse({'ok': error is None, 'summary': summary, 'error': error})
 
 
 @csrf_exempt

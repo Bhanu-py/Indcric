@@ -7,4 +7,5 @@ urlpatterns = [
     path('banking/link/start/', views.link_start, name='banking_link_start'),
     path('banking/link/callback/', views.link_callback, name='banking_link_callback'),
     path('banking/run-import/', views.run_import_view, name='banking_run_import'),
+    path('banking/run-import-now/', views.run_import_now, name='banking_run_import_now'),
 ]
