@@ -13,22 +13,33 @@ Today: members SEPA-transfer to the N26 IBAN with reference "ICG donation + name
 
 ## Approach options
 
-N26 has no first-party REST API for retail accounts. Three realistic ways to get the data in:
+N26 has no first-party REST API for retail accounts. Realistic ways to get the data in (assessed 2026-06-12):
 
-| Option | Effort | Cost | Automation | Risk |
+| Option | Effort | Cost | Automation | Status |
 |---|---|---|---|---|
-| **A. GoCardless Bank Account Data (Nordigen)** | Medium | Free for EU PSD2 | Fully automatic, cron-pull every N hours | 90-day SCA re-consent (admin redirect) |
-| **B. CSV / CAMT.053 upload** | Low | Free | Admin uploads file manually (weekly?) | Still requires a human pull from N26 |
-| **C. Paid aggregator (Plaid / Tink / Salt Edge / Powens)** | Medium | €20–100/mo | Fully automatic | Cost not justifiable for club volume |
+| **A. Enable Banking** (PSD2 AISP) | Medium | Free personal-use tier | Fully automatic, cron-pull | ✅ Onboarding open |
+| **B. GoCardless Bank Account Data** (formerly Nordigen) | Medium | Free | Fully automatic | ❌ New signups closed (wind-down in progress) |
+| **C. Plaid / Tink / Klarna Kosma** | Medium | Free dev, paid in prod | Fully automatic | ⚠️ Per-call fees in production |
+| **D. CSV / CAMT.053 upload** | Low | Free | Admin uploads file manually | Always works (fallback path) |
+| **E. Unofficial reverse-engineered N26 library** (`femueller/python-n26`) | High | Free | Fully automatic | ❌ Rejected — see below |
 
-**Recommendation: Option A (GoCardless Bank Account Data, formerly Nordigen).**
-- Free for EU PSD2-licensed banks. N26 GmbH is in their supported list for BE/DE/FR/ES/IT/NL/AT.
-- Official AISP route — no API reverse-engineering, no TOS grey zone.
-- Returns transactions with structured remittance fields (`remittanceInformationUnstructured`, `additionalInformation`) — that's where "ICG donation - John" appears.
-- Refresh cadence: 4× per day per account is included free.
-- One real downside: PSD2 SCA requires re-consent every 90 days (Belgium-specific regulatory rule). Admin must click a link to re-authorize quarterly — surfaced as a banner + email when the requisition is < 14 days from expiry.
+**Recommendation: Option A (Enable Banking).**
+- Free **personal-use** tier — no commercial agreement required for a treasurer using it to fetch one club account ([enablebanking.com](https://enablebanking.com/) docs).
+- Official PSD2 AISP route — N26 is a supported institution.
+- Modern auth: ECDSA key pair (private key on our server, public key registered in Enable Banking dashboard). No client_secret in code.
+- Returns transactions with structured remittance fields where "ICG donation - John" appears.
+- Same SCA-refresh constraint as any AISP — re-consent every 90-180 days (Belgium PSD2 rule). Surfaced as admin banner + WhatsApp DM at < 14 days from expiry.
 
-Option B is the simple fallback if GoCardless onboarding hits a snag — the parsing/matching logic is the same code path, just fed from a file instead of an API.
+### Why not the unofficial route (Option E)
+
+Gemini and other LLMs will happily recommend `femueller/python-n26` or similar reverse-engineered libraries. We're **explicitly not using them** because:
+
+- They require storing the treasurer's N26 username + password in the Django app — broad blast radius if leaked.
+- N26's T&Cs prohibit automated access via unofficial means; the account can be banned without warning.
+- Endpoints are undocumented and change without notice; the integration silently breaks any time N26 ships a frontend update.
+- Treasury data integrity demands a stable, auditable source. A scraped retail-app endpoint isn't that.
+
+Option D (CSV upload) stays in the design as the documented fallback for re-consent gaps — the parsing/matching code is the same regardless of intake.
 
 ## Hard constraints
 
@@ -118,18 +129,23 @@ class Donation(models.Model):
 
 The existing reverse `donation.bank_transaction` relation is enough to dig into the source row — `source` is just a denormalised flag for cheap filtering.
 
-## GoCardless integration
+## Enable Banking integration
 
-Library: **no official SDK for Python**, but the REST API is small. Wrap it ourselves in `apps/banking/services/gocardless.py` — about 6 functions: `_token()`, `list_institutions()`, `create_requisition()`, `get_requisition()`, `get_account()`, `get_transactions(account_id, date_from)`.
+Library: **no official Python SDK**; the REST API is small. We wrap it in `apps/banking/services/enable_banking.py` — keep the surface area provider-agnostic via an `AISPClient` interface so a future Plaid/Tink switch is one file.
 
-Auth: secret_id + secret_key from `https://bankaccountdata.gocardless.com/user-secrets/`. Both go in `.env` (`GOCARDLESS_SECRET_ID`, `GOCARDLESS_SECRET_KEY`). Bearer token is short-lived (24h access + 30d refresh) — cache in Redis or just refetch per cron tick (4×/day = trivial).
+Auth: JWT signed with an ECDSA P-256 private key. On signup, generate a key pair locally, upload the public key to the Enable Banking dashboard, copy the application ID into `.env`. Each API call signs a JWT with the private key.
 
-### Linking flow (one-time per 90 days)
+Settings (added in [cric_core/settings.py](../../cric_core/settings.py)):
+- `ENABLE_BANKING_APP_ID` — application ID from the dashboard
+- `ENABLE_BANKING_PRIVATE_KEY_PATH` — filesystem path to the PEM private key (mounted as a secret on the host, never committed)
+- `ENABLE_BANKING_REDIRECT_URL` — `{SITE_URL}/banking/link/callback/`
+
+### Linking flow (one-time per 90-180 days)
 
 1. Staff visits `/banking/link/` (staff_member_required).
-2. View calls `create_requisition(institution_id='N26_NTSBDEB1', redirect=APP_URL + '/banking/link/callback/', reference=<random>)`.
-3. Returns a `link` URL → redirect admin's browser to it → N26 SCA → bounces back to callback.
-4. Callback fetches the requisition, reads `accounts[0]`, creates/updates the `BankLink` row with the account ID + `consent_valid_until = now() + 90 days`.
+2. View calls `enable_banking.start_session(aspsp='N26', country='BE', psu_type='personal', redirect_url=settings.ENABLE_BANKING_REDIRECT_URL)`.
+3. Returns an `authorization_url` → redirect admin's browser to it → N26 SCA (push notification on the treasurer's phone) → bounces back to callback with a `code`.
+4. Callback POSTs the code → receives `session_id` + list of `accounts` → creates/updates the `BankLink` row with the account ID + `consent_valid_until = now() + 90 days` (Belgian PSD2 limit; can extend up to 180 days for some flows).
 5. Render a "Linked ✅" page with the IBAN it just authorized.
 
 ### Polling flow (cron)
@@ -139,7 +155,7 @@ Management command `python manage.py import_bank_transactions` (idempotent), cal
 1. For each active `BankLink`:
    - If `consent_valid_until < now() + 14 days` → log a warning, send a single admin DM/email per refresh window asking them to re-link.
    - `date_from = link.last_synced_at - 3 days` (overlap window for late-bookings; idempotency dedupes).
-   - `txns = gocardless.get_transactions(link.account_id, date_from)`.
+   - `txns = client.get_transactions(link.account_id, date_from)`.
 2. For each `txn` in `txns['booked']`:
    - `transaction_id` already in DB → skip.
    - Parse fields → build `BankTransaction(status=STATUS_NEW)`.
@@ -233,10 +249,10 @@ No other UI change — the donor wall + progress bar already pulls from `campaig
 
 ## Implementation order
 
-1. **GoCardless account setup** (out-of-code prerequisite) — sign up at bankaccountdata.gocardless.com, obtain secret_id + secret_key, confirm N26 is in the institutions list for BE.
-2. **App scaffold** — `python manage.py startapp banking` in `apps/`, register in `INSTALLED_APPS`, add `'banking/'` URL include.
+1. **Enable Banking account setup** (out-of-code prerequisite) — sign up at [enablebanking.com](https://enablebanking.com/), generate ECDSA P-256 key pair locally, upload public key, copy application ID. Confirm N26 is in the ASPSP list for Belgium.
+2. **App scaffold** — `apps/banking/` registered in `INSTALLED_APPS`, `'banking/'` URL include.
 3. **Schema** — `BankLink`, `BankTransaction` models + migration; `Donation.source` field + migration in donations app.
-4. **GoCardless client** — `apps/banking/services/gocardless.py` with the 6 functions. Unit tests with `requests-mock`.
+4. **AISP client** — `apps/banking/services/enable_banking.py` implementing the `AISPClient` interface (start_session, get_session, get_account, get_transactions). Unit tests with `requests-mock`.
 5. **Linking views** — `/banking/link/` start + callback. Staff-only.
 6. **Import command** — `python manage.py import_bank_transactions`, with `_classify` and the donation-creation path. Tests covering: positive credit with ICG → Donation; positive credit without ICG → ignored; negative amount → ignored; duplicate transaction_id → skip; no active campaign → REVIEW.
 7. **Cron registration** — add the command URL endpoint (token-auth like `run_reminders_view`) and add to cron-job.org schedule. 6h cadence.
@@ -254,7 +270,7 @@ Each step is its own commit. Steps 1–6 are the load-bearing path; 7–10 layer
 4. **Show last-sync timestamp on the support page?** "Last bank import: 2 hours ago" — signals freshness to donors. Cheap to add. **Recommendation:** yes, small footer on the donations panel.
 5. **What about the Revolut / PayPal "extra link" already on DonationSettings?** Out of scope — different APIs, different rate limits. If the club starts accepting via Revolut routinely, that's a follow-up using the same `BankLink` abstraction (Revolut Business has a transactions API).
 6. **Retention / right-to-erasure.** GDPR Article 17 — if a member asks for their bank data to be deleted, what do we do? The IBAN is in `BankTransaction.raw` JSON too, not just the column. **Recommendation:** on erasure request, set `counterparty_name = '[redacted]'`, blank `counterparty_iban`, and replace `raw` with `{}`. Keep `amount` + `booked_on` for accounting integrity.
-7. **GoCardless rate limits.** Free tier: 4 transactions fetches per account per day, 10 details/balances fetches per day. 6-hour cron is fine (4× a day). Document the ceiling.
+7. **Enable Banking rate limits.** Personal tier limits aren't published as bluntly as Nordigen's were — the docs reference "fair use" with the underlying ASPSP rate limits as the real ceiling. 6-hour cron is conservatively safe. Watch for HTTP 429 and back off.
 
 ## Risk / rollback
 

@@ -63,7 +63,15 @@ class DonationCampaign(models.Model):
 
 
 class Donation(models.Model):
-    """One donation received toward a campaign, logged by a staff treasurer."""
+    """One donation received toward a campaign — logged by a staff treasurer
+    or auto-imported from the linked bank account."""
+    SOURCE_MANUAL = 'manual'
+    SOURCE_BANK = 'bank'
+    SOURCE_CHOICES = [
+        (SOURCE_MANUAL, 'Manual'),
+        (SOURCE_BANK, 'Bank import'),
+    ]
+
     campaign = models.ForeignKey(
         DonationCampaign, on_delete=models.CASCADE, related_name='donations'
     )
@@ -79,6 +87,10 @@ class Donation(models.Model):
     )
     note = models.CharField(max_length=200, blank=True)
     donated_on = models.DateField(default=timezone.localdate)
+    source = models.CharField(
+        max_length=10, choices=SOURCE_CHOICES, default=SOURCE_MANUAL,
+        help_text="How this donation entered the system.",
+    )
     logged_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
         null=True, blank=True, related_name='+',

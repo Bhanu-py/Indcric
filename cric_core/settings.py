@@ -84,6 +84,7 @@ INSTALLED_APPS = [
     "apps.payments",
     "apps.notifications",
     "apps.donations",
+    "apps.banking",
 ]
 SITE_ID = 1
 
@@ -127,6 +128,19 @@ WHATSAPP_BOT_NUMBER = os.getenv("WHATSAPP_BOT_NUMBER", "")
 # to unrecognised numbers). Override per-environment via env.
 SITE_URL = os.getenv("SITE_URL", "https://indcric.onrender.com")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+# Enable Banking (PSD2 AISP) — used by apps.banking to fetch bank transactions
+# and auto-create Donation rows. ENABLE_BANKING_PRIVATE_KEY_PATH points to a
+# PEM file mounted as a secret on the host; never commit the key itself.
+ENABLE_BANKING_APP_ID = os.getenv("ENABLE_BANKING_APP_ID", "")
+ENABLE_BANKING_PRIVATE_KEY_PATH = os.getenv("ENABLE_BANKING_PRIVATE_KEY_PATH", "")
+ENABLE_BANKING_REDIRECT_URL = os.getenv(
+    "ENABLE_BANKING_REDIRECT_URL",
+    f"{SITE_URL.rstrip('/')}/banking/link/callback/",
+)
+# If True, ICG-matching transactions immediately create a Donation row. If
+# False, they sit in status=review for a treasurer to one-click approve.
+DONATIONS_AUTO_CREATE = os.getenv("DONATIONS_AUTO_CREATE", "True").lower() == "true"
 
 # --- allauth account behavior ---
 ACCOUNT_EMAIL_REQUIRED = True
