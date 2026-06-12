@@ -15,28 +15,30 @@ Args:
 {% endcomment %}
 <div class="card-body space-y-5">
 
-    <!-- 1 · Goal progress (top) -->
+    {# Goal-progress block only shows when a goal is set — for catch-all
+       campaigns like General Donations the card header already shows
+       raised + supporter count, so the bar would be redundant noise. #}
+    {% if campaign.goal_amount %}
     <div>
         <div class="flex items-end justify-between gap-3 mb-2">
             <div>
                 <div class="micro-label">Raised so far</div>
                 <div class="text-2xl font-bold text-stone-900 tabular-nums leading-none mt-1">€{{ campaign.raised|floatformat:2 }}</div>
             </div>
-            {% if campaign.goal_amount %}
             <div class="text-right">
                 <div class="micro-label">Goal</div>
                 <div class="text-sm font-semibold text-stone-500 tabular-nums mt-1">€{{ campaign.goal_amount|floatformat:2 }}</div>
             </div>
-            {% endif %}
         </div>
         <div class="h-2.5 rounded-full bg-stone-100 overflow-hidden">
             <div class="h-full rounded-full bg-emerald-500 transition-all duration-500" style="width:{{ campaign.progress_pct }}%"></div>
         </div>
         <div class="flex items-center justify-between mt-2 text-xs text-stone-500">
             <span>{{ campaign.supporter_count }} supporter{{ campaign.supporter_count|pluralize }}</span>
-            {% if campaign.goal_amount %}<span class="font-semibold text-emerald-700">{{ campaign.progress_pct }}%</span>{% endif %}
+            <span class="font-semibold text-emerald-700">{{ campaign.progress_pct }}%</span>
         </div>
     </div>
+    {% endif %}
 
     {% if campaign.blurb %}
     <p class="text-sm text-stone-600 leading-relaxed whitespace-pre-line">{{ campaign.blurb }}</p>
@@ -95,14 +97,18 @@ Args:
 
     <!-- 4 · Log a donation (bottom) — staff log for anyone; members log their own -->
     {% if can_log and user.is_authenticated and form %}
-    <div class="border-t border-stone-100 pt-4">
-        <div class="flex items-center justify-between mb-3">
-            <h3 class="text-sm font-bold text-stone-800">{% if user.is_staff %}Log a donation{% else %}Add your donation{% endif %}</h3>
-            {% if user.is_staff %}<span class="badge badge-stone">Staff</span>{% else %}<span class="badge badge-green">You</span>{% endif %}
-        </div>
-        <form hx-post="{% url 'log-donation' campaign.id %}"
+    <div class="border-t border-stone-100 pt-4" x-data="{ openLog: {% if just_logged or form.errors %}true{% else %}false{% endif %} }">
+        <button type="button" @click="openLog = !openLog" class="w-full flex items-center justify-between text-left">
+            <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-stone-800">{% if user.is_staff %}Log a donation{% else %}Add your donation{% endif %}</h3>
+                {% if user.is_staff %}<span class="badge badge-stone">Staff</span>{% else %}<span class="badge badge-green">You</span>{% endif %}
+            </div>
+            <svg class="w-4 h-4 text-stone-400 transition-transform" :class="openLog ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <form x-show="openLog" x-cloak
+              hx-post="{% url 'log-donation' campaign.id %}"
               hx-target="#fundraiser-body-{{ campaign.id }}" hx-swap="innerHTML"
-              class="space-y-3">
+              class="space-y-3 mt-3">
             {% csrf_token %}
             {% if form.non_field_errors %}<div class="alert alert-error-box">{{ form.non_field_errors|join:" " }}</div>{% endif %}
             {% if user.is_staff %}
