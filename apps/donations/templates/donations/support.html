@@ -53,13 +53,18 @@ supporter wall together so the page reads as one flow per campaign.
           - + Start a fundraiser: jumps to the admin campaign-creation form.
         {% endcomment %}
         <div class="flex justify-end gap-2 mb-3">
+            {% comment %}
+            Sync payments button hidden temporarily — N26's free-tier PSD2
+            limit is ~4 fetches per account per 24h, and accidental clicks
+            were burning the whole day's budget before the cron could run.
+            Re-enable once we either upgrade Enable Banking's tier or
+            shift the import flow to a once-a-day cron-only model.
             <form hx-post="{% url 'banking_run_import_now' %}"
                   hx-target="#support-import-result"
                   hx-swap="innerHTML"
                   hx-disabled-elt="this button">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-secondary btn-sm inline-flex items-center gap-1.5">
-                    {% comment %} Refresh icon from design system Icons.jsx. {% endcomment %}
                     <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"
                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 12a8 8 0 11-3-6.2L21 4v5h-5"/>
@@ -67,6 +72,7 @@ supporter wall together so the page reads as one flow per campaign.
                     Sync payments
                 </button>
             </form>
+            {% endcomment %}
             <a href="/admin/donations/donationcampaign/add/" class="btn btn-secondary btn-sm">
                 + Target fundraiser
             </a>
