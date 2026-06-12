@@ -42,16 +42,24 @@ Args:
     </div>
     {% endif %}
 
-    {% if campaign.blurb %}
-    <p class="text-sm text-stone-600 leading-relaxed whitespace-pre-line">{{ campaign.blurb }}</p>
-    {% endif %}
+    {% comment %}
+    Skip blurb + fund-items inside the General Donations card body — they're
+    rendered as the static block at the top of /support/, so duplicating them
+    inside the catch-all card would be noise. Specific drives still show their
+    own blurb + items here.
+    {% endcomment %}
+    {% if not campaign.is_default %}
+        {% if campaign.blurb %}
+        <p class="text-sm text-stone-600 leading-relaxed whitespace-pre-line">{{ campaign.blurb }}</p>
+        {% endif %}
 
-    {% if campaign.fund_items.all %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {% for item in campaign.fund_items.all %}
-        {% include "_components/fund_item.html" with tint=item.color title=item.title body=item.description icon=item.icon %}
-        {% endfor %}
-    </div>
+        {% if campaign.fund_items.all %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {% for item in campaign.fund_items.all %}
+            {% include "_components/fund_item.html" with tint=item.color title=item.title body=item.description icon=item.icon %}
+            {% endfor %}
+        </div>
+        {% endif %}
     {% endif %}
 
     <!-- 2 · How to donate (club bank account) -->
@@ -97,8 +105,9 @@ Args:
         </div>
     </div>
 
-    <!-- 4 · Log a donation (bottom) — staff log for anyone; members log their own -->
-    {% if can_log and user.is_authenticated and form %}
+    <!-- 4 · Log a donation (bottom) — staff log for anyone; members log their own.
+         Hidden entirely on closed drives — the donation window for that drive is over. -->
+    {% if can_log and not closed and user.is_authenticated and form %}
     <div class="border-t border-stone-100 pt-4" x-data="{ openLog: {% if just_logged or form.errors %}true{% else %}false{% endif %} }">
         <button type="button" @click="openLog = !openLog" class="w-full flex items-center justify-between text-left">
             <div class="flex items-center gap-2">

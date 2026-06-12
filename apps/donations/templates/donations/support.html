@@ -23,9 +23,40 @@ supporter wall together so the page reads as one flow per campaign.
         </p>
     </header>
 
+    {% comment %}
+    Static 'what your donations fund' block — sits above every campaign card
+    so the "why" is always the first thing a visitor reads, regardless of
+    which fundraisers are running. Pulled from the General Donations campaign
+    so admins can edit the blurb + tiles in /admin/donations/donationcampaign/
+    without touching templates.
+    {% endcomment %}
+    {% if general_donations %}
+    <section class="mb-8">
+        {% if general_donations.blurb %}
+        <p class="text-sm text-stone-700 leading-relaxed mb-4 whitespace-pre-line">{{ general_donations.blurb }}</p>
+        {% endif %}
+        {% if general_donations.fund_items.all %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {% for item in general_donations.fund_items.all %}
+            {% include "_components/fund_item.html" with tint=item.color title=item.title body=item.description icon=item.icon %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </section>
+    {% endif %}
+
     {% for campaign in active_campaigns %}
     {% include "donations/partials/_campaign_card.html" %}
     {% endfor %}
+
+    {% if closed_campaigns %}
+    <section class="mt-8">
+        {% include "_components/eyebrow.html" with label="Previous fundraisers" %}
+        {% for campaign in closed_campaigns %}
+        {% include "donations/partials/_campaign_card.html" with closed=True %}
+        {% endfor %}
+    </section>
+    {% endif %}
 
 </div>
 {% endblock %}

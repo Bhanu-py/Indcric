@@ -1,23 +1,31 @@
 {% comment %}
-One current fundraiser as a wrappable card: a tap-to-expand header (title +
-Active + raised/goal) over the body. The body (#fundraiser-body-<id>) is the
+One fundraiser as a wrappable card: a tap-to-expand header (title + status
+badge + raised/goal) over the body. The body (#fundraiser-body-<id>) is the
 HTMX swap unit and holds bar · how-to · supporters dropdown · log form.
+
+Active drives open by default; closed drives stay collapsed (historical
+record — tap to see who supported them). Closed drives hide the log form.
 
 Args:
   campaign           the DonationCampaign (fund_items + donations prefetched)
   donation_settings  club bank details (passed through to the body)
   form               a DonationForm (staff only)
+  closed             True for finished drives (default False)
 {% endcomment %}
-<div class="card mb-4 overflow-hidden" x-data="{ open: true }">
+<div class="card mb-4 overflow-hidden{% if closed %} opacity-80{% endif %}" x-data="{ open: {% if closed %}false{% else %}true{% endif %} }">
     <button type="button" @click="open = !open"
             class="card-header w-full flex items-center justify-between gap-3 text-left">
         <div class="flex items-center gap-2 min-w-0">
             <svg class="w-4 h-4 text-stone-400 transition-transform shrink-0" :class="open ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            <h2 class="text-sm font-bold text-stone-800 truncate">{{ campaign.title }}</h2>
+            <h2 class="text-sm font-bold {% if closed %}text-stone-500{% else %}text-stone-800{% endif %} truncate">{{ campaign.title }}</h2>
+            {% if closed %}
+            <span class="badge badge-stone shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-stone-400"></span>Closed</span>
+            {% else %}
             <span class="badge badge-green shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Active</span>
+            {% endif %}
         </div>
         <div class="text-right shrink-0">
-            <div class="text-sm font-bold text-stone-900 tabular-nums">
+            <div class="text-sm font-bold {% if closed %}text-stone-600{% else %}text-stone-900{% endif %} tabular-nums">
                 €{{ campaign.raised|floatformat:2 }}{% if campaign.goal_amount %} <span class="text-stone-400 font-normal">/ €{{ campaign.goal_amount|floatformat:2 }}</span>{% endif %}
             </div>
             <div class="micro-label">{{ campaign.supporter_count }} supporter{{ campaign.supporter_count|pluralize }}</div>
@@ -25,6 +33,6 @@ Args:
     </button>
 
     <div x-show="open" x-cloak id="fundraiser-body-{{ campaign.id }}">
-        {% include "donations/partials/_donations_panel.html" with donations=campaign.donations.all can_log=True %}
+        {% include "donations/partials/_donations_panel.html" with donations=campaign.donations.all can_log=True closed=closed %}
     </div>
 </div>

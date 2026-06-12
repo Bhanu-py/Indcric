@@ -12,10 +12,16 @@ def _blank_form(user):
 
 
 def support_view(request):
-    """Public 'Support the club' page — the club's standing donation causes and
-    the one bank account up top, then the current fundraiser(s) as wrappable
-    cards with goal progress + contributor wall. Logged-in members get an inline
-    log-donation form (staff can log for anyone; members log their own)."""
+    """Public 'Support the club' page.
+
+    Layout, top to bottom:
+      1. Active specific fundraisers (transient drives with goals)
+      2. General Donations (always-on, seeded; sits last among active rows)
+      3. Previous fundraisers (closed specific drives, collapsed history)
+
+    Logged-in members get an inline log-donation form on every still-open card
+    (staff can log for anyone; members log their own). Closed drives drop the
+    log form — the donation window is over."""
     # Specific fundraisers first (newest at the top), General Donations last as
     # the always-on catch-all. is_default sorts False -> True, so the default
     # row naturally floats to the bottom regardless of when it was created.
@@ -25,8 +31,25 @@ def support_view(request):
         .prefetch_related('fund_items', 'donations__user')
         .order_by('is_default', '-created_at')
     )
+    # Closed specific drives — historical record so /support/ shows the club's
+    # past pushes (transparency + thank-you wall preserved). General Donations
+    # never lands here; it's always active by definition.
+    closed_campaigns = list(
+        DonationCampaign.objects
+        .filter(is_active=False, is_default=False)
+        .prefetch_related('fund_items', 'donations__user')
+        .order_by('-created_at')
+    )
+    # Pull out the always-on General Donations row so the template can render
+    # its blurb + fund_items as a static 'why we ask for support' block above
+    # the campaign cards. Same object stays in active_campaigns — the card
+    # body just skips the duplicated blurb/items when is_default.
+    general_donations = next((c for c in active_campaigns if c.is_default), None)
+
     context = {
         'active_campaigns': active_campaigns,
+        'closed_campaigns': closed_campaigns,
+        'general_donations': general_donations,
         'donation_settings': DonationSettings.objects.first(),
         'form': _blank_form(request.user) if request.user.is_authenticated else None,
     }
