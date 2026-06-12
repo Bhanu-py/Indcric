@@ -44,19 +44,28 @@ def import_all_links() -> dict:
         'links': 0, 'fetched': 0, 'created': 0,
         'donations': 0, 'review': 0, 'ignored': 0,
         'consent_warnings': 0, 'errors': 0,
+        'error_messages': [],
     }
     for link in BankLink.objects.filter(is_active=True):
         summary['links'] += 1
         try:
             result = _import_one_link(link)
-        except Exception:
+        except Exception as e:
             logger.exception("BankLink %s — unexpected import failure", link.id)
             summary['errors'] += 1
+            summary['error_messages'].append(f"BankLink {link.id}: {e}")
             continue
         for key in ('fetched', 'created', 'donations', 'review', 'ignored'):
             summary[key] += result.get(key, 0)
         if result.get('consent_warning'):
             summary['consent_warnings'] += 1
+        # Provider-level errors from Enable Banking (rate limits, expired
+        # consent, etc.) are caught inside _import_one_link so one bad link
+        # doesn't kill the whole batch — but we still need to surface them
+        # in the summary so the treasurer can see what happened.
+        if result.get('error'):
+            summary['errors'] += 1
+            summary['error_messages'].append(f"BankLink {link.id}: {result['error']}")
     return summary
 
 
@@ -110,7 +119,12 @@ def _import_one_link(link: BankLink) -> dict:
             elif bt.status == BankTransaction.STATUS_IGNORED:
                 counts['ignored'] += 1
     except enable_banking.EnableBankingError as e:
+        # Bubble the error up so the summary's errors counter + error_messages
+        # list reflect what actually happened. Most common case: N26 returned
+        # 429 ASPSP_RATE_LIMIT_EXCEEDED — the free-tier PSD2 per-account daily
+        # cap. Treasurer needs to see this instead of a silent 'fetched: 0'.
         logger.error("BankLink %s — fetch failed: %s", link.id, e)
+        counts['error'] = f"fetch failed (HTTP {e.status})"
         return counts
 
     link.last_synced_at = now

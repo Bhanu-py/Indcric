@@ -66,6 +66,7 @@
     </section>
     {% endif %}
 
+    {% if show_picker %}
     <section>
         {% include "_components/eyebrow.html" with label="Available banks" %}
         {% if aspsps %}
@@ -88,10 +89,20 @@
         {% elif not error %}
         <div class="card p-6 text-center">
             <p class="text-sm text-stone-600">No banks returned for <span class="font-mono">{{ country }}</span>.</p>
-            <p class="text-xs text-stone-500 mt-1">Try <a class="underline" href="?country=FI">FI</a> for the sandbox Mock ASPSP.</p>
+            <p class="text-xs text-stone-500 mt-1">Try <a class="underline" href="?add=1&country=FI">FI</a> for the sandbox Mock ASPSP.</p>
         </div>
         {% endif %}
     </section>
+    {% else %}
+    {% comment %}
+    No picker by default — listing ASPSPs costs one Enable Banking API call
+    per page load and is wasted bandwidth once at least one BankLink exists.
+    Show an opt-in button that adds ?add=1 to trigger the bank list.
+    {% endcomment %}
+    <div class="text-center">
+        <a href="?add=1&country={{ country }}" class="btn btn-secondary btn-sm">+ Link another bank</a>
+    </div>
+    {% endif %}
 
 </div>
 {% endblock %}

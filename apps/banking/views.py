@@ -40,24 +40,33 @@ DEFAULT_CONSENT_DAYS = 90
 @staff_member_required
 def link_index(request):
     """ASPSP picker. Lists banks Enable Banking supports for our country so the
-    treasurer can pick which one to connect. Sandbox apps see the Mock ASPSPs."""
+    treasurer can pick which one to connect. Sandbox apps see the Mock ASPSPs.
+
+    The bank list is only fetched when the admin actually wants to add a link
+    (via ?add=1 or when there are no active links yet). Every fetch is an
+    Enable Banking API call, so we don't waste one on every page visit.
+    """
     country = request.GET.get('country', 'BE')
+    links = list(BankLink.objects.filter(is_active=True))
+    want_picker = request.GET.get('add') == '1' or not links
+
     aspsps = []
     error = None
-    try:
-        aspsps = enable_banking.list_aspsps(country=country)
-    except enable_banking.EnableBankingError as e:
-        error = f"Could not list banks: {e}"
-        logger.exception("Enable Banking list_aspsps failed")
-    except RuntimeError as e:
-        error = str(e)
+    if want_picker:
+        try:
+            aspsps = enable_banking.list_aspsps(country=country)
+        except enable_banking.EnableBankingError as e:
+            error = f"Could not list banks: {e}"
+            logger.exception("Enable Banking list_aspsps failed")
+        except RuntimeError as e:
+            error = str(e)
 
-    links = list(BankLink.objects.filter(is_active=True))
     return render(request, 'banking/link.html', {
         'country': country,
         'aspsps': aspsps,
         'error': error,
         'links': links,
+        'show_picker': want_picker,
     })
 
 
@@ -188,7 +197,11 @@ def diagnose_transactions(request):
     Staff-only. Returns JSON.
     """
     from datetime import date, timedelta
-    statuses = ['BOOK', 'PDNG', 'BOTH']
+    # 'BOTH' was rejected by Enable Banking with 422 (valid values are
+    # BOOK / CNCL / HOLD / OTHR / PDNG). Stick to BOOK + PDNG — that covers
+    # the diagnosis case ('is the transfer booked yet, or still pending?')
+    # without burning extra rate-limit budget on a value EB won't accept.
+    statuses = ['BOOK', 'PDNG']
     date_from = date.today() - timedelta(days=7)
 
     out = {'date_from': date_from.isoformat(), 'links': []}
