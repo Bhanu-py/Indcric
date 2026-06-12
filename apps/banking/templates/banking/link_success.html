@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Bank linked{% endblock %}
+
+{% block content %}
+<div class="page-content-narrow">
+
+    <div class="card p-6 mb-6 border border-emerald-200 bg-emerald-50">
+        <h1 class="text-xl text-emerald-900 mb-2">Bank linked ✓</h1>
+        <p class="text-sm text-emerald-800 leading-relaxed">
+            {{ link.label }} is now authorised. ICG-referenced transactions will
+            start appearing on the donations page after the next sync.
+        </p>
+    </div>
+
+    <dl class="card p-4 grid grid-cols-1 gap-2 text-sm mb-6">
+        <div class="flex justify-between gap-3">
+            <dt class="text-stone-500">Bank</dt>
+            <dd class="text-stone-800">{{ link.institution_id }}</dd>
+        </div>
+        {% if link.iban %}
+        <div class="flex justify-between gap-3">
+            <dt class="text-stone-500">IBAN</dt>
+            <dd class="font-mono text-stone-800">{{ link.iban }}</dd>
+        </div>
+        {% endif %}
+        <div class="flex justify-between gap-3">
+            <dt class="text-stone-500">Consent expires</dt>
+            <dd class="text-stone-800">{{ link.consent_valid_until|date:"D d M Y" }}</dd>
+        </div>
+    </dl>
+
+    <div class="flex flex-col gap-2">
+        <a href="{% url 'banking_link_index' %}" class="btn-md btn-secondary">Back to banking</a>
+        <a href="{% url 'support' %}" class="text-center text-sm text-stone-600 underline">View donations page</a>
+    </div>
+
+</div>
+{% endblock %}

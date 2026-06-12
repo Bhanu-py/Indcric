@@ -200,3 +200,13 @@ override.tf.json
 
 # SQLite database
 *.db
+
+# Private keys / certificates (Enable Banking AISP, future TLS, etc.)
+# Never commit; the Enable Banking RS256 key lives outside the repo
+# (e.g. c:/GCC/secrets/) but this is a belt-and-braces safety net.
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/

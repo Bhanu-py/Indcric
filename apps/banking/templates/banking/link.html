@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Link bank account{% endblock %}
+
+{% block content %}
+<div class="page-content-narrow">
+
+    <header class="mb-6">
+        <div class="section-eyebrow">
+            <div class="section-eyebrow-bar"></div>
+            <h2 class="eyebrow text-stone-800 !mb-0">Banking</h2>
+        </div>
+        <h1 class="text-2xl">Link a bank account</h1>
+        <p class="text-sm text-stone-600 mt-2 leading-relaxed">
+            Authorise the club's bank account so incoming SEPA transfers with
+            <span class="font-mono bg-stone-100 px-1 rounded">ICG</span> in the
+            reference appear automatically on the donations page.
+        </p>
+    </header>
+
+    {% if error %}
+    <div class="card p-4 mb-6 border border-red-200 bg-red-50">
+        <p class="text-sm text-red-700">{{ error }}</p>
+        <p class="text-xs text-stone-500 mt-2">
+            Check <code>ENABLE_BANKING_APP_ID</code> and
+            <code>ENABLE_BANKING_PRIVATE_KEY_PATH</code> in your <code>.env</code>.
+        </p>
+    </div>
+    {% endif %}
+
+    {% if links %}
+    <section class="mb-8">
+        {% include "_components/eyebrow.html" with label="Already linked" %}
+        <div class="grid grid-cols-1 gap-2">
+            {% for link in links %}
+            <div class="card p-4 flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="font-medium text-stone-800 truncate">{{ link.label }}</p>
+                    <p class="text-xs text-stone-500 mt-0.5">
+                        Consent expires {{ link.consent_valid_until|date:"D d M Y" }}
+                        {% if link.last_synced_at %} · last sync {{ link.last_synced_at|timesince }} ago{% endif %}
+                    </p>
+                </div>
+                <span class="text-[10px] uppercase tracking-wide px-2 py-1 rounded-full
+                    {% if link.is_active %}bg-emerald-50 text-emerald-700{% else %}bg-stone-100 text-stone-500{% endif %}">
+                    {% if link.is_active %}Active{% else %}Inactive{% endif %}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section>
+        {% include "_components/eyebrow.html" with label="Available banks" %}
+        {% if aspsps %}
+        <p class="text-xs text-stone-500 mb-3">
+            Showing banks supported in <span class="font-mono">{{ country }}</span>.
+            Sandbox apps see Mock ASPSPs only.
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {% for aspsp in aspsps %}
+            <a href="{% url 'banking_link_start' %}?aspsp={{ aspsp.name|urlencode }}&country={{ aspsp.country|default:country }}"
+               class="card p-4 flex items-center justify-between gap-3 hover:bg-stone-50 transition-colors min-h-[64px]">
+                <div class="min-w-0">
+                    <p class="font-medium text-stone-800 truncate">{{ aspsp.name }}</p>
+                    <p class="text-xs text-stone-500 mt-0.5">{{ aspsp.country }} · {{ aspsp.psu_types|join:", "|default:"personal" }}</p>
+                </div>
+                <span class="text-stone-400 text-lg">›</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% elif not error %}
+        <div class="card p-6 text-center">
+            <p class="text-sm text-stone-600">No banks returned for <span class="font-mono">{{ country }}</span>.</p>
+            <p class="text-xs text-stone-500 mt-1">Try <a class="underline" href="?country=FI">FI</a> for the sandbox Mock ASPSP.</p>
+        </div>
+        {% endif %}
+    </section>
+
+</div>
+{% endblock %}
