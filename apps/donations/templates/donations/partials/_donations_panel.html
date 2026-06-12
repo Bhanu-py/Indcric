@@ -1,6 +1,6 @@
 {% comment %}
 Current-fundraiser body — the HTMX swap unit (inside #fundraiser-body-<id>).
-Order, top→bottom: progress bar · how to donate (N26) · supporters (collapsible
+Order, top→bottom: progress bar · how to donate (bank) · supporters (collapsible
 dropdown) · log donation (staff, bottom). Logging posts to
 {% url 'log-donation' campaign.id %} with hx-target="#fundraiser-body-<id>"
 hx-swap="innerHTML", re-rendering this body (updated bar + wall + fresh form).
@@ -8,7 +8,7 @@ hx-swap="innerHTML", re-rendering this body (updated bar + wall + fresh form).
 Args:
   campaign           the DonationCampaign
   donations          its donations (newest first)
-  donation_settings  club N26 details (for the how-to block)
+  donation_settings  club bank details (for the how-to block)
   form               a DonationForm (staff only)
   just_logged        optional Donation just recorded (auto-opens the wall + thanks)
   can_log            if True (and staff), show the log form (active campaigns only)
@@ -50,7 +50,7 @@ Args:
     </div>
     {% endif %}
 
-    <!-- 2 · How to donate (club N26) -->
+    <!-- 2 · How to donate (club bank account) -->
     {% include "donations/partials/_how_to_donate.html" %}
 
     <!-- 3 · Supporters — collapsible dropdown -->

@@ -8,8 +8,8 @@ from django.utils import timezone
 
 class DonationSettings(models.Model):
     """Club-wide donation details (single row). All donations — campaign-tied or
-    not — go to this one N26 account, shown once on the support page. Kept in the
-    DB (admin), never hardcoded in source."""
+    not — go to this one bank account, shown once on the support page. Kept in
+    the DB (admin), never hardcoded in source."""
     account_holder = models.CharField(max_length=120, blank=True)
     iban = models.CharField(max_length=34, blank=True)
     payment_reference = models.CharField(
@@ -23,13 +23,13 @@ class DonationSettings(models.Model):
         verbose_name_plural = "Donation settings"
 
     def __str__(self):
-        return "Donation settings (club N26 account)"
+        return "Donation settings (club bank account)"
 
 
 class DonationCampaign(models.Model):
     """A fundraising drive for the club — server costs, drinks, gear, etc.
 
-    Money is collected OFF-APP (SEPA transfer to the club's N26 account, held
+    Money is collected OFF-APP (SEPA transfer to the club's bank account, held
     once in DonationSettings); this model only tracks the goal and the donations
     a treasurer logs, so the page can show transparent progress + a thank-you
     wall.

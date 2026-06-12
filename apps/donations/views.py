@@ -13,7 +13,7 @@ def _blank_form(user):
 
 def support_view(request):
     """Public 'Support the club' page — the club's standing donation causes and
-    the one N26 account up top, then the current fundraiser(s) as wrappable
+    the one bank account up top, then the current fundraiser(s) as wrappable
     cards with goal progress + contributor wall. Logged-in members get an inline
     log-donation form (staff can log for anyone; members log their own)."""
     active_campaigns = list(

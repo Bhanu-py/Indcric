@@ -128,7 +128,7 @@ Choose the setup path that matches your environment:
 
 A public page at `/support/` lets members and visitors fund club costs (hosting, a
 bigger database, drinks, equipment). Money is collected **off-app** by SEPA transfer
-to the club's single N26 account; the app tracks a transparent goal bar and a
+to the club's single bank account; the app tracks a transparent goal bar and a
 contributor wall.
 
 **One-time admin setup:**
