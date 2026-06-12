@@ -20,11 +20,13 @@ from datetime import datetime, timedelta, timezone as tz
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponseBadRequest
+from django.http import HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import BankLink
 from .services import enable_banking
+from .services.importer import import_all_links
 
 logger = logging.getLogger(__name__)
 
@@ -141,3 +143,28 @@ def link_callback(request):
     )
     messages.success(request, f"Linked {link.label} successfully.")
     return render(request, 'banking/link_success.html', {'link': link})
+
+
+@csrf_exempt
+def run_import_view(request):
+    """Cron-callable bank import. Token-authed via ?token=$BOT_WEBHOOK_TOKEN.
+
+    Mirrors notifications.views.run_reminders_view — same shared secret so
+    cron-job.org needs one token across both endpoints. Returns a JSON
+    counts summary; non-2xx on auth failure so a failing cron alerts loudly.
+
+    Suggested cadence: every 6 hours. The importer is idempotent (dedupe on
+    provider transaction_id), so more frequent calls are safe — just wasteful.
+    """
+    expected = getattr(settings, 'BOT_WEBHOOK_TOKEN', '')
+    token = request.GET.get('token', '')
+    if not expected or token != expected:
+        return JsonResponse({'ok': False, 'error': 'unauthorized'}, status=401)
+
+    try:
+        summary = import_all_links()
+    except Exception:
+        logger.exception("run_import_view: import_all_links failed")
+        return JsonResponse({'ok': False, 'error': 'import failed'}, status=500)
+
+    return JsonResponse({'ok': True, 'summary': summary})
