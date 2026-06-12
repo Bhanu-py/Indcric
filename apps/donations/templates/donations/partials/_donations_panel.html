@@ -1,9 +1,10 @@
 {% comment %}
 Current-fundraiser body — the HTMX swap unit (inside #fundraiser-body-<id>).
-Order, top→bottom: progress bar · how to donate (bank) · supporters (collapsible
-dropdown) · log donation (staff, bottom). Logging posts to
-{% url 'log-donation' campaign.id %} with hx-target="#fundraiser-body-<id>"
-hx-swap="innerHTML", re-rendering this body (updated bar + wall + fresh form).
+Order, top→bottom: progress bar · (specific-drive blurb + items) · supporters
+(collapsible) · how to donate (bank) · log donation (staff, bottom).
+Logging posts to {% url 'log-donation' campaign.id %} with
+hx-target="#fundraiser-body-<id>" hx-swap="innerHTML", re-rendering this body
+(updated bar + wall + fresh form).
 
 Args:
   campaign           the DonationCampaign
@@ -12,6 +13,7 @@ Args:
   form               a DonationForm (staff only)
   just_logged        optional Donation just recorded (auto-opens the wall + thanks)
   can_log            if True (and staff), show the log form (active campaigns only)
+  closed             True for finished drives — hides the log form
 {% endcomment %}
 <div class="card-body space-y-5">
 
@@ -62,10 +64,8 @@ Args:
         {% endif %}
     {% endif %}
 
-    <!-- 2 · How to donate (club bank account) -->
-    {% include "donations/partials/_how_to_donate.html" %}
-
-    <!-- 3 · Supporters — collapsible dropdown -->
+    <!-- 2 · Supporters — collapsible dropdown. Above How-to-donate so the
+         social-proof landing reads "who's already in" before the call-to-action. -->
     <div class="border-t border-stone-100 pt-4" x-data="{ openSup: {% if just_logged %}true{% else %}false{% endif %} }">
         <button type="button" @click="openSup = !openSup" class="w-full flex items-center justify-between text-left">
             <div class="flex items-center gap-2">
@@ -104,6 +104,9 @@ Args:
             {% endif %}
         </div>
     </div>
+
+    <!-- 3 · How to donate (club bank account) -->
+    {% include "donations/partials/_how_to_donate.html" %}
 
     <!-- 4 · Log a donation (bottom) — staff log for anyone; members log their own.
          Hidden entirely on closed drives — the donation window for that drive is over. -->
