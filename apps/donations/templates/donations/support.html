@@ -46,7 +46,20 @@ supporter wall together so the page reads as one flow per campaign.
     {% endif %}
 
     {% for campaign in active_campaigns %}
-    {% include "donations/partials/_campaign_card.html" %}
+        {% if campaign.is_default and user.is_staff %}
+        {% comment %}
+        Inline shortcut for staff: jumps to the admin campaign-creation form.
+        Sits right above the always-on General Donations card, so any specific
+        drives loop past first and the new-fundraiser button reads as "or, you
+        could spin up another one of these".
+        {% endcomment %}
+        <div class="flex justify-end mb-3">
+            <a href="/admin/donations/donationcampaign/add/" class="btn btn-secondary btn-sm">
+                + Start a fundraiser
+            </a>
+        </div>
+        {% endif %}
+        {% include "donations/partials/_campaign_card.html" %}
     {% endfor %}
 
     {% if closed_campaigns %}
