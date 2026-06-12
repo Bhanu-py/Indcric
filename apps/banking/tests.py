@@ -36,11 +36,17 @@ class ClassifierTests(TestCase):
             BankTransaction.STATUS_IGNORED,
         )
 
-    def test_substring_does_not_match(self):
-        # 'ricgardo' contains 'icg' but not as a whole word.
+    def test_substring_now_matches(self):
+        # Word boundaries are intentionally NOT enforced (see classifier.py).
+        # Real bank references jam ICG into mashed tokens; we'd rather over-
+        # match and let the treasurer flip false positives in admin.
         self.assertEqual(
             classify(self._txn(amount='5.00', remittance='from ricgardo')),
-            BankTransaction.STATUS_IGNORED,
+            BankTransaction.STATUS_MATCHED,
+        )
+        self.assertEqual(
+            classify(self._txn(amount='15.00', remittance='ICGdonation')),
+            BankTransaction.STATUS_MATCHED,
         )
 
     def test_negative_amount_is_ignored(self):
@@ -55,8 +61,11 @@ class ClassifierTests(TestCase):
             BankTransaction.STATUS_IGNORED,
         )
 
-    def test_pattern_handles_punctuation_boundaries(self):
-        # Word boundaries treat '-', '/', '.' as separators.
+    def test_pattern_handles_messy_references(self):
+        # Substring match — works regardless of surrounding punctuation,
+        # whitespace, or case. 'icgardo' now matches too (we accept that
+        # to catch real-world references like 'ICGdonation').
         self.assertIsNotNone(ICG_PATTERN.search('Don. ICG/Bhanu'))
         self.assertIsNotNone(ICG_PATTERN.search('ICG-2026'))
-        self.assertIsNone(ICG_PATTERN.search('icgardo'))
+        self.assertIsNotNone(ICG_PATTERN.search('ICGdonation'))
+        self.assertIsNotNone(ICG_PATTERN.search('icgardo'))
