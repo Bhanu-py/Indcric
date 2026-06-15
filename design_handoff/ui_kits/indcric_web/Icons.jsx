@@ -12,24 +12,17 @@ const Icon = ({ d, size = 18, sw = 1.75, fill = 'none', ...p }) => (
   </svg>
 );
 
-/* ── Comet-ball mark · primary logo ──
-   Image lives at assets/logo-mark.png. Mark has a white background, so on dark
-   surfaces (the app header / sign-in hero) we wrap it in a soft white tile to
-   keep the cricket-ball + flame both legible. */
-const Roundel = ({ size = 32, light = false }) => (
-  <span style={{
-    display:'inline-flex', alignItems:'center', justifyContent:'center',
-    width: size, height: size,
-    background: light ? 'transparent' : '#ffffff',
-    borderRadius: light ? 0 : Math.round(size * 0.22),
-    padding: light ? 0 : Math.max(2, Math.round(size * 0.08)),
-    boxShadow: light ? 'none' : '0 1px 2px rgb(0 0 0 / 0.08)',
-  }}>
-    <img src="../../assets/logo-mark.png" alt="ICG"
-         width={size - (light ? 0 : Math.max(2, Math.round(size * 0.08))*2)}
-         height={size - (light ? 0 : Math.max(2, Math.round(size * 0.08))*2)}
-         style={{display:'block', objectFit:'contain'}}/>
-  </span>
+/* ── ICG shield crest · primary logo ──
+   The club crest — crown, Ghent belfry, cricket bat, "ICG" + "INDIAN CRICKET
+   GHENT CLUB" banner — in heritage navy + brushed silver. It's self-contained
+   and reads on light surfaces and on the dark app header alike, so we render it
+   directly on a transparent background (no white tile). `size` sets the rendered
+   HEIGHT; width follows the crest's ~0.79 aspect ratio.
+   Trimmed art: assets/logo-crest.png · full/padded: assets/logo-crest-full.png */
+const Roundel = ({ size = 32 }) => (
+  <img src="../../assets/logo-crest.png" alt="Indian Cricket Ghent"
+       height={size}
+       style={{display:'block', height:size, width:'auto', objectFit:'contain'}}/>
 );
 
 /* ── Cricket role glyphs ── */
@@ -83,6 +76,9 @@ const Refresh = (p) => <Icon {...p} d="M21 12a8 8 0 11-3-6.2L21 4v5h-5"/>;
 const Rupee   = (p) => <Icon {...p} d={["M21 12a9 9 0 11-18 0 9 9 0 0118 0z","M9 8h6","M9 11h6","M9 11c2.5 0 4 1 4 3 0 1.5-1.5 2.5-3 2.5L15 16"]}/>;
 const Star    = (p) => <Icon {...p} d="M12 3l2.6 5.4 5.9.8-4.3 4.2 1 5.9L12 16.5l-5.3 2.8 1-5.9L3.5 9.2l5.9-.8L12 3z"/>;
 const Image   = (p) => <Icon {...p} d={["M3 5h18v14H3z","M9 11a2 2 0 100-4 2 2 0 000 4z","M21 17l-5-5-7 7"]}/>;
+const Heart   = (p) => <Icon {...p} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>;
+const Server  = (p) => <Icon {...p} d={["M3 4h18v6H3z","M3 14h18v6H3z","M7 7h.01","M7 17h.01"]}/>;
+const Database = (p) => <Icon {...p} d={["M12 8c4.418 0 8-1.343 8-3s-3.582-3-8-3-8 1.343-8 3 3.582 3 8 3z","M4 5v6c0 1.657 3.582 3 8 3s8-1.343 8-3V5","M4 11v6c0 1.657 3.582 3 8 3s8-1.343 8-3v-6"]}/>;
 const Camera  = (p) => <Icon {...p} d={["M9 4l-1.5 2H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-2.5L15 4z","M15.5 13a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0z"]}/>;
 
 window.Icons = {
@@ -93,7 +89,7 @@ window.Icons = {
   Home, Calendar, Pin, Clock, Wallet, Users, Cog, Plus, Check, Close, ChevDown, ChevRt,
   Pencil, Logout, ArrowRt, Mail, Lock, User: UserIc, Trash, Bell, Send, Chat, Phone,
   Share, Copy, Download, Search, Filter, More, Info, Warn, Refresh, Rupee, Star,
-  Image, Camera,
+  Image, Camera, Heart, Server, Database,
   // legacy alias
   CricketBall: Ball,
 };

@@ -22,6 +22,7 @@ the styling each time.
 | `SessionDetailScreen.jsx`  | Hero card, cost split, poll buttons, two team cards |
 | `ProfileScreen.jsx`        | Avatar, role badge, skill bars, career-stat tiles |
 | `PaymentsScreen.jsx`       | Match picker + paid/pending checklist |
+| `SupportScreen.jsx`        | Donations page — campaign cards, progress bars, supporter wall, bank/SEPA block, log-donation form |
 
 ## Flow you can click through
 

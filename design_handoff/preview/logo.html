@@ -1,3 +1,4 @@
+<!-- @dsCard group="Brand" name="Logo" subtitle="ICG shield crest — navy + brushed silver" viewport="740" -->
 <!doctype html>
 <html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
 <style>
@@ -27,160 +28,115 @@
     background: var(--stone-50);
     border: 1px solid var(--stone-100);
     border-radius: 14px;
-    padding: 16px 20px;
+    padding: 18px 22px;
     display: flex;
     align-items: center;
     justify-content: center;
     width: fit-content;
   }
   .dark-tile {
-    background: var(--pitch-950);
+    background: var(--pitch-900);
     border-radius: 14px;
-    padding: 16px 20px;
+    padding: 18px 22px;
     display: flex;
     align-items: center;
     justify-content: center;
     width: fit-content;
   }
-  .cream-tile {
-    background: #f4ead4;
-    border-radius: 14px;
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: fit-content;
-  }
-  /* The crest is portrait 2:3 — keep aspect ratio fixed by width */
-  .crest { display:block; height:auto; }
-  .typo-note { font-size:11px;color:var(--stone-500);margin-top:10px;line-height:1.55; }
-  code.tok { font-family:var(--font-mono); font-size:11px; color:var(--stone-700); background:var(--stone-100); padding:1px 6px; border-radius:6px; }
+  /* crest renders by height; width follows the ~0.79 aspect ratio */
+  .crest { display:block; width:auto; }
 </style>
 </head>
 <body>
 <div class="card" style="padding:26px 28px;">
-  <div class="eyebrow" style="margin-bottom:6px;">Logo · ICG — Heritage shield crest</div>
-  <div style="font-size:11px;color:var(--stone-500);margin-bottom:18px;line-height:1.5;">
-    Portrait shield crest. Crown · Ghent's St. Bavo &amp; Belfry silhouette · crossed bat · banner wordmark. Built-in navy &amp; gold panel — works on light, dark and cream surfaces without a knockout box.
-  </div>
+  <div class="eyebrow" style="margin-bottom:18px;">Logo · ICG — Club crest</div>
 
-  <!-- ═════════════ A · The crest at three sizes ═════════════ -->
+  <!-- ═════════════ A · The crest at multiple sizes ═════════════ -->
   <div class="group">
     <div class="sub-eyebrow">A · Crest at three sizes</div>
     <div style="display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap;">
 
       <div>
         <div class="light-tile">
-          <img class="crest" src="../assets/logo-mark.png" alt="ICG heritage crest"
-               width="168" style="image-rendering: -webkit-optimize-contrast;">
+          <img class="crest" src="../assets/logo-crest.png" alt="Indian Cricket Ghent crest"
+               height="140" style="height:140px;image-rendering:-webkit-optimize-contrast;">
         </div>
-        <div class="tile-label">Large · 168 px wide</div>
-        <div class="tile-sub">sign-in hero · jersey badge · marketing</div>
+        <div class="tile-label">Large · 140 px tall</div>
+        <div class="tile-sub">sign-in hero · marketing</div>
       </div>
 
       <div>
         <div class="light-tile">
-          <img class="crest" src="../assets/logo-mark.png" alt="ICG heritage crest" width="84">
+          <img class="crest" src="../assets/logo-crest.png" alt="Indian Cricket Ghent crest"
+               height="72" style="height:72px;">
         </div>
-        <div class="tile-label">Medium · 84 px wide</div>
-        <div class="tile-sub">profile hero · share cards</div>
+        <div class="tile-label">Medium · 72 px tall</div>
+        <div class="tile-sub">profile · share cards</div>
       </div>
 
       <div>
         <div class="light-tile">
-          <img class="crest" src="../assets/logo-mark.png" alt="ICG heritage crest" width="44">
+          <img class="crest" src="../assets/logo-crest.png" alt="Indian Cricket Ghent crest"
+               height="40" style="height:40px;">
         </div>
-        <div class="tile-label">Small · 44 px wide</div>
-        <div class="tile-sub">use sparingly — detail starts to compress</div>
+        <div class="tile-label">Small · 40 px tall</div>
+        <div class="tile-sub">app header · favicon</div>
       </div>
-    </div>
-    <div class="typo-note">
-      Below ~36 px the belfry detail and the lower banner copy stop reading. Use the stacked <strong>ICG</strong> wordmark (block&nbsp;C) for headers, favicons, and small chips instead.
     </div>
   </div>
 
-  <!-- ═════════════ B · Backgrounds ═════════════ -->
+  <!-- ═════════════ Backgrounds the crest sits on ═════════════ -->
   <div class="group">
-    <div class="sub-eyebrow">B · Backgrounds — the crest carries its own panel</div>
+    <div class="sub-eyebrow">Backgrounds · the crest is self-contained — no white tile needed</div>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
       <div class="light-tile" style="background:#ffffff;">
-        <img class="crest" src="../assets/logo-mark.png" width="88" alt="">
+        <img class="crest" src="../assets/logo-crest.png" height="84" style="height:84px;" alt="">
       </div>
       <div class="light-tile">
-        <img class="crest" src="../assets/logo-mark.png" width="88" alt="">
+        <img class="crest" src="../assets/logo-crest.png" height="84" style="height:84px;" alt="">
       </div>
+      <!-- crest holds on the dark header: silver linework + white ICG carry it -->
       <div class="dark-tile">
-        <img class="crest" src="../assets/logo-mark.png" width="88" alt="">
+        <img class="crest" src="../assets/logo-crest.png" height="84" style="height:84px;" alt="">
       </div>
-      <div class="cream-tile">
-        <img class="crest" src="../assets/logo-mark.png" width="88" alt="">
-      </div>
-      <div style="font-size:12px;color:var(--stone-500); max-width:320px;">
-        White, <code class="tok">stone-50</code>, <code class="tok">pitch-950</code>, and warm cream all read cleanly — the shield's gold trim and navy field stay legible without a knockout box. Don't recolor the crest; never place it on busy photography.
+      <div style="font-size:12px;color:var(--stone-500); max-width:300px;">
+        The brushed-silver border, crown and bat, plus the white <b>ICG</b>, keep the crest legible straight on the navy app header — render it directly, don't knock it onto a white chip or reverse the artwork.
       </div>
     </div>
   </div>
 
-  <!-- ═════════════ C · Wordmark + horizontal lockup ═════════════ -->
+  <!-- ═════════════ In context — header, hero, share-card ═════════════ -->
   <div class="group">
-    <div class="sub-eyebrow">C · Wordmarks — small-surface fallback</div>
-    <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:24px;align-items:start;">
-
-      <!-- Stacked wordmark -->
-      <div style="display:flex;flex-direction:column;align-items:flex-start;">
-        <span style="font-size:44px;font-weight:800;letter-spacing:-0.045em;
-                     color:var(--pitch-950);line-height:0.95;font-family:var(--font-sans);">ICG</span>
-        <span style="font-size:9px;font-weight:700;letter-spacing:0.22em;
-                     color:var(--pitch-700);text-transform:uppercase;margin-top:8px;
-                     font-family:var(--font-sans);">Indian Cricket Ghent</span>
-        <div class="tile-label">Stacked wordmark</div>
-        <div class="tile-sub">letterhead · sign-in · jersey back</div>
-      </div>
-
-      <!-- Horizontal lockup -->
-      <div style="display:flex;flex-direction:column;align-items:flex-start;">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <img src="../assets/logo-mark.png" width="44" alt="">
-          <span style="font-size:24px;font-weight:800;letter-spacing:-0.04em;
-                       color:var(--pitch-950);line-height:1;font-family:var(--font-sans);">ICG</span>
-          <span style="font-size:12px;font-weight:500;color:var(--stone-500);
-                       font-family:var(--font-sans);">· Cricket Club, Ghent</span>
-        </div>
-        <div class="tile-label">Horizontal lockup</div>
-        <div class="tile-sub">nav bar · share cards · footers</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═════════════ D · In context ═════════════ -->
-  <div class="group">
-    <div class="sub-eyebrow">D · In context · header · hero · share-card</div>
+    <div class="sub-eyebrow">In context · header · hero · share-card</div>
     <div style="display:flex;flex-direction:column;gap:14px;">
 
       <!-- App header mock -->
       <div style="background:var(--pitch-900); padding:10px 18px; border-radius:14px;
                   display:flex; align-items:center; justify-content:space-between;">
         <div style="display:flex; align-items:center; gap:10px; color:#fff;">
-          <img src="../assets/logo-mark.png" height="28" alt="">
-          <span style="font-weight:700; font-size:14px; letter-spacing:-0.005em;">ICG</span>
+          <img src="../assets/logo-crest.png" height="40" style="height:40px;width:auto;display:block;" alt="">
+          <span style="display:flex;flex-direction:column;line-height:1;">
+            <span style="font-weight:800; font-size:16px; letter-spacing:-0.02em;">ICG</span>
+            <span style="font-family:var(--font-mono); font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:0.18em; color:rgba(255,255,255,.6); margin-top:3px;">Indian Cricket Ghent</span>
+          </span>
         </div>
         <div style="display:flex; gap:18px;">
-          <span style="font-size:12px; color:rgba(255,255,255,.92);">Dashboard</span>
-          <span style="font-size:12px; color:rgba(255,255,255,.6);">Teams</span>
-          <span style="font-size:12px; color:rgba(255,255,255,.6);">Payments</span>
+          <span style="font-size:12px; color:rgba(255,255,255,.85);">Dashboard</span>
+          <span style="font-size:12px; color:rgba(255,255,255,.55);">Support</span>
+          <span style="font-size:12px; color:rgba(255,255,255,.55);">Payments</span>
         </div>
       </div>
 
       <!-- Hero strip (light) -->
       <div style="background:#fff; border:1px solid var(--stone-100); padding:18px 22px; border-radius:14px;
                   display:flex; align-items:center; gap:18px;">
-        <img src="../assets/logo-mark.png" height="64" alt="">
+        <img src="../assets/logo-crest.png" height="72" style="height:72px;width:auto;display:block;" alt="">
         <div>
-          <div style="font-size:18px; font-weight:700; color:var(--pitch-950); letter-spacing:-0.015em;">
+          <div style="font-size:18px; font-weight:600; color:var(--stone-900); letter-spacing:-0.015em;">
             Indian Cricket Ghent
           </div>
           <div style="font-size:12px; color:var(--stone-500); margin-top:2px;">
-            Cricket club · Ghent, Belgium · Est. 2020
+            Cricket club · Ghent, Belgium · est. 2020
           </div>
         </div>
       </div>
@@ -188,9 +144,9 @@
       <!-- WhatsApp share card preview -->
       <div style="background:#fff; border:1px solid var(--stone-100); border-radius:14px; padding:18px;
                   display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:14px;">
-        <img src="../assets/logo-mark.png" height="48" alt="">
+        <img src="../assets/logo-crest.png" height="48" style="height:48px;width:auto;display:block;" alt="">
         <div>
-          <div style="font-size:13px; font-weight:700; color:var(--pitch-950);">Sunday Nets · 14 Jun</div>
+          <div style="font-size:13px; font-weight:600; color:var(--stone-900);">Sunday Nets · 14 Jun</div>
           <div style="font-family:var(--font-mono); font-size:10px; color:var(--stone-500); margin-top:2px;
                       letter-spacing:0.04em;">SPORTHAL WATERSPORTBAAN · 18:00</div>
         </div>
@@ -201,12 +157,27 @@
     </div>
   </div>
 
-  <div style="margin-top:18px;padding:12px 14px;background:#fff7e0;border:1px solid #f1d98a;border-radius:10px;font-size:11px;color:#7a5b00;line-height:1.5;">
-    ⚠︎ Typo flag — the lower ribbon currently reads <strong>“EST. 2020 CHENT”</strong>. If that should be <strong>GHENT</strong>, re-export the artwork before this hits production surfaces.
+  <!-- ═════════════ Horizontal lockup ═════════════ -->
+  <div class="group">
+    <div class="sub-eyebrow">Horizontal lockup · nav bars · footers</div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <img src="../assets/logo-crest.png" height="48" style="height:48px;width:auto;display:block;" alt="">
+      <span style="display:flex;flex-direction:column;line-height:1;">
+        <span style="font-size:22px;font-weight:800;letter-spacing:-0.03em;color:var(--stone-900);font-family:var(--font-sans);">ICG</span>
+        <span style="font-size:9px;font-weight:600;letter-spacing:0.2em;color:var(--stone-500);text-transform:uppercase;margin-top:5px;font-family:var(--font-sans);">Indian Cricket Ghent</span>
+      </span>
+    </div>
+    <div class="tile-label">Crest + wordmark</div>
+    <div class="tile-sub">use when the banner text is too small to read on its own</div>
   </div>
 
-  <div class="typo-note" style="margin-top:14px;">
-    Crest artwork lives at <code class="tok">design_handoff/assets/logo-mark.png</code> (1024×1536, PNG with transparency). The brand is now navy + gold — pair the shield with <code class="tok">--pitch-950</code> backgrounds and the <code class="tok">--amber-500</code> accent for in-product surfaces.
+  <div style="margin-top:16px;font-size:12px;color:var(--stone-500);">
+    The ICG club crest, used as supplied. Trimmed artwork lives at
+    <code style="font-family:var(--font-mono);font-size:11px;">assets/logo-crest.png</code>
+    (tight crop, for in-app use); the full padded export is at
+    <code style="font-family:var(--font-mono);font-size:11px;">assets/logo-crest-full.png</code>.
+    Render it by height and let the width follow — the crest is portrait (~0.79 : 1).
+    Keep clear space of at least half the crown's height on every side.
   </div>
 </div>
 </body></html>
