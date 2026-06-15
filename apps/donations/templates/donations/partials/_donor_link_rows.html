@@ -1,0 +1,42 @@
+{% comment %}
+Unlinked bank-donor groups, each with a member picker. Submitting POSTs to
+{% url 'link-donors' %} and swaps the whole list (#donor-link-list) with the
+remaining unlinked donors.
+
+Args:
+  groups   list of {iban, name, total, count}, largest first
+  members  active User queryset for the picker
+{% endcomment %}
+{% if groups %}
+<div class="space-y-3">
+    {% for g in groups %}
+    <form class="card card-body flex flex-col sm:flex-row sm:items-center gap-3"
+          hx-post="{% url 'link-donors' %}" hx-target="#donor-link-list" hx-swap="innerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="iban" value="{{ g.iban }}">
+        <input type="hidden" name="name" value="{{ g.name }}">
+        <div class="min-w-0 flex-1">
+            <div class="text-sm font-semibold text-stone-800 truncate">{{ g.name }}</div>
+            <div class="micro-label mt-0.5 normal-case">
+                {% if g.iban %}{{ g.iban }} · {% endif %}€{{ g.total|floatformat:2 }} · {{ g.count }} gift{{ g.count|pluralize }}
+            </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+            <label class="sr-only" for="member-{{ forloop.counter }}">Member</label>
+            <select name="user" id="member-{{ forloop.counter }}" required
+                    class="form-select !w-auto min-w-[10rem]">
+                <option value="">Link to member…</option>
+                {% for m in members %}
+                <option value="{{ m.id }}">{{ m.get_full_name|default:m.username }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary btn-md">Link</button>
+        </div>
+    </form>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card card-body text-center">
+    <p class="text-sm text-stone-500">🎉 Every bank donation is linked to a member.</p>
+</div>
+{% endif %}

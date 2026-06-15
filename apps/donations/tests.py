@@ -1,10 +1,12 @@
+from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Donation, DonationCampaign, DonationSettings
+from apps.banking.models import BankLink, BankTransaction
+from .models import Donation, DonationCampaign, DonationSettings, DonorLink
 
 User = get_user_model()
 
@@ -120,3 +122,59 @@ class SupportPageTests(TestCase):
             {'donor_name': 'Guest', 'amount': '0', 'donated_on': '2026-06-10'},
         )
         self.assertEqual(self.campaign.donations.count(), 0)
+
+
+class DonorLinkTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(username="boss", password="x", is_staff=True)
+        self.member = User.objects.create_user(username="ravi", first_name="Ravi", password="x")
+        self.campaign = DonationCampaign.get_default()
+
+    def _bank_donation(self, iban="", name="JOHN SMITH", txn_id="t1", amount="25.00"):
+        d = Donation.objects.create(
+            campaign=self.campaign, donor_name=name,
+            amount=Decimal(amount), source=Donation.SOURCE_BANK,
+        )
+        link = BankLink.objects.create(label="Club")
+        BankTransaction.objects.create(
+            link=link, transaction_id=txn_id, booked_on=date(2026, 6, 1),
+            amount=Decimal(amount), counterparty_iban=iban, counterparty_name=name,
+            donation=d,
+        )
+        return d
+
+    def test_resolve_by_iban(self):
+        DonorLink.objects.create(user=self.member, counterparty_iban="BE68539", counterparty_name="J S")
+        self.assertEqual(DonorLink.resolve("be68539", "anything"), self.member)  # case-insensitive
+
+    def test_resolve_by_name_when_no_iban(self):
+        DonorLink.objects.create(user=self.member, counterparty_iban="", counterparty_name="John Smith")
+        self.assertEqual(DonorLink.resolve("", "JOHN SMITH"), self.member)
+
+    def test_resolve_none_when_unknown(self):
+        self.assertIsNone(DonorLink.resolve("BE999", "Nobody"))
+
+    def test_link_view_creates_link_and_backfills(self):
+        d = self._bank_donation(iban="BE68539", name="JOHN SMITH")
+        self.client.force_login(self.staff)
+        resp = self.client.post(
+            reverse('link-donors'),
+            {'iban': 'BE68539', 'name': 'JOHN SMITH', 'user': self.member.id},
+        )
+        self.assertEqual(resp.status_code, 302)
+        d.refresh_from_db()
+        self.assertEqual(d.user, self.member)  # back-filled
+        self.assertTrue(
+            DonorLink.objects.filter(counterparty_iban="BE68539", user=self.member).exists()
+        )
+
+    def test_link_view_requires_staff(self):
+        self.client.force_login(self.member)
+        resp = self.client.get(reverse('link-donors'))
+        self.assertEqual(resp.status_code, 302)  # staff_member_required bounces non-staff
+
+    def test_importer_prefers_donorlink_over_fuzzy_match(self):
+        from apps.banking.services.importer import _match_user
+        DonorLink.objects.create(user=self.member, counterparty_iban="BE777", counterparty_name="Z")
+        bt = BankTransaction(counterparty_iban="BE777", counterparty_name="Z")
+        self.assertEqual(_match_user(bt), self.member)

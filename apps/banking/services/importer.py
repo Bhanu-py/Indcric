@@ -222,12 +222,21 @@ def _pick_campaign(bt: BankTransaction) -> DonationCampaign:
 
 
 def _match_user(bt: BankTransaction):
-    """Best-effort donor -> User mapping. Conservative on purpose: only match
-    when there is EXACTLY ONE candidate by (first_name, last_name). Ambiguous
-    matches leave user=None so the public wall shows counterparty_name and a
-    treasurer can correct it in admin.
+    """Donor -> User mapping.
+
+    A staff-curated DonorLink (keyed on IBAN, then name) wins — that's the
+    durable, intentional mapping made on the Link donors page. Otherwise fall
+    back to a conservative auto match: only when there is EXACTLY ONE candidate
+    by (first_name, last_name). Ambiguous matches leave user=None so the public
+    wall shows counterparty_name until a treasurer links it.
     """
     from django.contrib.auth import get_user_model
+    from apps.donations.models import DonorLink
+
+    linked = DonorLink.resolve(bt.counterparty_iban, bt.counterparty_name)
+    if linked is not None:
+        return linked
+
     User = get_user_model()
 
     name = (bt.counterparty_name or '').strip()
