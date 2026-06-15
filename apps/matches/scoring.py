@@ -17,7 +17,7 @@ Cricket conventions used here:
 """
 from django.db import transaction
 
-from .models import Innings, Delivery, Retirement
+from .models import Innings, Delivery, Match, Player, Retirement
 
 
 # ── Derivation (pure reads) ──────────────────────────────────────────────────
@@ -251,6 +251,43 @@ def career_stats(user):
     has_data = bool(b_inns or bowl or fielding['catches'] or fielding['runouts'] or fielding['stumpings'])
     return {'batting': batting, 'bowling': bowling, 'fielding': fielding,
             'matches': matches, 'has_data': has_data}
+
+
+def player_recent_matches(user, limit=6):
+    """A user's most recent matches (newest by session date) with their own
+    batting/bowling line, for the WhatsApp HISTORY reply. Each dict:
+    match, session, date, runs, balls, wickets, result (str|None), won (bool|None)."""
+    match_ids = list(
+        Player.objects.filter(user=user)
+        .values_list('team__match_id', flat=True).distinct()
+    )
+    if not match_ids:
+        return []
+    matches = (
+        Match.objects.filter(id__in=match_ids)
+        .select_related('session', 'winner')
+        .order_by('-session__date', '-id')[:limit]
+    )
+    out = []
+    for m in matches:
+        bat = list(Delivery.objects.filter(innings__match=m, striker__user=user))
+        runs = sum(d.runs_off_bat for d in bat)
+        balls = sum(1 for d in bat if d.extra_type != Delivery.EXTRA_WIDE)
+        wkts = Delivery.objects.filter(
+            innings__match=m, bowler__user=user, is_wicket=True,
+            dismissal_type__in=Delivery.BOWLER_DISMISSALS,
+        ).count()
+        team_ids = set(
+            Player.objects.filter(user=user, team__match=m).values_list('team_id', flat=True)
+        )
+        won = (m.winner_id in team_ids) if m.winner_id else None
+        out.append({
+            'match': m, 'session': m.session,
+            'date': m.session.date if m.session else None,
+            'runs': runs, 'balls': balls, 'wickets': wkts,
+            'result': result_line(m), 'won': won,
+        })
+    return out
 
 
 def result_line(match):
