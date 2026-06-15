@@ -518,7 +518,7 @@
                                 <div class="flex flex-wrap gap-1.5">
                                     {% for v in yes_voters %}
                                     <span class="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100">
-                                        <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[9px] font-bold">{{ v.user.username|first|upper }}</span>
+                                        {% if v.user.avatar %}<img src="{{ v.user.avatar.url }}" alt="{{ v.user.username }}" class="w-4 h-4 rounded-full object-cover" loading="lazy"/>{% else %}<span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[9px] font-bold">{{ v.user.username|first|upper }}</span>{% endif %}
                                         <span class="text-emerald-800">{{ v.user.username }}</span>
                                     </span>
                                     {% empty %}
@@ -531,7 +531,7 @@
                                 <div class="flex flex-wrap gap-1.5">
                                     {% for u in no_voters %}
                                     <span class="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full bg-red-50 border border-red-100">
-                                        <span class="w-4 h-4 rounded-full bg-red-100 text-red-500 flex items-center justify-center text-[9px] font-bold">{{ u.username|first|upper }}</span>
+                                        {% if u.avatar %}<img src="{{ u.avatar.url }}" alt="{{ u.username }}" class="w-4 h-4 rounded-full object-cover" loading="lazy"/>{% else %}<span class="w-4 h-4 rounded-full bg-red-100 text-red-500 flex items-center justify-center text-[9px] font-bold">{{ u.username|first|upper }}</span>{% endif %}
                                         <span class="text-red-700">{{ u.username }}</span>
                                     </span>
                                     {% empty %}

@@ -216,7 +216,7 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for session in previous_sessions %}
-                {% include "_components/session_card.html" with session=session is_staff=user.is_staff past=True %}
+                {% include "_components/session_card.html" with session=session vote_count=vote_counts|get_item:session.id voters=session_voters|get_item:session.id is_staff=user.is_staff past=True %}
             {% empty %}
                 <div class="col-span-3 py-8 text-center">
                     <p class="text-sm text-stone-400">No previous sessions yet.</p>
