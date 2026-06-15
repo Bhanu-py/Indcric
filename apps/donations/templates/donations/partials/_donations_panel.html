@@ -64,45 +64,30 @@ Args:
         {% endif %}
     {% endif %}
 
-    <!-- 2 · Supporters — collapsible dropdown. Above How-to-donate so the
-         social-proof landing reads "who's already in" before the call-to-action. -->
-    <div class="border-t border-stone-100 pt-4" x-data="{ openSup: {% if just_logged %}true{% else %}false{% endif %} }">
-        <button type="button" @click="openSup = !openSup" class="w-full flex items-center justify-between text-left">
-            <div class="flex items-center gap-2">
-                <h3 class="text-sm font-bold text-stone-800">Supporters</h3>
-                {% include "_components/badge.html" with variant="green" label=campaign.supporter_count|stringformat:"s" %}
-            </div>
-            <svg class="w-4 h-4 text-stone-400 transition-transform" :class="openSup ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        </button>
-        <div x-show="openSup" x-cloak class="mt-3">
-            {% if just_logged %}
-            <div class="alert alert-success-box mb-3">Logged €{{ just_logged.amount|floatformat:2 }} from {{ just_logged.display_name }}. 🙏</div>
-            {% endif %}
-            {% if donations %}
-            <ul class="divide-y divide-stone-100 -my-2">
-                {% for d in donations %}
-                <li class="flex items-center gap-3 py-2.5">
-                    <span class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold shrink-0">{{ d.display_name|first|upper }}</span>
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-1.5 min-w-0">
-                            <span class="text-sm font-semibold text-stone-800 truncate">{{ d.display_name }}</span>
-                            {% if d.source == 'bank' %}
-                            <span class="text-[10px] uppercase tracking-wide bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded shrink-0" title="Auto-imported from the linked bank account">auto</span>
-                            {% endif %}
-                        </div>
-                        {% if d.note %}<div class="text-xs text-stone-400 truncate">{{ d.note }}</div>{% endif %}
-                    </div>
-                    <div class="text-right shrink-0">
-                        <div class="text-sm font-bold text-stone-900 tabular-nums">€{{ d.amount|floatformat:2 }}</div>
-                        <div class="text-[11px] text-stone-400">{{ d.donated_on|date:"j M" }}</div>
-                    </div>
-                </li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <p class="text-sm text-stone-400 text-center py-3">Be the first to support this. 🏏</p>
-            {% endif %}
+    <!-- 2 · Supporters — always-visible "wall of fame" rail. Above How-to-donate
+         so the social-proof landing reads "who's already in" before the CTA.
+         The newest gift is highlighted; the rail swipes horizontally on mobile. -->
+    <div class="border-t border-stone-100 pt-4">
+        <div class="flex items-center gap-2 {% if donations %}mb-1{% endif %}">
+            <span class="inline-flex text-amber-500">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+            </span>
+            <h3 class="text-sm font-bold text-stone-800">Supporters</h3>
+            <span class="badge badge-green">{{ campaign.supporter_count }}</span>
         </div>
+        {% if donations %}
+        <p class="text-[13px] text-stone-500 leading-relaxed mb-3.5">
+            Thank you to the {{ campaign.supporter_count }} {% if campaign.supporter_count == 1 %}player{% else %}players and friends{% endif %} backing this — every euro keeps the club on the pitch.
+        </p>
+        {% endif %}
+        {% if just_logged %}
+        <div class="alert alert-success-box mb-3.5">Logged €{{ just_logged.amount|floatformat:2 }} from {{ just_logged.display_name }}. 🙏</div>
+        {% endif %}
+        {% if donations %}
+        {% include "donations/partials/_supporter_wall.html" with donations=donations %}
+        {% else %}
+        <p class="text-sm text-stone-400 text-center py-3">Be the first to support this. 🏏</p>
+        {% endif %}
     </div>
 
     <!-- 3 · How to donate (club bank account) -->
