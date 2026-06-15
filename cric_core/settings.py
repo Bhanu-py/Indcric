@@ -71,10 +71,12 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    # Cloudinary apps go before staticfiles per django-cloudinary-storage docs.
-    # Only registered when CLOUDINARY_URL is configured so local dev (no creds)
-    # and staging-before-creds don't require the package to be importable/active.
-    *(["cloudinary_storage", "cloudinary"] if CLOUDINARY_URL else []),
+    # NOTE: cloudinary_storage / cloudinary are intentionally NOT in INSTALLED_APPS.
+    # The MediaCloudinaryStorage backend works purely via STORAGES (see below) and
+    # the cloudinary lib auto-configures from the CLOUDINARY_URL env var. Adding
+    # cloudinary_storage here registers its own collectstatic command, which reads
+    # the legacy settings.STATICFILES_STORAGE and crashes under the STORAGES dict
+    # (AttributeError) — breaking the prod build. Leave them out.
     "django.contrib.staticfiles",
     'django_cleanup.apps.CleanupConfig',
 
