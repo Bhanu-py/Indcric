@@ -200,17 +200,26 @@
     The session is the unit; mark who showed up to split cost.
     {% endcomment %}
     {% if is_past %}
-    <div class="card overflow-hidden mb-6">
-        <div class="card-header flex items-center justify-between flex-wrap gap-2">
-            {% include "_components/eyebrow.html" with label="Attendance" %}
+    <div class="card overflow-hidden mb-6" x-data="{ expanded: false }">
+        {% comment %} Folded by default so the roster doesn't bury the matches below. {% endcomment %}
+        <button type="button" @click="expanded = !expanded"
+                class="card-header w-full flex items-center justify-between flex-wrap gap-2 text-left">
+            <div class="flex items-center gap-2 min-w-0">
+                <svg class="w-4 h-4 text-stone-400 transition-transform shrink-0" :class="expanded ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                {% include "_components/eyebrow.html" with label="Attendance" %}
+            </div>
             <div class="flex items-center gap-2">
+                {% if attendance_roster %}
+                <span class="font-mono text-[10px] text-stone-500 uppercase tracking-[0.08em]">{{ attendance_present_ids|length }}/{{ attendance_roster|length }} present</span>
+                {% endif %}
                 {% if session.attendance_confirmed %}
                     {% include "_components/badge.html" with variant="green" label="Confirmed" %}
                 {% else %}
                     {% include "_components/badge.html" with variant="amber" label="Pending" %}
                 {% endif %}
             </div>
-        </div>
+        </button>
+        <div x-show="expanded" x-cloak>
 
         {% if user.is_staff and addable_users %}
         <div x-data="{ open: false }" class="px-5 py-3 border-b border-stone-100 bg-stone-50">
@@ -266,9 +275,13 @@
                               {% if sp.id in attendance_present_ids %}bg-pitch-50{% else %}bg-white{% endif %}
                               {% if user.is_staff %}cursor-pointer hover:border-pitch-200{% else %}cursor-default{% endif %}">
                     <div class="flex items-center gap-3 min-w-0">
+                        {% if sp.user.avatar %}
+                        <img src="{{ sp.user.avatar.url }}" alt="{{ sp.user.username }}" class="w-7 h-7 rounded-full object-cover shrink-0" loading="lazy"/>
+                        {% else %}
                         <span class="w-7 h-7 rounded-full bg-pitch-100 text-pitch-700 flex items-center justify-center text-xs font-bold shrink-0">
                             {{ sp.user.username|first|upper }}
                         </span>
+                        {% endif %}
                         <div class="min-w-0">
                             <p class="text-[13px] font-medium text-stone-800 truncate">{{ sp.user.get_full_name|default:sp.user.username }}</p>
                             <p class="font-mono text-[10px] text-stone-400 mt-0.5">
@@ -317,6 +330,7 @@
             {% endif %}
         </form>
         {% endif %}
+        </div>
     </div>
     {% endif %}
 

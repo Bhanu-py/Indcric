@@ -51,9 +51,11 @@ def home(request):
         session.is_live = session.id in live_session_ids
 
     session_vote_counts = {}
+    session_voters = {}  # session_id -> yes-voter users (for the dashboard avatar stack)
     for session in all_sessions:
         if hasattr(session, 'poll'):
-            yes_votes = session.poll.votes.filter(choice='yes').count()
+            yes_qs = session.poll.votes.filter(choice='yes').select_related('user')
+            yes_votes = yes_qs.count()
             no_votes = session.poll.votes.filter(choice='no').count()
             total_votes = yes_votes + no_votes
             yes_percentage = (yes_votes / total_votes * 100) if total_votes > 0 else 0
@@ -63,6 +65,9 @@ def home(request):
                 'total_votes': total_votes,
                 'yes_percentage': yes_percentage,
             }
+            session_voters[session.id] = [
+                v.user for v in yes_qs.order_by('user__first_name', 'user__username')[:12]
+            ]
 
     next_session = upcoming_sessions[0] if upcoming_sessions else None
     next_session_votes = (
@@ -91,6 +96,7 @@ def home(request):
         'upcoming_sessions': upcoming_sessions,
         'previous_sessions': previous_sessions,
         'vote_counts': session_vote_counts,
+        'session_voters': session_voters,
         'next_session': next_session,
         'next_session_votes': next_session_votes,
         'next_session_user_vote': next_session_user_vote,

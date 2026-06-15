@@ -30,10 +30,16 @@ Args:
                 {% if campaign.donations.all %}
                 <div class="flex items-center">
                     {% for d in campaign.donations.all|slice:":5" %}
-                    <span class="relative w-[22px] h-[22px] rounded-full bg-emerald-100 text-emerald-700 ring-2 ring-white flex items-center justify-center text-[10px] font-bold{% if not forloop.first %} -ml-[7px]{% endif %}" style="z-index:{{ forloop.revcounter }}">{{ d.display_name|first|upper }}</span>
+                    <span class="relative inline-flex w-[22px] h-[22px] rounded-full ring-2 ring-white{% if not forloop.first %} -ml-[7px]{% endif %}" style="z-index:{{ forloop.revcounter }}">
+                        {% if d.user and not d.is_anonymous and d.user.avatar %}
+                        <img src="{{ d.user.avatar.url }}" alt="{{ d.display_name }}" class="w-full h-full rounded-full object-cover" loading="lazy"/>
+                        {% else %}
+                        <span class="w-full h-full rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold">{{ d.display_name|first|upper }}</span>
+                        {% endif %}
+                    </span>
                     {% endfor %}
                     {% if campaign.supporter_count > 5 %}
-                    <span class="relative w-[22px] h-[22px] rounded-full bg-stone-100 text-stone-600 ring-2 ring-white flex items-center justify-center text-[10px] font-bold -ml-[7px]">+{{ campaign.supporter_count|add:"-5" }}</span>
+                    <span class="relative inline-flex w-[22px] h-[22px] rounded-full bg-stone-100 text-stone-600 ring-2 ring-white items-center justify-center text-[10px] font-bold -ml-[7px]">+{{ campaign.supporter_count|add:"-5" }}</span>
                     {% endif %}
                 </div>
                 {% endif %}

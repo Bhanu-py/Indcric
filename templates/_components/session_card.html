@@ -77,6 +77,12 @@ Args:
             {% else %}
             <div class="vote-bar"><div class="vote-fill-yes w-0"></div></div>
             {% endif %}
+            {% if voters %}
+            <div class="flex items-center gap-2 mt-3">
+                {% include "_components/avatar_stack.html" with users=voters total=vote_count.yes_votes size=24 %}
+                <span class="text-[11px] text-stone-500">going</span>
+            </div>
+            {% endif %}
         </div>
         {% endif %}
 

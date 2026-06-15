@@ -1,0 +1,30 @@
+{% comment %}
+Overlapping avatar stack — each user's uploaded photo if they have one, else a
+coloured initial. First user sits on top; a "+N" chip shows the overflow.
+
+Usage:
+  {% include "_components/avatar_stack.html" with users=voters total=yes_count size=24 %}
+
+Args:
+  users  list of User objects (renders up to 5)
+  total  total count for the "+N" overflow chip (optional; no chip if unset/≤5)
+  size   px diameter (default 24)
+{% endcomment %}
+{% with sz=size|default:24 %}
+<div class="flex items-center">
+    {% for u in users|slice:":5" %}
+    <span class="relative inline-flex rounded-full ring-2 ring-white{% if not forloop.first %} -ml-2{% endif %}"
+          style="z-index:{{ forloop.revcounter }}; width:{{ sz }}px; height:{{ sz }}px;">
+        {% if u.avatar %}
+        <img src="{{ u.avatar.url }}" alt="{{ u.username }}" class="w-full h-full rounded-full object-cover" loading="lazy"/>
+        {% else %}
+        <span class="w-full h-full rounded-full bg-pitch-100 text-pitch-700 flex items-center justify-center text-[10px] font-bold">{{ u.get_full_name|default:u.username|first|upper }}</span>
+        {% endif %}
+    </span>
+    {% endfor %}
+    {% if total and total > 5 %}
+    <span class="relative inline-flex items-center justify-center rounded-full ring-2 ring-white bg-stone-100 text-stone-600 text-[10px] font-bold -ml-2"
+          style="width:{{ sz }}px; height:{{ sz }}px;">+{{ total|add:"-5" }}</span>
+    {% endif %}
+</div>
+{% endwith %}
