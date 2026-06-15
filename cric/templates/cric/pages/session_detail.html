@@ -1087,9 +1087,9 @@
             <span class="font-mono text-[10px] opacity-70 tracking-[0.02em]">· <span class="rating-text">${rv}</span></span>
             <span class="inline-flex gap-1 sm:gap-0.5 ml-1">
               <button type="button" onclick="addToTeam(this, 'team1')" title="Send to Team 1" aria-label="Send to Team 1"
-                      class="w-8 h-8 sm:w-[18px] sm:h-[18px] rounded-md sm:rounded-[5px] bg-pitch-700 active:bg-pitch-800 sm:hover:bg-pitch-800 text-white text-sm sm:text-[10px] font-bold leading-none">A</button>
+                      class="inline-flex items-center justify-center h-8 sm:h-[18px] px-2.5 sm:px-1.5 rounded-md sm:rounded-[5px] bg-pitch-700 active:bg-pitch-800 sm:hover:bg-pitch-800 text-white text-xs sm:text-[10px] font-bold leading-none whitespace-nowrap">Team 1</button>
               <button type="button" onclick="addToTeam(this, 'team2')" title="Send to Team 2" aria-label="Send to Team 2"
-                      class="w-8 h-8 sm:w-[18px] sm:h-[18px] rounded-md sm:rounded-[5px] bg-amber-600 active:bg-amber-700 sm:hover:bg-amber-700 text-white text-sm sm:text-[10px] font-bold leading-none">B</button>
+                      class="inline-flex items-center justify-center h-8 sm:h-[18px] px-2.5 sm:px-1.5 rounded-md sm:rounded-[5px] bg-amber-600 active:bg-amber-700 sm:hover:bg-amber-700 text-white text-xs sm:text-[10px] font-bold leading-none whitespace-nowrap">Team 2</button>
             </span>
         `;
     }
@@ -1151,7 +1151,7 @@
         el.dataset.batting = m.batting;
         el.dataset.bowling = m.bowling;
         pool.appendChild(el);
-        renderAsPoolChip(el);   // applies tint + name + A/B buttons
+        renderAsPoolChip(el);   // applies tint + name + Team 1/Team 2 buttons
 
         const opt = document.querySelector(`#add-member-select option[value="${m.id}"]`);
         if (opt) opt.remove();
