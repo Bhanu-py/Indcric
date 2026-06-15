@@ -582,8 +582,9 @@
                             {% if edit_match and edit_match.id == match.id %}Editing…{% else %}Edit Teams{% endif %}
                         </a>
                         <form method="POST" action="{% url 'delete_match' match.id %}"
-                              onsubmit="return confirm('Delete {{ match.name }}?{% if locked %} This erases the scorecard too.{% endif %} This cannot be undone.')">
+                              {% if match.has_scorecard %}onsubmit="var n=prompt('This permanently deletes {{ match.name|escapejs }} and its saved scorecard (ball-by-ball data). Type the match name to confirm:'); if(n===null){return false;} this.confirm_name.value=n; return true;"{% else %}onsubmit="return confirm('Delete {{ match.name|escapejs }}? This cannot be undone.')"{% endif %}>
                             {% csrf_token %}
+                            {% if match.has_scorecard %}<input type="hidden" name="confirm_name" value="">{% endif %}
                             <button type="submit" class="btn btn-ghost btn-sm text-stone-400 hover:text-red-500">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                             </button>

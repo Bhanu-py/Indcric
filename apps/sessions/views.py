@@ -302,6 +302,12 @@ def session_detail_view(request, session_id):
     matches = list(
         session.matches.prefetch_related('teams__players__user', 'innings').order_by('id')
     )
+    # Match ids with a recorded scorecard (>=1 ball) — their deletion is guarded
+    # (see delete_match_view, issue #39).
+    scored_match_ids = set(
+        Delivery.objects.filter(innings__match__session=session)
+        .values_list('innings__match_id', flat=True).distinct()
+    )
     # Per-match live flag: scoring started (≥1 innings) but not concluded
     # (a result is declared only once both innings exist and are closed).
     for match in matches:
@@ -309,6 +315,7 @@ def session_detail_view(request, session_id):
         match.is_live = bool(innings) and not (
             len(innings) >= 2 and all(i.is_closed for i in innings)
         )
+        match.has_scorecard = match.id in scored_match_ids
 
     edit_match_id = request.GET.get('edit_match')
     edit_match = edit_team1 = edit_team2 = None
@@ -659,6 +666,17 @@ def delete_match_view(request, match_id):
     session_id = match.session.id
 
     if request.method == 'POST':
+        # Guard (issue #39): a played match was wiped by an accidental one-tap
+        # delete. Require staff to re-type the match name before destroying a
+        # match that has a saved scorecard (innings + ball-by-ball deliveries).
+        has_scorecard = Delivery.objects.filter(innings__match=match).exists()
+        if has_scorecard and request.POST.get('confirm_name', '').strip() != match.name:
+            messages.error(
+                request,
+                f'"{match.name}" has a saved scorecard — re-type the match name to '
+                f'confirm deletion. Nothing was deleted.',
+            )
+            return redirect('session_detail', session_id=session_id)
         with transaction.atomic():
             # Delete innings first — that cascade-removes their deliveries, which
             # otherwise PROTECT the players and block the match delete.
