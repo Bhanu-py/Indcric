@@ -320,17 +320,25 @@ MEDIA_ROOT = BASE_DIR / 'media'
 #  • CLOUDINARY_URL unset → keep the existing legacy STATICFILES_STORAGE
 #    (local FileSystemStorage default for media + Whitenoise for static) exactly
 #    as-is, so local dev and pre-creds staging keep working unchanged.
+# Tests don't run collectstatic, so the hashed manifest has no entries — fall
+# back to plain static storage under test so {% static %} renders don't error.
+import sys as _sys
+_static_backend = (
+    'django.contrib.staticfiles.storage.StaticFilesStorage'
+    if 'test' in _sys.argv
+    else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+)
 if CLOUDINARY_URL:
     STORAGES = {
         'default': {
             'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
         },
         'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+            'BACKEND': _static_backend,
         },
     }
 else:
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    STATICFILES_STORAGE = _static_backend
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
