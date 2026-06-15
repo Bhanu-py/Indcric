@@ -14,7 +14,7 @@ test_examples.py
 *.sql
 *.csv
 *.json
-TGmodels/
+*.zip
 
 # Distribution / packaging
 .Python
@@ -210,3 +210,6 @@ override.tf.json
 *.p12
 *.pfx
 secrets/
+# Build output (collectstatic) and local media uploads — never commit
+staticfiles/
+media/
