@@ -295,10 +295,16 @@ def _handle_balance(wa_message_id, phone, raw):
 
 
 def _handle_history(wa_message_id, phone, raw):
-    """Reply with the user's last few games (session amount + payment status)
-    plus their current wallet balance. Read-only; mirrors _handle_balance."""
+    """Reply with the user's last few games — their batting/bowling line, result,
+    and per-session cost — plus a career summary and wallet balance. Read-only.
+
+    Stats derive from the ball-by-ball ledger (apps.matches.scoring). Cost is
+    session.cost_per_person and paid is SessionPlayer.paid (the Payment table
+    isn't populated in this deployment)."""
     from django.db.models import Sum
-    from apps.payments.models import Wallet, Payment
+    from apps.payments.models import Wallet
+    from apps.sessions.models import SessionPlayer
+    from apps.matches.scoring import career_stats, player_recent_matches
     from .services import send_text_message
 
     try:
@@ -311,22 +317,23 @@ def _handle_history(wa_message_id, phone, raw):
     if not _log_inbound(wa_message_id, phone, user, 'history', raw):
         return  # duplicate webhook
 
-    payments = (
-        Payment.objects.filter(user=user)
-        .select_related('session')
-        .order_by('-session__date', '-session__id')[:10]
+    paid_by_session = dict(
+        SessionPlayer.objects.filter(user=user).values_list('session_id', 'paid')
     )
-    rows = [
-        (
-            p.session.name,
-            p.session.date.strftime("%a %d %b") if p.session.date else "—",
-            p.amount,
-            p.status,
-        )
-        for p in payments
-    ]
+    games = []
+    for g in player_recent_matches(user, limit=6):
+        s = g['session']
+        games.append({
+            'session': s.name if s else g['match'].name,
+            'match': g['match'].name,
+            'date': s.date.strftime("%a %d %b") if s and s.date else '',
+            'runs': g['runs'], 'balls': g['balls'], 'wickets': g['wickets'],
+            'won': g['won'],
+            'amount': s.cost_per_person if s else None,
+            'paid': paid_by_session.get(s.id) if s else None,
+        })
     wallet_total = Wallet.objects.filter(user=user).aggregate(s=Sum('amount'))['s'] or 0
-    send_text_message(phone, bot_messages.history(rows, wallet_total))
+    send_text_message(phone, bot_messages.history(games, career_stats(user), wallet_total))
 
 
 def _display_name(user):

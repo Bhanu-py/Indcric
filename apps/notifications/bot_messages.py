@@ -86,24 +86,46 @@ def balance(wallet_total, unpaid_rows):
     return "\n".join(lines)
 
 
-def history(rows, wallet_total):
-    """Recent-games reply.
+def history(games, career, wallet_total):
+    """Recent-games reply: per-match batting/bowling line + result + cost, then a
+    career summary and wallet balance.
 
-    rows: iterable of (session_name, date_str, amount, status) tuples, newest
-    first. wallet_total is the user's overall wallet balance.
+    games: list of dicts {session, match, date, runs, balls, wickets, won,
+           amount (None ok), paid (None ok)}, newest first.
+    career: apps.matches.scoring.career_stats(user) output.
     """
-    rows = list(rows)
-    if not rows:
+    if not games:
         return (
             "🏏 No games on record yet.\n"
-            "Your match history shows here once you've played a confirmed session."
+            "Your match history shows here once you've played a scored match."
         )
-    lines = [f"🏏 *Your last {len(rows)} game{'' if len(rows) == 1 else 's'}*", ""]
-    for name, date_str, amount, status in rows:
-        mark = "✅" if status == "paid" else "🔸"
-        lines.append(f"{mark} {name} ({date_str}): €{amount:.2f} · {status}")
-    lines.append("")
-    lines.append(f"💰 *Wallet balance: €{wallet_total:.2f}*")
+    lines = [f"🏏 *Your last {len(games)} game{'' if len(games) == 1 else 's'}*", ""]
+    for g in games:
+        head = f"*{g['session']}*"
+        if g['date']:
+            head += f" · {g['date']}"
+        if g['won'] is True:
+            head += " · 🏆 won"
+        elif g['won'] is False:
+            head += " · lost"
+        lines.append(head)
+        bits = [g['match']]
+        if g['runs'] or g['balls']:
+            bits.append(f"🏏 {g['runs']} ({g['balls']})")
+        if g['wickets']:
+            bits.append(f"🎳 {g['wickets']} wkt{'' if g['wickets'] == 1 else 's'}")
+        amt = f"€{g['amount']:.2f}" if g['amount'] is not None else "€—"
+        bits.append(f"{amt} {'paid' if g['paid'] else 'due'}")
+        lines.append("   " + " · ".join(bits))
+    b, bo = career['batting'], career['bowling']
+    summary = f"📊 *Career:* {career['matches']} game{'' if career['matches'] == 1 else 's'}"
+    if b['innings']:
+        summary += f" · {b['runs']} runs (HS {b['hs_label']})"
+    if bo['wickets']:
+        summary += f" · {bo['wickets']} wkts"
+        if bo['best']:
+            summary += f" (best {bo['best']})"
+    lines += ["", summary, f"💰 *Wallet: €{wallet_total:.2f}*"]
     return "\n".join(lines)
 
 
