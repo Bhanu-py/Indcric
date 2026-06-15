@@ -168,11 +168,13 @@
          COST SPLIT — 3 stat tiles
     ═══════════════════════════════════ -->
     <div class="card overflow-hidden mb-6">
-        <div class="card-header">
-            {% include "_components/eyebrow.html" with label="Cost split" %}
-        </div>
-        <!-- Tighter padding than .card-body (py-5) since each stat-col already has its own py-2 -->
-        <div class="px-6 py-3">
+        <!-- One tight container: the eyebrow sits directly above the stat row
+             (no bordered card-header gap). Each stat-col already has its own py-2. -->
+        <div class="px-6 pt-4 pb-3">
+            <div class="section-eyebrow !mb-3">
+                <div class="section-eyebrow-bar"></div>
+                <h2 class="eyebrow text-stone-800 !mb-0">Cost split</h2>
+            </div>
             <div class="grid grid-cols-3 items-stretch">
                 {% with cost_str=session.cost|stringformat:"s" %}
                     {% include "_components/stat_column.html" with dot="stone" label="Venue fee" value="€"|add:cost_str first=True %}
