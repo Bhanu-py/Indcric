@@ -1,0 +1,72 @@
+{% comment %}
+Profile-picture set/remove form for the settings card.
+Mirrors phone_form.html: HTMX-posts to profile-avatarchange, swaps #avatar-form.
+The set and remove actions are two separate forms so each is a single tap.
+{% endcomment %}
+<div class="space-y-4" x-data="{ name: '' }">
+    <div class="flex items-center gap-4">
+        <img src="{{ request.user.avatar_url }}" alt="{{ request.user.username }}"
+             class="w-16 h-16 rounded-full object-cover ring-2 ring-stone-200 shrink-0"/>
+        <div class="min-w-0">
+            <p class="text-sm font-medium text-stone-800">
+                {% if request.user.avatar %}Your photo{% else %}No photo yet{% endif %}
+            </p>
+            <p class="text-xs text-stone-400 mt-0.5">JPG or PNG, up to 5 MB</p>
+        </div>
+    </div>
+
+    <!-- Upload / replace -->
+    <form hx-post="{% url 'profile-avatarchange' %}"
+          hx-target="#avatar-form"
+          hx-swap="innerHTML"
+          hx-encoding="multipart/form-data"
+          class="space-y-3">
+        {% csrf_token %}
+        <div>
+            <label for="id_avatar"
+                   class="btn btn-secondary btn-md w-full sm:w-auto cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                <span x-text="name || 'Choose photo'">Choose photo</span>
+            </label>
+            {{ form.avatar }}
+            <script>
+                document.getElementById('id_avatar')?.addEventListener('change', function (e) {
+                    var f = e.target.files && e.target.files[0];
+                    e.target.closest('[x-data]') &&
+                        (Alpine.$data(e.target.closest('[x-data]')).name = f ? f.name : '');
+                });
+            </script>
+            {% for error in form.avatar.errors %}
+            <p class="mt-2 text-xs text-red-600 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                {{ error }}
+            </p>
+            {% endfor %}
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+            <button type="submit" class="btn btn-primary btn-md">Save photo</button>
+            <button type="button"
+                    hx-get="{% url 'profile-avatarchange' %}"
+                    hx-target="#avatar-form"
+                    hx-swap="innerHTML"
+                    class="btn btn-secondary btn-md">
+                Cancel
+            </button>
+        </div>
+    </form>
+
+    {% if request.user.avatar %}
+    <!-- Remove (separate single-tap action) -->
+    <form hx-post="{% url 'profile-avatarchange' %}"
+          hx-target="#avatar-form"
+          hx-swap="innerHTML"
+          class="pt-1">
+        {% csrf_token %}
+        <input type="hidden" name="remove" value="1">
+        <button type="submit" class="btn btn-danger btn-md">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            Remove photo
+        </button>
+    </form>
+    {% endif %}
+</div>

@@ -13,9 +13,14 @@
 
         <div class="px-5 sm:px-6 pb-5">
             <div class="flex items-end justify-between -mt-7 mb-3">
+                {% if user.avatar %}
+                <img src="{{ user.avatar_url }}" alt="{{ user.username }}"
+                     class="w-[60px] h-[60px] rounded-2xl object-cover ring-4 ring-amber-400/30 shadow-lg shrink-0"/>
+                {% else %}
                 <div class="w-[60px] h-[60px] rounded-2xl bg-amber-500 ring-4 ring-amber-400/30 shadow-lg flex items-center justify-center text-white text-2xl font-bold shrink-0">
                     {{ user.username|first|upper }}
                 </div>
+                {% endif %}
                 {% if user == request.user %}
                 {% if edit_mode %}
                 <button type="submit" form="profile-edit-form" class="btn btn-secondary btn-sm">

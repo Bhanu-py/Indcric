@@ -16,7 +16,7 @@ from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
 
 from .models import User, PlayerProfile
-from .forms import ProfileForm, EmailForm, UsernameForm, OnboardingForm, PhoneForm
+from .forms import ProfileForm, EmailForm, UsernameForm, OnboardingForm, PhoneForm, AvatarForm
 from .tables import UserHTMxTable
 from .filters import UserFilter
 
@@ -336,6 +336,47 @@ def profile_phonechange(request):
             messages.success(request, 'WhatsApp number updated.')
         else:
             messages.warning(request, 'Invalid phone number.')
+    return redirect('profile-settings')
+
+
+@login_required
+def profile_avatarchange(request):
+    """Self-service profile picture: set (upload) or remove.
+
+    Mirrors profile_phonechange — GET renders the partial, POST handles both the
+    upload (multipart) and a `remove` action. django-cleanup deletes the old
+    file from storage on replace/remove, so there's no manual file cleanup."""
+    if request.htmx:
+        if request.method == 'GET':
+            form = AvatarForm(instance=request.user)
+            return render(request, 'partials/avatar_form.html', {'form': form})
+        if request.method == 'POST':
+            if request.POST.get('remove'):
+                if request.user.avatar:
+                    request.user.avatar = None
+                    request.user.save()  # django-cleanup deletes the old file
+                    messages.success(request, 'Profile picture removed.')
+                return redirect('profile-settings')
+            form = AvatarForm(request.POST, request.FILES, instance=request.user)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Profile picture updated.')
+                return redirect('profile-settings')
+            return render(request, 'partials/avatar_form.html', {'form': form})
+
+    if request.method == 'POST':
+        if request.POST.get('remove'):
+            if request.user.avatar:
+                request.user.avatar = None
+                request.user.save()
+                messages.success(request, 'Profile picture removed.')
+            return redirect('profile-settings')
+        form = AvatarForm(request.POST, request.FILES, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Profile picture updated.')
+        else:
+            messages.warning(request, 'Could not update profile picture.')
     return redirect('profile-settings')
 
 
