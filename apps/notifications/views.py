@@ -199,6 +199,8 @@ def _process_message(msg, value):
         _handle_status(wa_message_id, phone, msg)
     elif text_lower in ('score', 'scores', '/score', 'live'):
         _handle_score(wa_message_id, phone, msg)
+    elif text_lower in ('history', 'hist', '/history', 'games'):
+        _handle_history(wa_message_id, phone, msg)
     elif text_lower in ('help', '/help', '?'):
         _handle_help(wa_message_id, phone, msg)
     else:
@@ -290,6 +292,41 @@ def _handle_balance(wa_message_id, phone, raw):
     )
     unpaid_rows = [(p.session.name, p.amount) for p in unpaid]
     send_text_message(phone, bot_messages.balance(wallet_total, unpaid_rows))
+
+
+def _handle_history(wa_message_id, phone, raw):
+    """Reply with the user's last few games (session amount + payment status)
+    plus their current wallet balance. Read-only; mirrors _handle_balance."""
+    from django.db.models import Sum
+    from apps.payments.models import Wallet, Payment
+    from .services import send_text_message
+
+    try:
+        user = User.objects.get(phone=phone)
+    except User.DoesNotExist:
+        if _log_inbound(wa_message_id, phone, None, 'history', raw):
+            send_text_message(phone, bot_messages.not_recognised())
+        return
+
+    if not _log_inbound(wa_message_id, phone, user, 'history', raw):
+        return  # duplicate webhook
+
+    payments = (
+        Payment.objects.filter(user=user)
+        .select_related('session')
+        .order_by('-session__date', '-session__id')[:10]
+    )
+    rows = [
+        (
+            p.session.name,
+            p.session.date.strftime("%a %d %b") if p.session.date else "—",
+            p.amount,
+            p.status,
+        )
+        for p in payments
+    ]
+    wallet_total = Wallet.objects.filter(user=user).aggregate(s=Sum('amount'))['s'] or 0
+    send_text_message(phone, bot_messages.history(rows, wallet_total))
 
 
 def _display_name(user):

@@ -36,6 +36,7 @@ def help_text():
         "Just reply with:\n"
         "✅ *YES* or ❌ *NO* — RSVP to the current poll\n"
         "💰 *BALANCE* — your wallet + what you owe\n"
+        "🗂️ *HISTORY* — your last games + wallet\n"
         "📊 *STATUS* — who's in / out\n"
         "🏆 *SCORE* — live score of the current match\n"
         "❓ *HELP* — show this message\n"
@@ -82,6 +83,27 @@ def balance(wallet_total, unpaid_rows):
     else:
         lines.append("")
         lines.append("✅ You're all settled — no outstanding payments.")
+    return "\n".join(lines)
+
+
+def history(rows, wallet_total):
+    """Recent-games reply.
+
+    rows: iterable of (session_name, date_str, amount, status) tuples, newest
+    first. wallet_total is the user's overall wallet balance.
+    """
+    rows = list(rows)
+    if not rows:
+        return (
+            "🏏 No games on record yet.\n"
+            "Your match history shows here once you've played a confirmed session."
+        )
+    lines = [f"🏏 *Your last {len(rows)} game{'' if len(rows) == 1 else 's'}*", ""]
+    for name, date_str, amount, status in rows:
+        mark = "✅" if status == "paid" else "🔸"
+        lines.append(f"{mark} {name} ({date_str}): €{amount:.2f} · {status}")
+    lines.append("")
+    lines.append(f"💰 *Wallet balance: €{wallet_total:.2f}*")
     return "\n".join(lines)
 
 
