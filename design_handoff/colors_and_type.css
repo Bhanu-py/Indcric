@@ -139,16 +139,16 @@
   --fs-3xl:  2.4rem;    /* ≈38 — hero on sign-in */
   --fs-4xl:  3rem;      /* 48 — marketing hero */
 
-  --fw-regular:  400;
-  --fw-medium:   500;
-  --fw-semibold: 600;
-  --fw-bold:     700;
-  --fw-extra:    800;  /* hero, sign-in heading */
+  --fw-regular:  400; /* @kind font */
+  --fw-medium:   500; /* @kind font */
+  --fw-semibold: 600; /* @kind font */
+  --fw-bold:     700; /* @kind font */
+  --fw-extra:    800; /* @kind font */
 
-  --lh-tight:   1.12;
-  --lh-snug:    1.3;
-  --lh-normal:  1.5;
-  --lh-relaxed: 1.6;
+  --lh-tight:   1.12; /* @kind font */
+  --lh-snug:    1.3;  /* @kind font */
+  --lh-normal:  1.5;  /* @kind font */
+  --lh-relaxed: 1.6;  /* @kind font */
 
   --tracking-tight: -0.015em;
   --tracking-wide:   0.05em;   /* uppercase eyebrows / labels */
@@ -186,11 +186,11 @@
   /* -----------------------------------------------------------
      MOTION
      ----------------------------------------------------------- */
-  --ease-out: cubic-bezier(0, 0, 0.2, 1);
-  --dur-fast: 100ms;
-  --dur-base: 150ms;
-  --dur-slow: 300ms;
-  --dur-vote: 500ms;   /* vote-bar fill, rating-fill grow */
+  --ease-out: cubic-bezier(0, 0, 0.2, 1); /* @kind other */
+  --dur-fast: 100ms; /* @kind other */
+  --dur-base: 150ms; /* @kind other */
+  --dur-slow: 300ms; /* @kind other */
+  --dur-vote: 500ms; /* @kind other */
 }
 
 /* ============================================================

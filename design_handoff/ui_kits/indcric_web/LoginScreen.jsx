@@ -1,7 +1,7 @@
 /* global React, Button, Input, Icons */
 const { Roundel, Mail, Lock, ArrowRt, Check } = Icons;
 
-function LoginScreen({ onLogin }) {
+function LoginScreen({ onLogin, onSignUp }) {
   const [username, setUsername] = React.useState('bhanu');
   const [password, setPassword] = React.useState('••••••••');
   const [error, setError] = React.useState('');
@@ -25,7 +25,7 @@ function LoginScreen({ onLogin }) {
         <div style={{position:'relative', zIndex:1, padding:'40px 48px',
                      display:'flex', flexDirection:'column', height:'100%'}}>
           <a style={{display:'flex', alignItems:'center', gap:10, width:'fit-content'}}>
-            <Roundel size={36}/>
+            <Roundel size={60}/>
             <span style={{fontWeight:600, fontSize:14, color:'#fff', letterSpacing:'-0.005em'}}>ICG</span>
           </a>
 
@@ -122,7 +122,7 @@ function LoginScreen({ onLogin }) {
           <div style={{marginTop:28, paddingTop:20, borderTop:'1px solid var(--stone-100)', textAlign:'center'}}>
             <p style={{fontSize:13, color:'var(--stone-500)', margin:0}}>
               New to IndCric?
-              <a style={{marginLeft:6, fontWeight:500, color:'var(--pitch-700)', cursor:'pointer'}}>
+              <a onClick={onSignUp} style={{marginLeft:6, fontWeight:500, color:'var(--pitch-700)', cursor:'pointer'}}>
                 Create an account →
               </a>
             </p>

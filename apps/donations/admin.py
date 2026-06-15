@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Donation, DonationCampaign, DonationSettings, FundItem
+from .models import Donation, DonationCampaign, DonationSettings, DonorLink, FundItem
 
 
 @admin.register(DonationSettings)
@@ -41,4 +41,11 @@ class DonationAdmin(admin.ModelAdmin):
     list_display = ('display_name', 'amount', 'campaign', 'source', 'donated_on', 'logged_by')
     list_filter = ('source', 'campaign', 'is_anonymous', 'donated_on')
     search_fields = ('donor_name', 'user__username', 'user__first_name', 'note')
+    autocomplete_fields = ('user',)
+
+
+@admin.register(DonorLink)
+class DonorLinkAdmin(admin.ModelAdmin):
+    list_display = ('counterparty_name', 'counterparty_iban', 'user', 'created_at')
+    search_fields = ('counterparty_name', 'counterparty_iban', 'user__username', 'user__first_name')
     autocomplete_fields = ('user',)

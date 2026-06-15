@@ -16,3 +16,5 @@ whitenoise
 django-anymail[brevo]
 requests
 PyJWT[crypto]
+cloudinary
+django-cloudinary-storage

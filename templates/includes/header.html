@@ -66,9 +66,7 @@
                 <div x-data="{ open: false }" class="relative">
                     <button @click="open = !open" @click.away="open = false"
                             class="flex items-center gap-2 h-10 px-2 rounded-lg hover:bg-white/10 transition-colors">
-                        <img class="h-7 w-7 rounded-full object-cover ring-2 ring-amber-400"
-                             src="https://ui-avatars.com/api/?name={{ request.user.username }}&background=166534&color=fff&bold=true"
-                             alt="{{ request.user.username }}"/>
+                        {% include "_components/avatar.html" with user=request.user size=28 ring="ring-2 ring-amber-400" %}
                         <span class="hidden sm:block text-sm font-medium max-w-[120px] truncate">
                             {{ request.user.get_full_name|default:request.user.username }}
                         </span>

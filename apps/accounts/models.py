@@ -21,6 +21,20 @@ class User(AbstractUser):
         validators=[MinValueValidator(0), MaxValueValidator(5)]
     )
     phone = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    # Stored on Cloudinary in staging/prod (MediaCloudinaryStorage), on the local
+    # filesystem in dev. django-cleanup deletes the old file on replace/remove.
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+
+    @property
+    def avatar_url(self):
+        """Uploaded avatar URL, or a generated ui-avatars fallback (matching the
+        initials placeholder used across the header / chips today)."""
+        if self.avatar:
+            return self.avatar.url
+        return (
+            f"https://ui-avatars.com/api/?name={self.username}"
+            "&background=166534&color=fff&bold=true"
+        )
 
 
 class PlayerProfile(models.Model):

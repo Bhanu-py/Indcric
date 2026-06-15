@@ -104,10 +104,33 @@ class OnboardingForm(forms.ModelForm):
         return user
 
 
+# Avatars are user-uploaded; cap the size and reject non-images so a stray
+# upload can't fill Cloudinary storage or break the <img> render.
+AVATAR_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+def _clean_avatar(image):
+    """Validate an uploaded avatar: must be a real image and ≤ 5 MB.
+
+    Returns the file unchanged (or None/unchanged when nothing new was
+    uploaded — e.g. ClearableFileInput's keep/clear sentinels)."""
+    if not image:
+        return image
+    size = getattr(image, 'size', None)
+    if size is not None and size > AVATAR_MAX_BYTES:
+        raise forms.ValidationError('Image must be 5 MB or smaller.')
+    # Only validate freshly uploaded files (they expose image_data via Pillow);
+    # an existing FieldFile already on the model has no content_type to check.
+    content_type = getattr(image, 'content_type', None)
+    if content_type is not None and not content_type.startswith('image/'):
+        raise forms.ValidationError('Please upload an image file.')
+    return image
+
+
 class ProfileForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'role', 'batting_rating', 'bowling_rating', 'fielding_rating']
+        fields = ['first_name', 'last_name', 'role', 'avatar', 'batting_rating', 'bowling_rating', 'fielding_rating']
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'w-full p-2 border rounded'}),
             'last_name': forms.TextInput(attrs={'class': 'w-full p-2 border rounded'}),
@@ -115,10 +138,17 @@ class ProfileForm(forms.ModelForm):
                 attrs={'class': 'w-full p-2 border rounded'},
                 choices=[('batsman', 'Batsman'), ('bowler', 'Bowler'), ('allrounder', 'All-Rounder')],
             ),
+            'avatar': forms.ClearableFileInput(attrs={
+                'class': 'form-input',
+                'accept': 'image/*',
+            }),
             'batting_rating': forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'min': '0', 'max': '5', 'step': '0.5'}),
             'bowling_rating': forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'min': '0', 'max': '5', 'step': '0.5'}),
             'fielding_rating': forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'min': '0', 'max': '5', 'step': '0.5'}),
         }
+
+    def clean_avatar(self):
+        return _clean_avatar(self.cleaned_data.get('avatar'))
 
     def clean_batting_rating(self):
         return _round_to_half(self.cleaned_data.get('batting_rating'))
@@ -166,3 +196,20 @@ class PhoneForm(forms.ModelForm):
         if User.objects.filter(phone=phone).exclude(pk=self.instance.pk).exists():
             raise forms.ValidationError('This number is already registered to another account.')
         return phone
+
+
+class AvatarForm(forms.ModelForm):
+    """Single-field profile-picture form for the settings-card upload flow."""
+
+    class Meta:
+        model = User
+        fields = ['avatar']
+        widgets = {
+            'avatar': forms.ClearableFileInput(attrs={
+                'class': 'sr-only',
+                'accept': 'image/*',
+            }),
+        }
+
+    def clean_avatar(self):
+        return _clean_avatar(self.cleaned_data.get('avatar'))

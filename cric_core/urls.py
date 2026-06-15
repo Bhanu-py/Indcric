@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import TemplateView
@@ -32,3 +34,8 @@ urlpatterns = [
     path('', include('apps.banking.urls')),
     path("accounts/", include("allauth.urls")),
 ]
+
+# Serve user-uploaded media from the dev server only. In staging/prod media is
+# served by Cloudinary (CLOUDINARY_URL) so this route is intentionally not added.
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

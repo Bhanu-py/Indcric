@@ -14,12 +14,13 @@ supporter wall together so the page reads as one flow per campaign.
 
     <header class="mb-3">
         <div class="section-eyebrow">
-            <div class="section-eyebrow-bar"></div>
+            <div class="section-eyebrow-bar !bg-amber-500"></div>
             <h2 class="eyebrow text-stone-800 !mb-0">Support the club</h2>
         </div>
         <h1 class="text-2xl mt-1">Back Indian Cricket Ghent</h1>
         <p class="text-sm text-stone-600 mt-2 leading-relaxed">
-            ICG runs on the goodwill of its players.
+            ICG runs on the goodwill of its players — every euro keeps the nets
+            up, the balls fresh, and the hall booked through the winter block.
         </p>
     </header>
 
@@ -73,6 +74,7 @@ supporter wall together so the page reads as one flow per campaign.
                 </button>
             </form>
             {% endcomment %}
+            <a href="{% url 'link-donors' %}" class="btn btn-secondary btn-sm">Link donors</a>
             <a href="/admin/donations/donationcampaign/add/" class="btn btn-secondary btn-sm">
                 + Target fundraiser
             </a>

@@ -1,5 +1,5 @@
 /* global React, Icons, Avatar */
-const { Home, Cog, ChevDown, User, Logout, UsersIcon = Icons.Users, Wallet, Calendar, Plus, Bell, Roundel } = Icons;
+const { Home, Cog, ChevDown, User, Logout, UsersIcon = Icons.Users, Wallet, Calendar, Plus, Bell, Roundel, Heart } = Icons;
 
 function Header({ user, route, onNavigate, onLogout, unread=0 }) {
   const [manageOpen, setManageOpen] = React.useState(false);
@@ -33,19 +33,18 @@ function Header({ user, route, onNavigate, onLogout, unread=0 }) {
       <div style={{maxWidth: 1280, margin: '0 auto', padding: '0 24px',
                    display:'flex', alignItems:'center', justifyContent:'space-between', height: 60}}>
         <a onClick={() => onNavigate('home')} style={{display:'flex', alignItems:'center', gap:10, cursor:'pointer', textDecoration:'none', color:'#fff'}}>
-          <Roundel size={34}/>
+          <Roundel size={44}/>
         </a>
 
         <nav style={{display:'flex', alignItems:'center', gap:2}}>
           <NavLink active={route==='home'} onClick={() => onNavigate('home')} icon={<Home size={16}/>}>Dashboard</NavLink>
-          {user.is_staff && (
-            <NavLink active={route==='payments'} onClick={() => onNavigate('payments')} icon={<Wallet size={16}/>}>Payments</NavLink>
-          )}
+          <NavLink active={route==='support'} onClick={() => onNavigate('support')}
+                   icon={<span style={{display:'inline-flex', color:'var(--amber-400)'}}><Heart size={16}/></span>}>Support</NavLink>
 
           {user.is_staff && (
             <div ref={manageRef} style={{position:'relative'}}>
               <NavLink onClick={() => { setManageOpen(v => !v); setUserOpen(false); }} icon={<Cog size={16}/>}
-                       active={manageOpen || ['create-session','users'].includes(route)}>
+                       active={manageOpen || ['create-session','users','payments'].includes(route)}>
                 Manage
                 <span style={{transform: manageOpen?'rotate(180deg)':'none', transition:'transform .15s', display:'inline-flex'}}>
                   <ChevDown size={12}/>

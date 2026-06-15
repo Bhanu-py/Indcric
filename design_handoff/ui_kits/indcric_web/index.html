@@ -16,6 +16,20 @@
   @media (max-width: 900px) { .grid-3 { grid-template-columns: repeat(2, minmax(0,1fr)); } }
   @media (max-width: 640px) { .grid-3 { grid-template-columns: 1fr; } }
 
+  /* Dashboard member snapshot: Next up (wide) · outstanding · wallet */
+  .snapshot-strip { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) {
+    .snapshot-strip { grid-template-columns: 1fr 1fr; }
+    .snapshot-strip > :first-child { grid-column: 1 / -1; }
+  }
+  @media (max-width: 480px) { .snapshot-strip { grid-template-columns: 1fr; } }
+
+  /* Supporter wall — horizontal swipe rail with a slim scrollbar */
+  .supporter-rail { scrollbar-width: thin; scrollbar-color: var(--stone-200) transparent; }
+  .supporter-rail::-webkit-scrollbar { height: 6px; }
+  .supporter-rail::-webkit-scrollbar-thumb { background: var(--stone-200); border-radius: 9999px; }
+  .supporter-rail::-webkit-scrollbar-track { background: transparent; }
+
   .login-hero { display: none; }
   @media (min-width: 1024px) { .login-hero { display: flex; } }
 
@@ -58,6 +72,7 @@
 <script type="text/babel" src="NotificationsScreen.jsx"></script>
 <script type="text/babel" src="OnboardingScreen.jsx"></script>
 <script type="text/babel" src="MatchResultScreen.jsx"></script>
+<script type="text/babel" src="SupportScreen.jsx"></script>
 <script type="text/babel" src="tweaks-panel.jsx"></script>
 </head>
 <body data-screen-label="00 IndCric UI Kit">
@@ -192,6 +207,58 @@ const NOTIFICATIONS = [
   { id:'n8', kind:'ping',    when:'3 days ago', body:<><b>arjun</b> pinged you on WhatsApp about session balance</>, read:true },
 ];
 
+// ───────── Support / donations sample data ─────────
+const SUPPORT_BANK = {
+  holder:    'Indian Cricket Ghent VZW',
+  iban:      'BE68 5390 0754 7034',
+  reference: 'ICG-DONATION',
+};
+
+const GENERAL_DONATIONS = {
+  id:'general', title:'General Donations', isDefault:true, goal:null,
+  raised:845.50, supporterCount:14,
+  fundItems:[
+    { tint:'pitch',   icon:'db',     title:'Hall bookings',  body:'Indoor sessions through the winter block' },
+    { tint:'amber',   icon:'ball',   title:'Match gear',     body:'New balls, stumps and spare bats' },
+    { tint:'sky',     icon:'server', title:'App & hosting',  body:'Keeps IndCric online for the club' },
+    { tint:'emerald', icon:'cup',    title:'League fees',    body:'Entry into the Ghent summer league' },
+  ],
+  donations:[
+    { name:'Bhanu Tej',  amount:50.00, date:'12 Jun', source:'manual', note:'Keep the nets running' },
+    { name:'Anand R.',   amount:25.00, date:'10 Jun', source:'bank' },
+    { name:'Anonymous',  amount:100.00, date:'8 Jun', source:'bank' },
+    { name:'Sai Prabhu', amount:20.00, date:'5 Jun', source:'manual' },
+    { name:'Kiran D.',   amount:30.00, date:'2 Jun', source:'bank' },
+  ],
+};
+
+const ACTIVE_CAMPAIGNS = [
+  { id:'kit', title:'New match kit & nets gear', isDefault:false, goal:1500, raised:980, progressPct:65, supporterCount:9,
+    blurb:'A target drive for the 2026 season — matching club shirts, two fresh net cages, and a bowling machine service so the indoor block runs without a hitch.',
+    fundItems:[
+      { tint:'pitch', icon:'ball', title:'Club shirts',     body:'Matching kit for the whole squad' },
+      { tint:'sky',   icon:'cup',  title:'Bowling machine', body:'Annual service + spare balls' },
+    ],
+    donations:[
+      { name:'Rohan K.',  amount:200.00, date:'13 Jun', source:'manual', note:'For the new cages' },
+      { name:'Vikram S.', amount:150.00, date:'11 Jun', source:'bank' },
+      { name:'Deepak G.', amount:80.00,  date:'9 Jun',  source:'bank' },
+      { name:'Anonymous', amount:250.00, date:'6 Jun',  source:'manual' },
+    ],
+  },
+];
+
+const CLOSED_CAMPAIGNS = [
+  { id:'winter25', title:'Indoor hall — winter 2025 block', isDefault:false, goal:1200, raised:1240, progressPct:100, supporterCount:11,
+    blurb:'Funded the Topsporthal Gent winter bookings, Oct 2025 – Mar 2026. Goal smashed — thank you.',
+    donations:[
+      { name:'Bhanu Tej', amount:120.00, date:'18 Oct', source:'manual' },
+      { name:'Sai Prabhu', amount:90.00, date:'14 Oct', source:'bank' },
+      { name:'Manish T.', amount:60.00, date:'10 Oct', source:'bank' },
+    ],
+  },
+];
+
 function App() {
   // ── Tweaks ──
   const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
@@ -199,7 +266,8 @@ function App() {
     "showOnboarding": false,
     "unreadBell": 3,
     "showScreenSwitcher": true,
-    "panelOpen": false
+    "panelOpen": false,
+    "supporterStyle": "wall"
   }/*EDITMODE-END*/;
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
 
@@ -210,10 +278,10 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(t.showOnboarding);
 
   const STAFF_USER = { name:'Bhanu Tej', username:'bhanu', email:'bhanu@indcric.club', is_staff: true,
-    batting:4.2, bowling:3.5, fielding:4.5, role:'allrounder',
+    batting:4.2, bowling:3.5, fielding:4.5, role:'allrounder', outstanding:0, wallet:12.00,
     stats:{matches:12, runs:284, wickets:9, catches:6, stumpings:1 }};
   const MEMBER_USER = { name:'Anand R.', username:'anand', email:'anand@indcric.club', is_staff: false,
-    batting:4.5, bowling:2.0, fielding:3.5, role:'batsman',
+    batting:4.5, bowling:2.0, fielding:3.5, role:'batsman', outstanding:16.70, wallet:0,
     stats:{matches:8, runs:194, wickets:1, catches:3, stumpings:0 }};
 
   // Sync user with viewMode tweak
@@ -224,23 +292,30 @@ function App() {
     else                              setUser(null); // guest
   }, [t.viewMode, t.showOnboarding]);
 
-  if (showOnboarding) {
+  // Onboarding — first-time member flow. Reachable two ways:
+  //   1) Tweaks → "Show onboarding flow" (legacy toggle)
+  //   2) Screen switcher / TweakSelect → "Onboarding" → setRoute('onboarding')
+  //   3) "Create an account →" link on LoginScreen
+  if (showOnboarding || route === 'onboarding') {
     return (
       <OnboardingScreen
         onDone={(u) => { setShowOnboarding(false); setTweak('showOnboarding', false);
           setUser({...u, is_staff: false, name: u.name || 'New Member'}); setTweak('viewMode', 'member'); setRoute('home'); }}
-        onSkip={() => { setShowOnboarding(false); setTweak('showOnboarding', false); }}
+        onSkip={() => { setShowOnboarding(false); setTweak('showOnboarding', false); setRoute('home'); }}
       />
     );
   }
 
-  // Explicit login screen — only when user opens it ("Sign in" CTA on guest dashboard).
+  // Explicit login screen — Sign in CTA on guest header, or jumped to via switcher.
   if (route === 'login') return (
-    <LoginScreen onLogin={u => {
-      setUser({...u, ...STAFF_USER, username:u.username || 'bhanu'});
-      setTweak('viewMode', 'staff');
-      setRoute('home');
-    }}/>
+    <LoginScreen
+      onLogin={u => {
+        setUser({...u, ...STAFF_USER, username:u.username || 'bhanu'});
+        setTweak('viewMode', 'staff');
+        setRoute('home');
+      }}
+      onSignUp={() => setRoute('onboarding')}
+    />
   );
 
   const detailSession = openSession && {
@@ -253,7 +328,10 @@ function App() {
   };
 
   const SCREENS = [
+    { id:'login',         label:'Sign in' },
+    { id:'onboarding',    label:'Onboarding' },
     { id:'home',          label:'Dashboard' },
+    { id:'support',       label:'Support' },
     { id:'session',       label:'Session detail' },
     { id:'match',         label:'Match result' },
     { id:'payments',      label:'Payments + settle' },
@@ -274,7 +352,7 @@ function App() {
                   setRoute(r);
                 }}/>
       ) : (
-        <PublicHeader onSignIn={() => setRoute('login')}/>
+        <PublicHeader onSignIn={() => setRoute('login')} onSupport={() => setRoute('support')} supportActive={route==='support'}/>
       )}
 
       {route === 'home' && (
@@ -301,6 +379,14 @@ function App() {
       )}
       {route === 'match' && (
         <MatchResultScreen match={MATCH} onBack={() => setRoute('home')}/>
+      )}
+      {route === 'support' && (
+        <SupportScreen user={user}
+          general={GENERAL_DONATIONS}
+          activeCampaigns={ACTIVE_CAMPAIGNS}
+          closedCampaigns={CLOSED_CAMPAIGNS}
+          bank={SUPPORT_BANK}
+          supporterStyle={t.supporterStyle}/>
       )}
       {route === 'users' && <UsersScreen onBack={() => setRoute('home')}/>}
       {route === 'create-session' && <CreateSessionScreen onCancel={() => setRoute('home')}/>}
@@ -337,10 +423,22 @@ function App() {
           <TweakNumber label="Bell unread count" value={t.unreadBell} min={0} max={9}
                        onChange={v => setTweak('unreadBell', v)}/>
         </TweakSection>
+        <TweakSection title="Support page">
+          <TweakRadio label="Supporter shoutout" value={t.supporterStyle}
+                      options={[
+                        {value:'wall',     label:'Wall'},
+                        {value:'list',     label:'List'},
+                        {value:'featured', label:'Featured'},
+                      ]}
+                      onChange={v => setTweak('supporterStyle', v)}/>
+        </TweakSection>
         <TweakSection title="Jump to screen">
           <TweakSelect label="Screen" value={route}
                        options={[
+                         {value:'login',         label:'Sign in'},
+                         {value:'onboarding',    label:'Onboarding (signup)'},
                          {value:'home',          label:'Dashboard'},
+                         {value:'support',       label:'Support the club'},
                          {value:'session',       label:'Session detail (+ draft)'},
                          {value:'match',         label:'Match result + scorecard'},
                          {value:'payments',      label:'Payments + settle'},
@@ -361,7 +459,7 @@ function App() {
 
 /* ────────── Public header ──────────
    Minimal app bar for guest mode — roundel + Sign in CTA. */
-function PublicHeader({ onSignIn }) {
+function PublicHeader({ onSignIn, onSupport, supportActive }) {
   return (
     <header style={{
       background:'var(--pitch-900)', color:'#fff',
@@ -370,13 +468,20 @@ function PublicHeader({ onSignIn }) {
       <div style={{maxWidth:1280, margin:'0 auto', padding:'0 24px',
                    display:'flex', alignItems:'center', justifyContent:'space-between', height:60}}>
         <div style={{display:'flex', alignItems:'center', gap:10}}>
-          <Icons.Roundel size={34}/>
+          <Icons.Roundel size={44}/>
         </div>
         <div style={{display:'flex', alignItems:'center', gap:8}}>
-          <span style={{
-            fontFamily:'var(--font-mono)', fontSize:10, color:'rgba(255,255,255,0.65)',
-            letterSpacing:'0.04em', textTransform:'uppercase', marginRight:6,
-          }}>Public view</span>
+          <button onClick={onSupport} style={{
+            display:'flex', alignItems:'center', gap:6, height:38, padding:'0 12px',
+            background: supportActive ? 'rgba(255,255,255,0.10)' : 'transparent',
+            color:'#fff', border:'none', borderRadius:8, cursor:'pointer',
+            fontSize:13, fontWeight:500, fontFamily:'inherit',
+          }}
+          onMouseEnter={e => { if (!supportActive) e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+          onMouseLeave={e => { if (!supportActive) e.currentTarget.style.background = 'transparent'; }}>
+            <span style={{display:'inline-flex', color:'var(--amber-400)'}}><Icons.Heart size={16}/></span>
+            Support
+          </button>
           <Button variant="amber" size="sm" onClick={onSignIn}>Sign in</Button>
         </div>
       </div>

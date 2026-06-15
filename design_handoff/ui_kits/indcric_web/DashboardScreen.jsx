@@ -1,5 +1,7 @@
 /* global React, SessionCard, Button, Eyebrow, Card, Alert, StatColumn, Icons */
-const { Plus, Calendar: CalIcon, Wallet, Users: UsersIcon, ArrowRt, Lock } = Icons;
+const { Plus, Calendar: CalIcon, Wallet, Users: UsersIcon, ArrowRt, ChevRt, Check, Lock } = Icons;
+
+const fmtEur = n => '€' + (n == null ? '0.00' : Number(n).toFixed(2));
 
 /* ────────── Dashboard ──────────
    Visibility matrix:
@@ -58,18 +60,27 @@ function DashboardScreen({ user, sessions, onOpenSession, onDelete, onCreate, on
         </div>
       </div>
 
-      {/* ── Snapshot strip · STAFF-ONLY ── */}
-      {isStaff && (
-        <div style={{
-          display:'grid', gridTemplateColumns:'1.4fr 1fr 1fr 1fr', gap:14, marginBottom:24,
-        }}>
+      {/* ── Member snapshot · ALL authenticated users (staff is also a member) ──
+           Next up (with vote-status pill) · Your outstanding · Wallet balance.
+           Mirrors templates/home.html — outstanding + wallet are PER USER and
+           link to the matching profile tabs. */}
+      {!isGuest && (
+        <div className="snapshot-strip" style={{marginBottom:24}}>
           {next ? (
             <Card hoverable style={{cursor:'pointer'}} accent="var(--pitch-600)">
               <div onClick={() => onOpenSession(next)} style={{padding:'14px 18px'}}>
-                <div style={{
-                  fontFamily:'var(--font-mono)', fontSize:9, color:'var(--stone-400)',
-                  textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8,
-                }}>Next up · {next.dateLabel}</div>
+                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between',
+                             gap:8, marginBottom:6}}>
+                  <div style={{fontFamily:'var(--font-mono)', fontSize:9, color:'var(--stone-400)',
+                               textTransform:'uppercase', letterSpacing:'0.08em'}}>Next up · {next.dateLabel}</div>
+                  {next.poll && !next.poll.closed && (
+                    <span style={{display:'inline-flex', alignItems:'center', gap:5, fontSize:9, fontWeight:700,
+                                  color:'var(--emerald-700)', fontFamily:'var(--font-mono)',
+                                  textTransform:'uppercase', letterSpacing:'0.06em'}}>
+                      <span style={{width:6, height:6, borderRadius:'50%', background:'var(--emerald-500)'}}/>Live poll
+                    </span>
+                  )}
+                </div>
                 <div style={{fontSize:18, fontWeight:600, color:'var(--stone-900)',
                              letterSpacing:'-0.01em', lineHeight:1.2, marginBottom:6}}>
                   {next.name}
@@ -80,29 +91,27 @@ function DashboardScreen({ user, sessions, onOpenSession, onDelete, onCreate, on
                 <div style={{
                   marginTop:12, paddingTop:10, borderTop:'1px solid var(--stone-100)',
                   display:'flex', alignItems:'center', justifyContent:'space-between',
-                  fontSize:12,
+                  fontSize:12, gap:8,
                 }}>
                   <span style={{color:'var(--stone-600)'}}>
                     <b style={{color:'var(--emerald-700)'}}>{next.poll?.yes}</b> in · {next.poll?.no} out
                   </span>
-                  <span style={{color:'var(--pitch-700)', fontWeight:500, display:'inline-flex',
-                                alignItems:'center', gap:4}}>
-                    Open <ArrowRt size={12}/>
-                  </span>
+                  <VotePill vote={next.userVote} open={next.poll && !next.poll.closed}/>
                 </div>
               </div>
             </Card>
-          ) : <div/>}
+          ) : (
+            <Card><div style={{padding:'14px 18px'}}>
+              <div style={{fontFamily:'var(--font-mono)', fontSize:9, color:'var(--stone-400)',
+                           textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8}}>Next up</div>
+              <div style={{fontSize:13, color:'var(--stone-500)'}}>No upcoming sessions yet.</div>
+            </div></Card>
+          )}
 
-          <Card><div style={{padding:'14px 16px 12px'}}>
-            <StatColumn first label="● Sessions · 30d" value="6" dot="var(--pitch-500)"/>
-          </div></Card>
-          <Card><div style={{padding:'14px 16px 12px'}}>
-            <StatColumn first label="● Outstanding" value="€48" dot="var(--amber-500)"/>
-          </div></Card>
-          <Card><div style={{padding:'14px 16px 12px'}}>
-            <StatColumn first label="● Active members" value="14" dot="var(--sky-500)"/>
-          </div></Card>
+          <SnapshotStat label="Your outstanding" value={fmtEur(user.outstanding)}
+                        dot="var(--amber-500)" onClick={() => onNavigate('profile')}/>
+          <SnapshotStat label="Wallet balance" value={fmtEur(user.wallet)}
+                        dot="var(--sky-500)" onClick={() => onNavigate('profile')}/>
         </div>
       )}
 
@@ -157,6 +166,39 @@ function DashboardScreen({ user, sessions, onOpenSession, onDelete, onCreate, on
       </section>
     </div>
   );
+}
+
+/* Per-user money card — left stat + chevron, links to the profile tab */
+function SnapshotStat({ label, value, dot, onClick }) {
+  return (
+    <Card hoverable style={{cursor:'pointer'}}>
+      <div onClick={onClick} style={{padding:'14px 16px', display:'flex',
+                                     alignItems:'center', justifyContent:'space-between', gap:8}}>
+        <StatColumn first label={label} value={value} dot={dot}/>
+        <span style={{color:'var(--stone-300)', flexShrink:0, display:'inline-flex'}}><ChevRt size={16}/></span>
+      </div>
+    </Card>
+  );
+}
+
+/* Vote-status pill on the Next-up card */
+function VotePill({ vote, open }) {
+  const base = {
+    display:'inline-flex', alignItems:'center', gap:4, flexShrink:0,
+    padding:'2px 8px', borderRadius:9999, fontSize:11, fontWeight:600, lineHeight:1.4,
+  };
+  if (vote === 'yes')
+    return <span style={{...base, background:'var(--emerald-100)', color:'var(--emerald-800)'}}><Check size={12} sw={3}/>You're in</span>;
+  if (vote === 'no')
+    return <span style={{...base, background:'var(--stone-100)', color:'var(--stone-600)'}}>You're out</span>;
+  if (open)
+    return (
+      <span style={{...base, background:'var(--pitch-100)', color:'var(--pitch-700)'}}>
+        <span style={{width:6, height:6, borderRadius:'50%', background:'var(--pitch-500)',
+                      animation:'pulse 2s ease-in-out infinite'}}/>Tap to vote
+      </span>
+    );
+  return null;
 }
 
 function Shortcut({ icon, label, onClick }) {

@@ -15,9 +15,7 @@ design_handoff/ui_kits/indcric_web/Icons.jsx (Bat / Ball / AllRounder).
 {% load custom_filters %}
 {% with role=user.role|default:""|lower %}
 <div class="player-chip">
-    <img class="h-6 w-6 rounded-full object-cover ring-1 ring-stone-200"
-         src="https://ui-avatars.com/api/?name={{ user.username }}&background=166534&color=fff&bold=true"
-         alt="{{ user.username }}"/>
+    {% include "_components/avatar.html" with user=user size=24 ring="ring-1 ring-stone-200" %}
     <span class="truncate">{{ user.first_name|default:user.username }}</span>
     {% if is_captain %}
         <span class="captain-badge" title="Captain">C</span>

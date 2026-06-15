@@ -168,11 +168,13 @@
          COST SPLIT — 3 stat tiles
     ═══════════════════════════════════ -->
     <div class="card overflow-hidden mb-6">
-        <div class="card-header">
-            {% include "_components/eyebrow.html" with label="Cost split" %}
-        </div>
-        <!-- Tighter padding than .card-body (py-5) since each stat-col already has its own py-2 -->
-        <div class="px-6 py-3">
+        <!-- One tight container: the eyebrow sits directly above the stat row
+             (no bordered card-header gap). Each stat-col already has its own py-2. -->
+        <div class="px-6 pt-4 pb-3">
+            <div class="section-eyebrow !mb-3">
+                <div class="section-eyebrow-bar"></div>
+                <h2 class="eyebrow text-stone-800 !mb-0">Cost split</h2>
+            </div>
             <div class="grid grid-cols-3 items-stretch">
                 {% with cost_str=session.cost|stringformat:"s" %}
                     {% include "_components/stat_column.html" with dot="stone" label="Venue fee" value="€"|add:cost_str first=True %}
@@ -198,17 +200,26 @@
     The session is the unit; mark who showed up to split cost.
     {% endcomment %}
     {% if is_past %}
-    <div class="card overflow-hidden mb-6">
-        <div class="card-header flex items-center justify-between flex-wrap gap-2">
-            {% include "_components/eyebrow.html" with label="Attendance" %}
+    <div class="card overflow-hidden mb-6" x-data="{ expanded: false }">
+        {% comment %} Folded by default so the roster doesn't bury the matches below. {% endcomment %}
+        <button type="button" @click="expanded = !expanded"
+                class="card-header w-full flex items-center justify-between flex-wrap gap-2 text-left">
+            <div class="flex items-center gap-2 min-w-0">
+                <svg class="w-4 h-4 text-stone-400 transition-transform shrink-0" :class="expanded ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                {% include "_components/eyebrow.html" with label="Attendance" %}
+            </div>
             <div class="flex items-center gap-2">
+                {% if attendance_roster %}
+                <span class="font-mono text-[10px] text-stone-500 uppercase tracking-[0.08em]">{{ attendance_present_ids|length }}/{{ attendance_roster|length }} present</span>
+                {% endif %}
                 {% if session.attendance_confirmed %}
                     {% include "_components/badge.html" with variant="green" label="Confirmed" %}
                 {% else %}
                     {% include "_components/badge.html" with variant="amber" label="Pending" %}
                 {% endif %}
             </div>
-        </div>
+        </button>
+        <div x-show="expanded" x-cloak>
 
         {% if user.is_staff and addable_users %}
         <div x-data="{ open: false }" class="px-5 py-3 border-b border-stone-100 bg-stone-50">
@@ -264,9 +275,13 @@
                               {% if sp.id in attendance_present_ids %}bg-pitch-50{% else %}bg-white{% endif %}
                               {% if user.is_staff %}cursor-pointer hover:border-pitch-200{% else %}cursor-default{% endif %}">
                     <div class="flex items-center gap-3 min-w-0">
+                        {% if sp.user.avatar %}
+                        <img src="{{ sp.user.avatar.url }}" alt="{{ sp.user.username }}" class="w-7 h-7 rounded-full object-cover shrink-0" loading="lazy"/>
+                        {% else %}
                         <span class="w-7 h-7 rounded-full bg-pitch-100 text-pitch-700 flex items-center justify-center text-xs font-bold shrink-0">
                             {{ sp.user.username|first|upper }}
                         </span>
+                        {% endif %}
                         <div class="min-w-0">
                             <p class="text-[13px] font-medium text-stone-800 truncate">{{ sp.user.get_full_name|default:sp.user.username }}</p>
                             <p class="font-mono text-[10px] text-stone-400 mt-0.5">
@@ -315,6 +330,7 @@
             {% endif %}
         </form>
         {% endif %}
+        </div>
     </div>
     {% endif %}
 
@@ -502,7 +518,7 @@
                                 <div class="flex flex-wrap gap-1.5">
                                     {% for v in yes_voters %}
                                     <span class="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100">
-                                        <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[9px] font-bold">{{ v.user.username|first|upper }}</span>
+                                        {% if v.user.avatar %}<img src="{{ v.user.avatar.url }}" alt="{{ v.user.username }}" class="w-4 h-4 rounded-full object-cover" loading="lazy"/>{% else %}<span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[9px] font-bold">{{ v.user.username|first|upper }}</span>{% endif %}
                                         <span class="text-emerald-800">{{ v.user.username }}</span>
                                     </span>
                                     {% empty %}
@@ -515,7 +531,7 @@
                                 <div class="flex flex-wrap gap-1.5">
                                     {% for u in no_voters %}
                                     <span class="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full bg-red-50 border border-red-100">
-                                        <span class="w-4 h-4 rounded-full bg-red-100 text-red-500 flex items-center justify-center text-[9px] font-bold">{{ u.username|first|upper }}</span>
+                                        {% if u.avatar %}<img src="{{ u.avatar.url }}" alt="{{ u.username }}" class="w-4 h-4 rounded-full object-cover" loading="lazy"/>{% else %}<span class="w-4 h-4 rounded-full bg-red-100 text-red-500 flex items-center justify-center text-[9px] font-bold">{{ u.username|first|upper }}</span>{% endif %}
                                         <span class="text-red-700">{{ u.username }}</span>
                                     </span>
                                     {% empty %}
@@ -582,8 +598,9 @@
                             {% if edit_match and edit_match.id == match.id %}Editing…{% else %}Edit Teams{% endif %}
                         </a>
                         <form method="POST" action="{% url 'delete_match' match.id %}"
-                              onsubmit="return confirm('Delete {{ match.name }}?{% if locked %} This erases the scorecard too.{% endif %} This cannot be undone.')">
+                              {% if match.has_scorecard %}onsubmit="var n=prompt('This permanently deletes {{ match.name|escapejs }} and its saved scorecard (ball-by-ball data). Type the match name to confirm:'); if(n===null){return false;} this.confirm_name.value=n; return true;"{% else %}onsubmit="return confirm('Delete {{ match.name|escapejs }}? This cannot be undone.')"{% endif %}>
                             {% csrf_token %}
+                            {% if match.has_scorecard %}<input type="hidden" name="confirm_name" value="">{% endif %}
                             <button type="submit" class="btn btn-ghost btn-sm text-stone-400 hover:text-red-500">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                             </button>
@@ -1087,9 +1104,9 @@
             <span class="font-mono text-[10px] opacity-70 tracking-[0.02em]">· <span class="rating-text">${rv}</span></span>
             <span class="inline-flex gap-1 sm:gap-0.5 ml-1">
               <button type="button" onclick="addToTeam(this, 'team1')" title="Send to Team 1" aria-label="Send to Team 1"
-                      class="w-8 h-8 sm:w-[18px] sm:h-[18px] rounded-md sm:rounded-[5px] bg-pitch-700 active:bg-pitch-800 sm:hover:bg-pitch-800 text-white text-sm sm:text-[10px] font-bold leading-none">A</button>
+                      class="inline-flex items-center justify-center h-8 sm:h-[18px] px-2.5 sm:px-1.5 rounded-md sm:rounded-[5px] bg-pitch-700 active:bg-pitch-800 sm:hover:bg-pitch-800 text-white text-xs sm:text-[10px] font-bold leading-none whitespace-nowrap">Team 1</button>
               <button type="button" onclick="addToTeam(this, 'team2')" title="Send to Team 2" aria-label="Send to Team 2"
-                      class="w-8 h-8 sm:w-[18px] sm:h-[18px] rounded-md sm:rounded-[5px] bg-amber-600 active:bg-amber-700 sm:hover:bg-amber-700 text-white text-sm sm:text-[10px] font-bold leading-none">B</button>
+                      class="inline-flex items-center justify-center h-8 sm:h-[18px] px-2.5 sm:px-1.5 rounded-md sm:rounded-[5px] bg-amber-600 active:bg-amber-700 sm:hover:bg-amber-700 text-white text-xs sm:text-[10px] font-bold leading-none whitespace-nowrap">Team 2</button>
             </span>
         `;
     }
@@ -1151,7 +1168,7 @@
         el.dataset.batting = m.batting;
         el.dataset.bowling = m.bowling;
         pool.appendChild(el);
-        renderAsPoolChip(el);   // applies tint + name + A/B buttons
+        renderAsPoolChip(el);   // applies tint + name + Team 1/Team 2 buttons
 
         const opt = document.querySelector(`#add-member-select option[value="${m.id}"]`);
         if (opt) opt.remove();

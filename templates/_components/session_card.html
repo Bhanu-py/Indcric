@@ -77,6 +77,12 @@ Args:
             {% else %}
             <div class="vote-bar"><div class="vote-fill-yes w-0"></div></div>
             {% endif %}
+            {% if voters %}
+            <div class="flex items-center gap-2 mt-3">
+                {% include "_components/avatar_stack.html" with users=voters total=vote_count.yes_votes size=24 %}
+                <span class="text-[11px] text-stone-500">going</span>
+            </div>
+            {% endif %}
         </div>
         {% endif %}
 
@@ -102,6 +108,12 @@ Args:
                 {% include "_components/badge.html" with variant="amber" label="Pending" %}
             {% endif %}
         </div>
+        {% if voters %}
+        <div class="mt-2 flex items-center gap-2">
+            {% include "_components/avatar_stack.html" with users=voters total=vote_count.yes_votes size=22 %}
+            <span class="text-[11px] text-stone-400">squad</span>
+        </div>
+        {% endif %}
         {% endif %}
     </div>
 </div>

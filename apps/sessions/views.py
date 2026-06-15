@@ -51,9 +51,11 @@ def home(request):
         session.is_live = session.id in live_session_ids
 
     session_vote_counts = {}
+    session_voters = {}  # session_id -> yes-voter users (for the dashboard avatar stack)
     for session in all_sessions:
         if hasattr(session, 'poll'):
-            yes_votes = session.poll.votes.filter(choice='yes').count()
+            yes_qs = session.poll.votes.filter(choice='yes').select_related('user')
+            yes_votes = yes_qs.count()
             no_votes = session.poll.votes.filter(choice='no').count()
             total_votes = yes_votes + no_votes
             yes_percentage = (yes_votes / total_votes * 100) if total_votes > 0 else 0
@@ -63,6 +65,9 @@ def home(request):
                 'total_votes': total_votes,
                 'yes_percentage': yes_percentage,
             }
+            session_voters[session.id] = [
+                v.user for v in yes_qs.order_by('user__first_name', 'user__username')[:12]
+            ]
 
     next_session = upcoming_sessions[0] if upcoming_sessions else None
     next_session_votes = (
@@ -91,6 +96,7 @@ def home(request):
         'upcoming_sessions': upcoming_sessions,
         'previous_sessions': previous_sessions,
         'vote_counts': session_vote_counts,
+        'session_voters': session_voters,
         'next_session': next_session,
         'next_session_votes': next_session_votes,
         'next_session_user_vote': next_session_user_vote,
@@ -302,6 +308,12 @@ def session_detail_view(request, session_id):
     matches = list(
         session.matches.prefetch_related('teams__players__user', 'innings').order_by('id')
     )
+    # Match ids with a recorded scorecard (>=1 ball) — their deletion is guarded
+    # (see delete_match_view, issue #39).
+    scored_match_ids = set(
+        Delivery.objects.filter(innings__match__session=session)
+        .values_list('innings__match_id', flat=True).distinct()
+    )
     # Per-match live flag: scoring started (≥1 innings) but not concluded
     # (a result is declared only once both innings exist and are closed).
     for match in matches:
@@ -309,6 +321,7 @@ def session_detail_view(request, session_id):
         match.is_live = bool(innings) and not (
             len(innings) >= 2 and all(i.is_closed for i in innings)
         )
+        match.has_scorecard = match.id in scored_match_ids
 
     edit_match_id = request.GET.get('edit_match')
     edit_match = edit_team1 = edit_team2 = None
@@ -659,6 +672,17 @@ def delete_match_view(request, match_id):
     session_id = match.session.id
 
     if request.method == 'POST':
+        # Guard (issue #39): a played match was wiped by an accidental one-tap
+        # delete. Require staff to re-type the match name before destroying a
+        # match that has a saved scorecard (innings + ball-by-ball deliveries).
+        has_scorecard = Delivery.objects.filter(innings__match=match).exists()
+        if has_scorecard and request.POST.get('confirm_name', '').strip() != match.name:
+            messages.error(
+                request,
+                f'"{match.name}" has a saved scorecard — re-type the match name to '
+                f'confirm deletion. Nothing was deleted.',
+            )
+            return redirect('session_detail', session_id=session_id)
         with transaction.atomic():
             # Delete innings first — that cascade-removes their deliveries, which
             # otherwise PROTECT the players and block the match delete.

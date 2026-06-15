@@ -60,12 +60,21 @@ if not DEBUG:
 
 # Application definition
 
+# Media (user uploads, e.g. profile avatars). When CLOUDINARY_URL is set the
+# default file storage routes uploads to Cloudinary (see STORAGES below); these
+# locals still back local-dev uploads and the DEBUG media route in urls.py.
+CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    # Cloudinary apps go before staticfiles per django-cloudinary-storage docs.
+    # Only registered when CLOUDINARY_URL is configured so local dev (no creds)
+    # and staging-before-creds don't require the package to be importable/active.
+    *(["cloudinary_storage", "cloudinary"] if CLOUDINARY_URL else []),
     "django.contrib.staticfiles",
     'django_cleanup.apps.CleanupConfig',
 
@@ -299,7 +308,37 @@ MIDDLEWARE = [
     'django_htmx.middleware.HtmxMiddleware',
 ]
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Media files (user uploads — avatars). Served locally in DEBUG (see urls.py);
+# in staging/prod the default storage is Cloudinary when CLOUDINARY_URL is set.
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Storage backends. Django forbids setting both STATICFILES_STORAGE (legacy) and
+# STORAGES, so pick exactly one mechanism:
+#  • CLOUDINARY_URL set  → use the modern STORAGES dict: Cloudinary for uploaded
+#    media, Whitenoise (manifest, compressed) for static. Drop the legacy line.
+#  • CLOUDINARY_URL unset → keep the existing legacy STATICFILES_STORAGE
+#    (local FileSystemStorage default for media + Whitenoise for static) exactly
+#    as-is, so local dev and pre-creds staging keep working unchanged.
+# Tests don't run collectstatic, so the hashed manifest has no entries — fall
+# back to plain static storage under test so {% static %} renders don't error.
+import sys as _sys
+_static_backend = (
+    'django.contrib.staticfiles.storage.StaticFilesStorage'
+    if 'test' in _sys.argv
+    else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+)
+if CLOUDINARY_URL:
+    STORAGES = {
+        'default': {
+            'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
+        },
+        'staticfiles': {
+            'BACKEND': _static_backend,
+        },
+    }
+else:
+    STATICFILES_STORAGE = _static_backend
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

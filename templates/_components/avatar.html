@@ -1,0 +1,19 @@
+{% comment %}
+Avatar — round profile picture for a user, falling back to a generated
+ui-avatars placeholder when no image is uploaded (handled by user.avatar_url).
+
+Usage:
+  {% include "_components/avatar.html" with user=player size=28 %}
+  {% include "_components/avatar.html" with user=request.user size=28 ring="ring-2 ring-amber-400" %}
+
+Args:
+  user   User object (uses avatar_url, username)
+  size   square px size for both width and height (default 28)
+  ring   optional extra ring/border utility classes (default none)
+  extra  optional extra utility classes appended to the <img>
+{% endcomment %}
+<img class="rounded-full object-cover {{ ring }} {{ extra }}"
+     style="width: {{ size|default:28 }}px; height: {{ size|default:28 }}px;"
+     src="{{ user.avatar_url }}"
+     alt="{{ user.username }}"
+     loading="lazy"/>

@@ -1,0 +1,10 @@
+/* ============================================================
+   IndCric Design System — root stylesheet
+   ============================================================
+   Single entry point for consumers: link THIS file and you get
+   the full token set (type, color, spacing, radii, shadow,
+   motion) plus the base type styles. Everything lives in
+   colors_and_type.css; this file just re-exports it so there is
+   one canonical stylesheet to link.
+   ============================================================ */
+@import url("./colors_and_type.css");

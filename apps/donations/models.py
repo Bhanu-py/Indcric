@@ -188,3 +188,58 @@ class FundItem(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class DonorLink(models.Model):
+    """Maps a bank counterparty to a member account.
+
+    Donations arrive by direct bank transfer, so the import only carries the
+    counterparty's name and IBAN — never a user id. Staff reconcile the mapping
+    once here; it then attributes that donor's gifts to the right User both
+    retroactively (back-filled on link) and on every future import. IBAN is the
+    primary key signal (stable per account); name is the fallback when the bank
+    omits the IBAN.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='donor_links',
+    )
+    counterparty_iban = models.CharField(
+        max_length=34, blank=True,
+        help_text="Donor's bank IBAN. Primary match key when present.",
+    )
+    counterparty_name = models.CharField(
+        max_length=140, blank=True,
+        help_text="Bank counterparty name. Fallback match when no IBAN is available.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['counterparty_name', 'id']
+        constraints = [
+            # One member per IBAN. Blank IBANs are name-only links and exempt.
+            models.UniqueConstraint(
+                fields=['counterparty_iban'],
+                condition=~models.Q(counterparty_iban=''),
+                name='uniq_donorlink_iban',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.counterparty_iban or self.counterparty_name or '(blank)'} → {self.user}"
+
+    @classmethod
+    def resolve(cls, iban, name):
+        """Return the linked User for a bank counterparty, or None. IBAN match
+        wins; otherwise an exact name match that has no IBAN on file."""
+        iban = (iban or '').strip()
+        name = (name or '').strip()
+        if iban:
+            link = cls.objects.filter(counterparty_iban__iexact=iban).select_related('user').first()
+            if link:
+                return link.user
+        if name:
+            link = (cls.objects.filter(counterparty_iban='', counterparty_name__iexact=name)
+                    .select_related('user').first())
+            if link:
+                return link.user
+        return None
