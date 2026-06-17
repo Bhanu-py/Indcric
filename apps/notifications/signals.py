@@ -13,6 +13,7 @@ refreshes rather than double-posts.
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.donations.models import Donation
 from apps.matches.models import Match
@@ -57,19 +58,28 @@ def stash_session_confirmed(sender, instance, **kwargs):
 @receiver(post_save, sender=Session)
 def on_session(sender, instance, created, **kwargs):
     if created:
+        # Only an upcoming session is worth an 'RSVP' prompt; a back-filled past
+        # session just gets a plain 'View'.
+        upcoming = instance.date >= timezone.localdate()
         safe_emit(
             ActivityEvent.KIND_SESSION,
             f"New session: {instance.name} on {instance.date:%a %d %b}",
             actor=instance.created_by,
             url=instance.get_absolute_url(),
-            action_label='RSVP',
+            action_label='RSVP' if upcoming else 'View',
             context=instance.location,
             target=instance,
         )
-    elif getattr(instance, '_old_confirmed', None) is False and instance.attendance_confirmed:
+    elif (getattr(instance, '_old_confirmed', None) is False
+          and instance.attendance_confirmed and instance.cost_per_person):
+        # 'Confirm attendance' locks the roster and splits the cost — this is a
+        # settlement / payments-due event (often for a past session), NOT a
+        # forward-looking 'see you there'. Free sessions have nothing to split,
+        # so they get no feed entry.
         safe_emit(
-            ActivityEvent.KIND_SESSION,
-            f"{instance.name} is confirmed for {instance.date:%a %d %b} — see you there!",
+            ActivityEvent.KIND_PAYMENT,
+            f"Cost split for {instance.name} ({instance.date:%a %d %b}) — "
+            f"€{instance.cost_per_person:.2f} per player",
             actor=instance.created_by,
             url=instance.get_absolute_url(),
             action_label='View',

@@ -146,17 +146,35 @@ class ActivityEmitTests(TestCase):
             ActivityEvent.objects.filter(kind=ActivityEvent.KIND_SESSION, body__icontains="Sunday Nets").exists()
         )
 
-    def test_session_confirmed_emits_activity(self):
+    def test_attendance_confirmed_emits_cost_split(self):
+        """Confirming attendance on a paid session posts a settlement / cost-split
+        event (Payments), not a forward-looking 'see you there'."""
         s = Session.objects.create(
-            name="Friday KO", duration=Decimal("2"),
-            date=date(2026, 6, 19), time=time(18, 0), location="Hall",
+            name="Friday KO", cost=Decimal("20"), duration=Decimal("2"),
+            date=date(2026, 5, 30), time=time(18, 0), location="Hall",
         )
-        before = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_SESSION).count()
+        # Mirror the attendance-save: per-person split computed, then confirmed.
+        s.cost_per_person = Decimal("5.00")
         s.attendance_confirmed = True
         s.save()
-        after = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_SESSION).count()
-        self.assertEqual(after, before + 1)
-        self.assertTrue(ActivityEvent.objects.filter(body__icontains="confirmed").exists())
+        ev = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_PAYMENT).first()
+        self.assertIsNotNone(ev)
+        self.assertIn("Cost split", ev.body)
+        self.assertIn("€5.00 per player", ev.body)
+        self.assertNotIn("see you there", ev.body)
+
+    def test_free_session_confirmed_emits_nothing(self):
+        """A free session (no cost to split) gets no payments-due entry."""
+        s = Session.objects.create(
+            name="Free knock", cost=Decimal("0"), duration=Decimal("2"),
+            date=date(2026, 5, 30), time=time(18, 0), location="Hall",
+        )
+        before = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_PAYMENT).count()
+        s.attendance_confirmed = True   # no cost_per_person set
+        s.save()
+        self.assertEqual(
+            ActivityEvent.objects.filter(kind=ActivityEvent.KIND_PAYMENT).count(), before
+        )
 
     def test_payment_paid_emits_once(self):
         s = Session.objects.create(
