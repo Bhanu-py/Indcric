@@ -51,28 +51,3 @@ class DonationForm(forms.ModelForm):
                 "Pick a member, enter a donor name, or mark the donation anonymous."
             )
         return cleaned
-
-
-class SelfDonationForm(forms.ModelForm):
-    """Member self-service: log your own donation. Always attributed to the
-    logged-in user (no donor picker), so members can't claim others' gifts."""
-
-    class Meta:
-        model = Donation
-        fields = ['amount', 'donated_on', 'is_anonymous', 'note']
-        widgets = {
-            'amount': forms.NumberInput(attrs={
-                'class': 'form-input', 'inputmode': 'decimal', 'step': '0.01',
-                'min': '0.01', 'placeholder': '0.00',
-            }),
-            'donated_on': forms.DateInput(attrs={'type': 'date', 'class': 'form-input'}),
-            'note': forms.TextInput(attrs={
-                'class': 'form-input', 'placeholder': 'Optional note (e.g. "for new balls")',
-            }),
-        }
-
-    def clean_amount(self):
-        amount = self.cleaned_data.get('amount')
-        if amount is None or amount <= Decimal('0'):
-            raise forms.ValidationError("Amount must be greater than zero.")
-        return amount

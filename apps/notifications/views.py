@@ -4,14 +4,18 @@ import json
 import logging
 import re
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
 from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.contrib.auth import get_user_model
 
 from . import bot_messages
-from .models import BotEvent
+from .activity import FEED_TABS, KIND_STYLE, REACTION_EMOJIS, TAB_KINDS
+from .models import ActivityEvent, ActivityFeedState, BotEvent, Reaction, seen_at_for
 
 
 RSVP_PATTERN = re.compile(r'^\s*(yes|no|y|n|✅|❌|1|2)\s*(?:[#\s]*(\d+))?\s*$', re.IGNORECASE)
@@ -514,3 +518,100 @@ def run_reminders_view(request):
     from .services import send_session_reminders
     counts = send_session_reminders()
     return JsonResponse({'ok': True, 'sent': counts})
+
+
+# ─────────────────────────── Activity feed (in-app) ───────────────────────────
+
+_DEFAULT_STYLE = KIND_STYLE[ActivityEvent.KIND_PING]
+
+
+def _reaction_summary(event, user):
+    """For each palette emoji: its count on this event and whether the viewer
+    has reacted with it. Reads from event.reactions (prefetch on the list)."""
+    counts = {}
+    mine = set()
+    for r in event.reactions.all():
+        counts[r.emoji] = counts.get(r.emoji, 0) + 1
+        if r.user_id == user.id:
+            mine.add(r.emoji)
+    return [
+        {'emoji': e, 'count': counts.get(e, 0), 'reacted': e in mine}
+        for e in REACTION_EMOJIS
+    ]
+
+
+def _decorate(events, user, seen_before):
+    """Attach row presentation + read-state + reaction summary to each event for
+    the template. Own actions never show as unread (mirrors the bell count)."""
+    for ev in events:
+        ev.style = KIND_STYLE.get(ev.kind, _DEFAULT_STYLE)
+        ev.is_unread = ev.created_at > seen_before and ev.actor_id != user.id
+        ev.reactions_view = _reaction_summary(ev, user)
+    return events
+
+
+def _feed_events(user, tab, seen_before, limit=100):
+    # No select_related('actor'): the row template never renders the actor, and
+    # is_unread reads the actor_id FK column already on the row.
+    qs = ActivityEvent.objects.prefetch_related('reactions')
+    if tab != 'all' and tab in TAB_KINDS:
+        qs = qs.filter(kind__in=TAB_KINDS[tab])
+    events = list(qs[:limit])
+    return _decorate(events, user, seen_before)
+
+
+@login_required
+def activity_feed_view(request):
+    """The club-wide activity feed (the design's Notifications/Activity screen).
+    Tabs filter by kind via HTMX (list partial swap). Read-state is explicit —
+    opening the feed does NOT auto-clear; the 'Mark all read' button does."""
+    tab = request.GET.get('tab', 'all')
+    seen_before = seen_at_for(request.user)
+    events = _feed_events(request.user, tab, seen_before)
+    context = {
+        'events': events,
+        'tab': tab,
+        'tabs': FEED_TABS,
+    }
+    if request.htmx:
+        return render(request, 'notifications/partials/_activity_list.html', context)
+    return render(request, 'notifications/pages/activity.html', context)
+
+
+@login_required
+@require_POST
+def activity_react_view(request, activity_id):
+    """Toggle the viewer's reaction with `emoji` on one event; re-render that
+    row's reaction bar for the HTMX swap."""
+    event = get_object_or_404(ActivityEvent, pk=activity_id)
+    emoji = request.POST.get('emoji', '')
+    if emoji in REACTION_EMOJIS:
+        existing = Reaction.objects.filter(
+            activity=event, user=request.user, emoji=emoji
+        ).first()
+        if existing:
+            existing.delete()
+        else:
+            # get_or_create guards the unique constraint against a double-tap race.
+            Reaction.objects.get_or_create(activity=event, user=request.user, emoji=emoji)
+    event.reactions_view = _reaction_summary(event, request.user)
+    return render(request, 'notifications/partials/_reaction_bar.html', {'event': event})
+
+
+@login_required
+@require_POST
+def activity_read_all_view(request):
+    """Mark everything read (set last_seen = now). Re-renders the list with the
+    unread dots cleared and OOB-swaps the header bell badge to zero."""
+    state, _ = ActivityFeedState.objects.get_or_create(user=request.user)
+    state.last_seen_at = timezone.now()
+    state.save(update_fields=['last_seen_at'])
+
+    # tab arrives in the POST body (hx-include of the hidden tab field).
+    tab = request.POST.get('tab') or request.GET.get('tab') or 'all'
+    events = _feed_events(request.user, tab, state.last_seen_at)
+    return render(request, 'notifications/partials/_read_all_response.html', {
+        'events': events,
+        'tab': tab,
+        'activity_unread': 0,
+    })

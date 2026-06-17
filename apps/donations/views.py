@@ -3,18 +3,12 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import get_user_model
-from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.banking.models import BankTransaction
-from .forms import DonationForm, SelfDonationForm
+from .forms import DonationForm
 from .models import Donation, DonationCampaign, DonationSettings, DonorLink
-
-
-def _blank_form(user):
-    """Full form for staff (log for anyone), self-service form for members."""
-    return DonationForm() if user.is_staff else SelfDonationForm()
 
 
 def support_view(request):
@@ -25,9 +19,10 @@ def support_view(request):
       2. General Donations (always-on, seeded; sits last among active rows)
       3. Previous fundraisers (closed specific drives, collapsed history)
 
-    Logged-in members get an inline log-donation form on every still-open card
-    (staff can log for anyone; members log their own). Closed drives drop the
-    log form — the donation window is over."""
+    Staff get an inline log-donation form on every still-open card to record
+    external or cash gifts; member donations arrive automatically via the bank
+    import, so members no longer self-log. Closed drives drop the log form —
+    the donation window is over."""
     # Specific fundraisers first (newest at the top), General Donations last as
     # the always-on catch-all. is_default sorts False -> True, so the default
     # row naturally floats to the bottom regardless of when it was created.
@@ -57,36 +52,33 @@ def support_view(request):
         'closed_campaigns': closed_campaigns,
         'general_donations': general_donations,
         'donation_settings': DonationSettings.objects.first(),
-        'form': _blank_form(request.user) if request.user.is_authenticated else None,
+        'form': DonationForm() if request.user.is_staff else None,
     }
     return render(request, 'donations/support.html', context)
 
 
-@login_required
+@staff_member_required
 def log_donation_view(request, campaign_id):
-    """Log a received donation; HTMX-swaps the fundraiser body. Staff use the
-    full form (any member / external name / anonymous); members self-log, always
-    attributed to themselves so they can't claim someone else's gift."""
+    """Staff-only: log a received donation (external or cash gift); HTMX-swaps
+    the fundraiser body. Member donations import automatically from the bank, so
+    there's no member self-log path. The form attributes a gift to a known
+    member, a free-text external name, or marks it anonymous."""
     campaign = get_object_or_404(DonationCampaign, id=campaign_id)
     if request.method != 'POST':
         return redirect('support')
 
-    is_staff = request.user.is_staff
-    form = DonationForm(request.POST) if is_staff else SelfDonationForm(request.POST)
+    form = DonationForm(request.POST)
     just_logged = None
     if form.is_valid():
         donation = form.save(commit=False)
         donation.campaign = campaign
         donation.logged_by = request.user
-        if not is_staff:
-            donation.user = request.user   # members can only log their own
-            donation.donor_name = ''
         donation.save()
         just_logged = donation
         if not request.htmx:
             messages.success(request, f"Logged €{donation.amount} from {donation.display_name}.")
             return redirect('support')
-        form = _blank_form(request.user)  # fresh form for the next entry
+        form = DonationForm()  # fresh form for the next entry
 
     context = {
         'campaign': campaign,

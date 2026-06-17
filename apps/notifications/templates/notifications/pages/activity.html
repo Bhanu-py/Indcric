@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Activity{% endblock %}
+
+{% block content %}
+{% comment %}
+Club-wide activity feed — the design's Notifications/Activity screen.
+Tabs filter by kind (HTMX list swap into #activity-list). 'Mark all read' clears
+the per-row unread dots and OOB-updates the header bell. Reactions live per-row.
+{% endcomment %}
+<div class="page-content max-w-2xl mx-auto px-4"
+     x-data="{ tab: '{{ tab }}' }">
+
+    <header class="flex items-end justify-between gap-3 flex-wrap mb-4">
+        <div>
+            <h1 class="text-2xl font-semibold tracking-tight text-stone-900">Activity</h1>
+            <p class="text-sm text-stone-500 mt-1">Everything that happened at the club, newest first.</p>
+        </div>
+        <button hx-post="{% url 'activity_read_all' %}"
+                hx-include="#feed-tab-input"
+                hx-target="#activity-list" hx-swap="innerHTML"
+                class="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            Mark all read
+        </button>
+    </header>
+
+    {# Hidden field carries the active tab into the mark-all-read POST so it re-renders the same filter. #}
+    <input type="hidden" id="feed-tab-input" name="tab" :value="tab">
+
+    {# Tabs — horizontally scrollable on mobile. Alpine drives the active style; HTMX loads the list. #}
+    <div role="tablist" class="flex gap-1 overflow-x-auto -mx-4 px-4 pb-1 mb-4">
+        {% for key, label in tabs %}
+        <button role="tab"
+                @click="tab = '{{ key }}'"
+                hx-get="{% url 'activity' %}?tab={{ key }}"
+                hx-target="#activity-list" hx-swap="innerHTML"
+                :class="tab === '{{ key }}' ? 'bg-pitch-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'"
+                class="shrink-0 inline-flex items-center min-h-[44px] sm:min-h-0 px-3.5 sm:py-1.5 rounded-full text-xs font-semibold transition-colors">
+            {{ label }}
+        </button>
+        {% endfor %}
+    </div>
+
+    <div id="activity-list">
+        {% include "notifications/partials/_activity_list.html" %}
+    </div>
+
+</div>
+{% endblock %}

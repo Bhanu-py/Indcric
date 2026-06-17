@@ -93,14 +93,15 @@ Args:
     <!-- 3 · How to donate (club bank account) -->
     {% include "donations/partials/_how_to_donate.html" %}
 
-    <!-- 4 · Log a donation (bottom) — staff log for anyone; members log their own.
+    <!-- 4 · Log a donation (bottom) — staff only. Member gifts import
+         automatically from the bank, so this is for external/cash donations.
          Hidden entirely on closed drives — the donation window for that drive is over. -->
-    {% if can_log and not closed and user.is_authenticated and form %}
+    {% if can_log and not closed and user.is_staff and form %}
     <div class="border-t border-stone-100 pt-4" x-data="{ openLog: {% if just_logged or form.errors %}true{% else %}false{% endif %} }">
         <button type="button" @click="openLog = !openLog" class="w-full flex items-center justify-between text-left">
             <div class="flex items-center gap-2">
-                <h3 class="text-sm font-bold text-stone-800">{% if user.is_staff %}Log a donation{% else %}Add your donation{% endif %}</h3>
-                {% if user.is_staff %}<span class="badge badge-stone">Staff</span>{% else %}<span class="badge badge-green">You</span>{% endif %}
+                <h3 class="text-sm font-bold text-stone-800">Log a donation</h3>
+                <span class="badge badge-stone">Staff</span>
             </div>
             <svg class="w-4 h-4 text-stone-400 transition-transform" :class="openLog ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
         </button>
@@ -110,7 +111,6 @@ Args:
               class="space-y-3 mt-3">
             {% csrf_token %}
             {% if form.non_field_errors %}<div class="alert alert-error-box">{{ form.non_field_errors|join:" " }}</div>{% endif %}
-            {% if user.is_staff %}
             <div>
                 <label class="form-label" for="{{ form.user.id_for_label }}">Member</label>
                 {{ form.user }}
@@ -119,7 +119,6 @@ Args:
                 <label class="form-label" for="{{ form.donor_name.id_for_label }}">…or external donor name</label>
                 {{ form.donor_name }}
             </div>
-            {% endif %}
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="form-label" for="{{ form.amount.id_for_label }}">Amount (€)</label>
@@ -139,10 +138,7 @@ Args:
                 {{ form.is_anonymous }}
                 <span class="text-sm text-stone-700">Show as “Anonymous” on the wall</span>
             </label>
-            {% if not user.is_staff %}
-            <p class="text-xs text-stone-400">Recorded under {{ user.get_full_name|default:user.username }} — tick anonymous to hide your name on the wall.</p>
-            {% endif %}
-            <button type="submit" class="btn btn-primary btn-md w-full">{% if user.is_staff %}Log donation{% else %}Add my donation{% endif %}</button>
+            <button type="submit" class="btn btn-primary btn-md w-full">Log donation</button>
         </form>
     </div>
     {% endif %}

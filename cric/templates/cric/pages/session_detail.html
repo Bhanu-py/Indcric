@@ -180,12 +180,15 @@
                     {% include "_components/stat_column.html" with dot="stone" label="Venue fee" value="€"|add:cost_str first=True %}
                 {% endwith %}
                 {% include "_components/stat_column.html" with dot="sky" label="Voted in" value=yes_votes %}
-                {% if session.cost_per_person %}
-                    {% with pp_str=session.cost_per_person|stringformat:"s" %}
+                {% if session.cost_per_person != None %}
+                    {% with pp_str=session.cost_per_person|floatformat:2 %}
                         {% include "_components/stat_column.html" with dot="pitch" label="Per player" value="€"|add:pp_str %}
                     {% endwith %}
-                {% elif cost_per_person_est %}
-                    {% with pp_str=cost_per_person_est|stringformat:"s" %}
+                {% elif not session.cost %}
+                    {# Free session — nothing to split, so it's genuinely €0, not unknown. #}
+                    {% include "_components/stat_column.html" with dot="pitch" label="Per player" value="€0.00" %}
+                {% elif cost_per_person_est != None %}
+                    {% with pp_str=cost_per_person_est|floatformat:2 %}
                         {% include "_components/stat_column.html" with dot="pitch" label="Est. /player" value="€"|add:pp_str %}
                     {% endwith %}
                 {% else %}

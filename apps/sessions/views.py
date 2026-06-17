@@ -255,7 +255,14 @@ def delete_session_view(request, session_id):
     session = get_object_or_404(Session, id=session_id)
     if request.method == 'POST':
         session_name = session.name
-        session.delete()
+        with transaction.atomic():
+            # Delivery.striker/bowler/etc. PROTECT their Players, so a plain
+            # Session→Match→Team→Player cascade raises ProtectedError. Clear the
+            # ball-by-ball ledger (via the innings) first — same pattern as
+            # delete_match_view — then the rest cascades cleanly.
+            from apps.matches.models import Innings
+            Innings.objects.filter(match__session=session).delete()
+            session.delete()
         messages.success(request, f"Session '{session_name}' has been deleted.")
         return redirect('home')
     return redirect('session_detail', session_id=session_id)

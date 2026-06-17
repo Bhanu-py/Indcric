@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.db.models import Sum
 from django.utils import timezone
@@ -140,6 +141,8 @@ class Donation(models.Model):
         null=True, blank=True, related_name='+',
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    # Deleting a donation removes its activity-feed row.
+    feed_events = GenericRelation('notifications.ActivityEvent')
 
     class Meta:
         ordering = ['-donated_on', '-created_at']

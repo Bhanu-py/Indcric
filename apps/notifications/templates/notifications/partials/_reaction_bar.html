@@ -1,0 +1,20 @@
+{% comment %}
+Tap-to-react emoji bar for one event. Each button toggles the viewer's reaction
+and swaps this bar back in (outerHTML). The whole element keeps a stable id so
+the HTMX swap replaces it cleanly.
+Args: event (with .reactions_view: [{emoji, count, reacted}])
+{% endcomment %}
+<div id="reactions-{{ event.id }}" class="flex items-center gap-1.5 mt-2">
+    {% for r in event.reactions_view %}
+    <button type="button"
+            hx-post="{% url 'activity_react' event.id %}"
+            hx-vals='{"emoji": "{{ r.emoji }}"}'
+            hx-target="#reactions-{{ event.id }}" hx-swap="outerHTML"
+            aria-pressed="{{ r.reacted|yesno:'true,false' }}"
+            class="inline-flex items-center justify-center gap-1 min-h-[44px] sm:min-h-[28px] px-3 sm:px-2 rounded-full text-xs leading-none border transition-colors
+                   {% if r.reacted %}bg-pitch-50 border-pitch-200 text-pitch-700{% else %}bg-white border-stone-200 text-stone-500 hover:bg-stone-50{% endif %}">
+        <span class="text-sm">{{ r.emoji }}</span>
+        {% if r.count %}<span class="font-mono font-semibold tabular-nums">{{ r.count }}</span>{% endif %}
+    </button>
+    {% endfor %}
+</div>

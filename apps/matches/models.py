@@ -1,7 +1,10 @@
+from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 
 
 class Match(models.Model):
+    # Deleting a match removes its activity-feed rows (e.g. the result entry).
+    feed_events = GenericRelation('notifications.ActivityEvent')
     # String ref avoids circular import: matches → sessions
     session = models.ForeignKey(
         'cric_sessions.Session',

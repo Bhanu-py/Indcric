@@ -154,9 +154,10 @@ ENABLE_BANKING_REDIRECT_URL = os.getenv(
 DONATIONS_AUTO_CREATE = os.getenv("DONATIONS_AUTO_CREATE", "True").lower() == "true"
 
 # --- allauth account behavior ---
-ACCOUNT_EMAIL_REQUIRED = True
+# username/email required-ness is expressed via the `*` suffixes in
+# ACCOUNT_SIGNUP_FIELDS below; the legacy ACCOUNT_EMAIL_REQUIRED /
+# ACCOUNT_USERNAME_REQUIRED booleans are deprecated and dropped.
 ACCOUNT_EMAIL_VERIFICATION = "optional"
-ACCOUNT_USERNAME_REQUIRED = True
 ACCOUNT_LOGIN_METHODS = {"username", "email"}
 ACCOUNT_SIGNUP_FIELDS = ["username*", "email*", "password1*", "password2*"]
 # Custom signup form adds the required WhatsApp phone field (used by the
@@ -196,6 +197,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.notifications.context_processors.activity_unread",
             ],
         },
     },
@@ -325,12 +327,16 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Tests don't run collectstatic, so the hashed manifest has no entries — fall
 # back to plain static storage under test so {% static %} renders don't error.
 import sys as _sys
+_under_test = 'test' in _sys.argv
 _static_backend = (
     'django.contrib.staticfiles.storage.StaticFilesStorage'
-    if 'test' in _sys.argv
+    if _under_test
     else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 )
-if CLOUDINARY_URL:
+# Under test, never route media to Cloudinary — the dev box may not have the
+# cloudinary_storage backend installed, and tests shouldn't hit a remote bucket.
+# Force local FileSystemStorage regardless of CLOUDINARY_URL.
+if CLOUDINARY_URL and not _under_test:
     STORAGES = {
         'default': {
             'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
