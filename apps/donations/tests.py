@@ -84,28 +84,28 @@ class SupportPageTests(TestCase):
         self.assertContains(resp, 'Guest')
         self.assertContains(resp, 'Log a donation')
 
-    def test_member_logs_own_donation(self):
+    def test_member_cannot_log(self):
+        """Members no longer self-log — donations import from the bank, so the
+        log endpoint is staff-only and bounces non-staff."""
         self.client.force_login(self.member)
         resp = self.client.post(
             reverse('log-donation', args=[self.campaign.id]),
             {'amount': '15.00', 'donated_on': '2026-06-10'},
         )
-        self.assertEqual(resp.status_code, 302)
-        self.assertEqual(self.campaign.donations.count(), 1)
-        d = self.campaign.donations.first()
-        self.assertEqual(d.user, self.member)        # auto-attributed to self
-        self.assertEqual(d.logged_by, self.member)
+        self.assertEqual(resp.status_code, 302)  # staff_member_required bounces non-staff
+        self.assertEqual(self.campaign.donations.count(), 0)
 
-    def test_member_cannot_attribute_to_another_name(self):
-        """A member's posted donor_name is ignored — it's always their own gift."""
+    def test_member_does_not_see_log_form(self):
         self.client.force_login(self.member)
-        self.client.post(
-            reverse('log-donation', args=[self.campaign.id]),
-            {'donor_name': 'Someone Else', 'amount': '15.00', 'donated_on': '2026-06-10'},
-        )
-        d = self.campaign.donations.first()
-        self.assertEqual(d.user, self.member)
-        self.assertEqual(d.donor_name, '')
+        resp = self.client.get(reverse('support'))
+        # 'External donor name' is the staff form's donor field placeholder —
+        # it only renders when the log form is present.
+        self.assertNotContains(resp, 'External donor name')
+
+    def test_staff_sees_log_form(self):
+        self.client.force_login(self.staff)
+        resp = self.client.get(reverse('support'))
+        self.assertContains(resp, 'External donor name')
 
     def test_anonymous_user_cannot_log(self):
         resp = self.client.post(

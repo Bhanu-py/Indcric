@@ -325,12 +325,16 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Tests don't run collectstatic, so the hashed manifest has no entries — fall
 # back to plain static storage under test so {% static %} renders don't error.
 import sys as _sys
+_under_test = 'test' in _sys.argv
 _static_backend = (
     'django.contrib.staticfiles.storage.StaticFilesStorage'
-    if 'test' in _sys.argv
+    if _under_test
     else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 )
-if CLOUDINARY_URL:
+# Under test, never route media to Cloudinary — the dev box may not have the
+# cloudinary_storage backend installed, and tests shouldn't hit a remote bucket.
+# Force local FileSystemStorage regardless of CLOUDINARY_URL.
+if CLOUDINARY_URL and not _under_test:
     STORAGES = {
         'default': {
             'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
