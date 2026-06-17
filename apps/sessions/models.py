@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.urls import reverse
 
@@ -18,6 +19,9 @@ class Session(models.Model):
         blank=True,
         related_name='created_sessions',
     )
+    # Deleting a session also removes its activity-feed rows (no orphan entries
+    # with dead 'View'/'Pay' links). GenericRelation is virtual — no migration.
+    feed_events = GenericRelation('notifications.ActivityEvent')
 
     def get_absolute_url(self):
         return reverse('session_detail', args=[self.pk])

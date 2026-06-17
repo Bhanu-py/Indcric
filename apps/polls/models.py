@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.urls import reverse
 
@@ -11,6 +12,8 @@ class Poll(models.Model):
     question = models.CharField(max_length=255, default="Should this session be played?")
     is_open = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Deleting a poll removes its activity-feed row (e.g. 'Poll opened').
+    feed_events = GenericRelation('notifications.ActivityEvent')
 
     def __str__(self):
         return f"Poll for {self.session.name}"

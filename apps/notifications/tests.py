@@ -221,6 +221,16 @@ class ActivityEmitTests(TestCase):
         ev.refresh_from_db()
         self.assertIn("B won", ev.body)
 
+    def test_deleting_target_cascades_feed_events(self):
+        """Deleting a session removes its feed rows — no orphans with dead links."""
+        s = Session.objects.create(
+            name="ToDelete", duration=Decimal("2"),
+            date=date(2026, 6, 1), time=time(18, 0), location="H",
+        )
+        self.assertTrue(ActivityEvent.objects.filter(body__icontains="ToDelete").exists())
+        s.delete()
+        self.assertFalse(ActivityEvent.objects.filter(body__icontains="ToDelete").exists())
+
 
 class ActivityUnreadTests(TestCase):
     def setUp(self):
