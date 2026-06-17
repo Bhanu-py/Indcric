@@ -154,9 +154,10 @@ ENABLE_BANKING_REDIRECT_URL = os.getenv(
 DONATIONS_AUTO_CREATE = os.getenv("DONATIONS_AUTO_CREATE", "True").lower() == "true"
 
 # --- allauth account behavior ---
-ACCOUNT_EMAIL_REQUIRED = True
+# username/email required-ness is expressed via the `*` suffixes in
+# ACCOUNT_SIGNUP_FIELDS below; the legacy ACCOUNT_EMAIL_REQUIRED /
+# ACCOUNT_USERNAME_REQUIRED booleans are deprecated and dropped.
 ACCOUNT_EMAIL_VERIFICATION = "optional"
-ACCOUNT_USERNAME_REQUIRED = True
 ACCOUNT_LOGIN_METHODS = {"username", "email"}
 ACCOUNT_SIGNUP_FIELDS = ["username*", "email*", "password1*", "password2*"]
 # Custom signup form adds the required WhatsApp phone field (used by the
