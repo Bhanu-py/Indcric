@@ -159,8 +159,8 @@ class ActivityEmitTests(TestCase):
         s.save()
         ev = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_PAYMENT).first()
         self.assertIsNotNone(ev)
-        self.assertIn("Cost split", ev.body)
-        self.assertIn("€5.00 per player", ev.body)
+        self.assertIn("€5.00 per player", ev.body)     # the price, up front
+        self.assertEqual(ev.action_label, 'Pay')        # Pay CTA, not just View
         self.assertNotIn("see you there", ev.body)
 
     def test_free_session_confirmed_emits_nothing(self):

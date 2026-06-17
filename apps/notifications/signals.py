@@ -78,11 +78,11 @@ def on_session(sender, instance, created, **kwargs):
         # so they get no feed entry.
         safe_emit(
             ActivityEvent.KIND_PAYMENT,
-            f"Cost split for {instance.name} ({instance.date:%a %d %b}) — "
-            f"€{instance.cost_per_person:.2f} per player",
+            f"€{instance.cost_per_person:.2f} per player for {instance.name} "
+            f"({instance.date:%a %d %b}) — attendance confirmed, payment due",
             actor=instance.created_by,
             url=instance.get_absolute_url(),
-            action_label='View',
+            action_label='Pay',
             context=instance.location,
             target=instance,
         )
