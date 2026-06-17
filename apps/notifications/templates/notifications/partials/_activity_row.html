@@ -1,0 +1,41 @@
+{% comment %}
+One activity row: category icon · body + meta + reactions · unread dot + action.
+Args: event (decorated: .style {bg,fg,icon}, .is_unread, .reactions_view), last
+{% endcomment %}
+<div class="grid grid-cols-[auto_1fr_auto] gap-3 px-4 py-3.5 {% if not last %}border-b border-stone-100{% endif %} {% if event.is_unread %}bg-pitch-50/40{% endif %}">
+
+    {# Category glyph #}
+    <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg shrink-0 mt-0.5 {{ event.style.bg }} {{ event.style.fg }}">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+            {% if event.style.icon == 'calendar' %}<path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            {% elif event.style.icon == 'wallet' %}<path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+            {% elif event.style.icon == 'trophy' %}<path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0"/>
+            {% elif event.style.icon == 'chat' %}<path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+            {% elif event.style.icon == 'heart' %}<path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+            {% elif event.style.icon == 'users' %}<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+            {% elif event.style.icon == 'send' %}<path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+            {% else %}<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>{% endif %}
+        </svg>
+    </span>
+
+    {# Body + meta + reactions #}
+    <div class="min-w-0">
+        {% if event.safe_url %}
+        <a href="{{ event.safe_url }}" class="block text-sm text-stone-800 leading-snug hover:text-pitch-700">{{ event.body }}</a>
+        {% else %}
+        <p class="text-sm text-stone-800 leading-snug">{{ event.body }}</p>
+        {% endif %}
+        <p class="font-mono text-xs sm:text-[10px] uppercase tracking-wider text-stone-400 mt-1">
+            {{ event.created_at|timesince }} ago{% if event.context %} · {{ event.context }}{% endif %}
+        </p>
+        {% include "notifications/partials/_reaction_bar.html" with event=event %}
+    </div>
+
+    {# Unread dot + optional action #}
+    <div class="flex items-center gap-2 shrink-0">
+        {% if event.is_unread %}<span class="w-2 h-2 rounded-full bg-amber-500"></span>{% endif %}
+        {% if event.action_label and event.safe_url %}
+        <a href="{{ event.safe_url }}" class="inline-flex items-center min-h-[44px] sm:min-h-0 px-3 sm:py-1.5 rounded-lg text-xs font-semibold text-pitch-700 bg-pitch-50 hover:bg-pitch-100 transition-colors">{{ event.action_label }}</a>
+        {% endif %}
+    </div>
+</div>

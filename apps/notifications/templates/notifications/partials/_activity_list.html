@@ -1,0 +1,11 @@
+{% comment %}
+The feed rows as a card. Swapped into #activity-list on tab change / mark-all-read.
+Args: events (decorated ActivityEvents)
+{% endcomment %}
+<div class="bg-white rounded-2xl shadow-sm border border-stone-100 overflow-hidden">
+    {% for event in events %}
+        {% include "notifications/partials/_activity_row.html" with event=event last=forloop.last %}
+    {% empty %}
+        <div class="px-4 py-12 text-center text-sm text-stone-400">Nothing here yet. 🏏</div>
+    {% endfor %}
+</div>

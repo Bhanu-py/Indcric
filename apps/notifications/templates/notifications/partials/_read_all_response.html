@@ -1,0 +1,6 @@
+{% comment %}
+Response to 'Mark all read': the refreshed list (unread dots cleared) for the
+#activity-list target, plus an OOB swap that zeroes the header bell badge.
+{% endcomment %}
+{% include "notifications/partials/_activity_list.html" %}
+{% include "notifications/_bell.html" with oob=True activity_unread=0 %}

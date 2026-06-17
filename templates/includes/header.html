@@ -62,6 +62,9 @@
                 </div>
                 {% endif %}
 
+                <!-- Activity bell (member + staff) -->
+                {% include 'notifications/_bell.html' %}
+
                 <!-- User dropdown -->
                 <div x-data="{ open: false }" class="relative">
                     <button @click="open = !open" @click.away="open = false"

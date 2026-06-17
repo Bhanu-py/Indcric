@@ -99,3 +99,172 @@ class HandleHistoryTests(TestCase):
         self.assertEqual(mock_send.call_count, 1)
         _handle_history("wamid.h3", self.phone, {})  # same wa_message_id
         self.assertEqual(mock_send.call_count, 1)     # no second send
+
+
+# ─────────────────────────── Activity feed ───────────────────────────
+
+from django.urls import reverse
+from django.utils import timezone
+
+from apps.donations.models import Donation, DonationCampaign
+from apps.notifications.models import (
+    ActivityEvent, ActivityFeedState, Reaction, unread_count_for,
+)
+from apps.payments.models import Payment
+
+
+class ActivityEmitTests(TestCase):
+    """Domain events flow into the feed via signals."""
+
+    def setUp(self):
+        self.donor = User.objects.create_user(username="riya", first_name="Riya", password="x")
+        self.campaign = DonationCampaign.objects.create(title="Server fund", goal_amount=Decimal("100"))
+
+    def test_donation_emits_activity(self):
+        Donation.objects.create(campaign=self.campaign, user=self.donor, amount=Decimal("25.00"))
+        ev = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_DONATION).first()
+        self.assertIsNotNone(ev)
+        self.assertIn("Riya", ev.body)
+        self.assertIn("€25.00", ev.body)
+        self.assertEqual(ev.actor, self.donor)
+
+    def test_anonymous_donation_hides_donor(self):
+        Donation.objects.create(
+            campaign=self.campaign, user=self.donor, amount=Decimal("10.00"), is_anonymous=True
+        )
+        ev = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_DONATION).first()
+        self.assertIn("Anonymous", ev.body)
+        self.assertIsNone(ev.actor)            # no actor link for an anonymous gift
+        self.assertNotIn("Riya", ev.body)
+
+    def test_session_created_emits_activity(self):
+        Session.objects.create(
+            name="Sunday Nets", duration=Decimal("2"),
+            date=date(2026, 6, 21), time=time(18, 0), location="Hall",
+        )
+        self.assertTrue(
+            ActivityEvent.objects.filter(kind=ActivityEvent.KIND_SESSION, body__icontains="Sunday Nets").exists()
+        )
+
+    def test_session_confirmed_emits_activity(self):
+        s = Session.objects.create(
+            name="Friday KO", duration=Decimal("2"),
+            date=date(2026, 6, 19), time=time(18, 0), location="Hall",
+        )
+        before = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_SESSION).count()
+        s.attendance_confirmed = True
+        s.save()
+        after = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_SESSION).count()
+        self.assertEqual(after, before + 1)
+        self.assertTrue(ActivityEvent.objects.filter(body__icontains="confirmed").exists())
+
+    def test_payment_paid_emits_once(self):
+        s = Session.objects.create(
+            name="Pay session", duration=Decimal("2"),
+            date=date(2026, 6, 20), time=time(18, 0), location="Hall",
+        )
+        p = Payment.objects.create(user=self.donor, session=s, amount=Decimal("8.00"), status='paid')
+        self.assertEqual(ActivityEvent.objects.filter(kind=ActivityEvent.KIND_PAYMENT).count(), 1)
+        p.save()  # re-save while paid → deduped, no second row
+        self.assertEqual(ActivityEvent.objects.filter(kind=ActivityEvent.KIND_PAYMENT).count(), 1)
+
+    def test_pending_payment_does_not_emit(self):
+        s = Session.objects.create(
+            name="Pending session", duration=Decimal("2"),
+            date=date(2026, 6, 22), time=time(18, 0), location="Hall",
+        )
+        Payment.objects.create(user=self.donor, session=s, amount=Decimal("8.00"), status='pending')
+        self.assertFalse(ActivityEvent.objects.filter(kind=ActivityEvent.KIND_PAYMENT).exists())
+
+    def test_match_completion_emits_once_and_refreshes(self):
+        s = Session.objects.create(
+            name="Match day", duration=Decimal("2"),
+            date=date(2026, 6, 14), time=time(18, 0), location="Hall",
+        )
+        match = Match.objects.create(session=s, name="Match 1")
+        t1 = Team.objects.create(match=match, name="A")
+        t2 = Team.objects.create(match=match, name="B")
+        Innings.objects.create(match=match, number=1, batting_team=t1, bowling_team=t2, is_closed=True)
+        Innings.objects.create(match=match, number=2, batting_team=t2, bowling_team=t1, is_closed=True)
+        # Complete now, but the result only posts when the match is saved with a
+        # winner (as finalize_match_result does) — not on innings save.
+        self.assertFalse(ActivityEvent.objects.filter(kind=ActivityEvent.KIND_MATCH).exists())
+
+        match.winner = t1
+        match.save()
+        self.assertEqual(ActivityEvent.objects.filter(kind=ActivityEvent.KIND_MATCH).count(), 1)
+        ev = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_MATCH).first()
+        self.assertIn("A won", ev.body)
+
+        # Reopen + re-finalize with a corrected winner → same row, refreshed body.
+        match.winner = t2
+        match.save()
+        self.assertEqual(ActivityEvent.objects.filter(kind=ActivityEvent.KIND_MATCH).count(), 1)
+        ev.refresh_from_db()
+        self.assertIn("B won", ev.body)
+
+
+class ActivityUnreadTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="viewer", password="x")
+        self.other = User.objects.create_user(username="actor", password="x")
+
+    def test_unread_counts_events_after_seen_excluding_own(self):
+        ActivityEvent.objects.create(kind=ActivityEvent.KIND_PING, body="by other", actor=self.other)
+        ActivityEvent.objects.create(kind=ActivityEvent.KIND_PING, body="by me", actor=self.user)
+        # Own action excluded → only the 'other' event counts.
+        self.assertEqual(unread_count_for(self.user), 1)
+
+    def test_mark_all_read_clears_unread(self):
+        ActivityEvent.objects.create(kind=ActivityEvent.KIND_PING, body="x", actor=self.other)
+        self.assertEqual(unread_count_for(self.user), 1)
+        state, _ = ActivityFeedState.objects.get_or_create(user=self.user)
+        state.last_seen_at = timezone.now()
+        state.save()
+        self.assertEqual(unread_count_for(self.user), 0)
+
+
+class ActivityViewTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="viewer", password="x")
+        self.donation_ev = ActivityEvent.objects.create(kind=ActivityEvent.KIND_DONATION, body="Riya donated €25.00")
+        self.payment_ev = ActivityEvent.objects.create(kind=ActivityEvent.KIND_PAYMENT, body="Sam paid €8.00")
+
+    def test_feed_requires_login(self):
+        resp = self.client.get(reverse('activity'))
+        self.assertEqual(resp.status_code, 302)  # redirect to login
+
+    def test_feed_renders_with_bell(self):
+        self.client.force_login(self.user)
+        resp = self.client.get(reverse('activity'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Activity")
+        self.assertContains(resp, 'id="activity-bell"')   # header bell present
+        self.assertContains(resp, "Riya donated")
+
+    def test_tab_filter_returns_only_matching_kind(self):
+        self.client.force_login(self.user)
+        resp = self.client.get(reverse('activity'), {'tab': 'donations'}, HTTP_HX_REQUEST='true')
+        self.assertContains(resp, "Riya donated")
+        self.assertNotContains(resp, "Sam paid")
+
+    def test_react_toggles(self):
+        self.client.force_login(self.user)
+        url = reverse('activity_react', args=[self.donation_ev.id])
+        self.client.post(url, {'emoji': '👍'})
+        self.assertEqual(Reaction.objects.filter(activity=self.donation_ev, emoji='👍').count(), 1)
+        self.client.post(url, {'emoji': '👍'})   # tap again → toggle off
+        self.assertEqual(Reaction.objects.filter(activity=self.donation_ev, emoji='👍').count(), 0)
+
+    def test_react_rejects_unknown_emoji(self):
+        self.client.force_login(self.user)
+        self.client.post(reverse('activity_react', args=[self.donation_ev.id]), {'emoji': '💩'})
+        self.assertEqual(Reaction.objects.filter(activity=self.donation_ev).count(), 0)
+
+    def test_mark_all_read_view_resets_and_oob_bell(self):
+        self.client.force_login(self.user)
+        resp = self.client.post(reverse('activity_read_all'), {'tab': 'all'}, HTTP_HX_REQUEST='true')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'hx-swap-oob="true"')      # bell OOB update
+        self.assertTrue(ActivityFeedState.objects.filter(user=self.user).exists())
+        self.assertEqual(unread_count_for(self.user), 0)
