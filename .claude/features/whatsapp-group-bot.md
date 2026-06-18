@@ -1,0 +1,280 @@
+# WhatsApp Group-Resident Bot — Feature Spec
+
+**Status:** Designed, not built. Reverses the earlier "walked away from whatsapp-web.js" decision in [whatsapp-bot.md](whatsapp-bot.md).
+**Owner:** Bhanu
+**Created:** 2026-06-18
+**Decided by:** multi-agent design pass (library / hosting / integration / ban-risk / product) + adversarial critique.
+
+> This bot is the **only** way to post into a WhatsApp *group* — the Meta Cloud API physically cannot. It complements (does not replace) the existing Cloud-API DM flow. Read [whatsapp-bot.md](whatsapp-bot.md) for the Cloud-API groundwork this reuses.
+
+## Goal
+
+Make the club's WhatsApp Community sub-group a two-way surface for IndCric:
+- **Auto-post** session/RSVP/result/cost-split updates into the group.
+- **Read** members' in-group `YES`/`NO` replies + commands back into Django.
+
+Replaces the manual "admin copy-pastes a wa.me invite" flow. Django stays the source of truth; a small always-on Node bot (whatsapp-web.js + dedicated SIM) is the group-posting arm.
+
+**Send-into-one-group + read-replies only.** No cold DMs, no contact scraping. ~3–5 posts per session lifecycle.
+
+### Success criteria
+- New poll → RSVP invite posts to the group within ~30s.
+- Group `YES`/`NO` reply → `Vote` row, identical to the Cloud-API DM path.
+- Bot's WhatsApp session survives VM reboot/redeploy with **zero re-scans**.
+- A bot-number ban is a recoverable inconvenience (re-link spare SIM), never data loss — the group is owned by a human admin.
+
+## Architecture
+
+> **Correction vs the design draft:** IndCric's Django runs on an **always-on (paid) Render server** — it does NOT sleep. So the keepalive concerns in the draft are dropped, and Django *could* push to the bot. We still choose **Node-pulls-from-a-queue** — not for sleep reasons, but because the bot lives on a free VM behind NAT with no managed TLS, so making it publicly reachable for Django→Node push is the harder, more fragile half. The always-on bot pulling work from the always-on Django is the simplest reliable pattern.
+
+```
+   ┌─────────────────────────────────────────────────────────────────┐
+   │  IndCric Django (always-on Render)  — SOURCE OF TRUTH             │
+   │                                                                   │
+   │  signals.py ── on_poll/on_session/on_match/on_donation           │
+   │       │   safe_emit() ALSO enqueues ──►  OutboundMessage (queue)  │
+   │       │                                   status: pending/claimed │
+   │       │                                           /sent/failed    │
+   │  apps/notifications/views_bot.py (NEW)                            │
+   │   GET  /api/bot/outbound/        ◄── claim pending rows           │
+   │   POST /api/bot/outbound/ack/    ◄── mark sent / failed           │
+   │   POST /api/bot/inbound/         ◄── group replies / RSVPs        │
+   │   POST /api/bot/heartbeat/       ◄── liveness ping (NEW)          │
+   │     outbound/ack auth: ?token=$BOT_WEBHOOK_TOKEN                  │
+   │     inbound auth:       ?token=$BOT_INBOUND_TOKEN (separate)      │
+   │   BotEvent  (audit log, unique wa_message_id) — unchanged role    │
+   └───────────────▲───────────────────────────────┬──────────────────┘
+                   │ HTTPS poll ~25s                │ HTTPS POST
+       (1) GET outbound  (2) POST ack               │ (3) POST inbound
+                   │                                 │
+   ┌───────────────┴───────────────────────────────┴──────────────────┐
+   │  Node bot (whatsapp-web.js)  — ALWAYS ON, Oracle Cloud A1 VM.     │
+   │  PM2-supervised. Holds the persistent WA Web session.            │
+   │   poll loop ──► client.sendMessage(WA_GROUP_JID, body)           │
+   │   on('message') ──► forward group YES/NO + commands to /inbound/ │
+   │   RemoteAuth(store) ──► session in Mongo Atlas (survives reboot) │
+   └───────────────────────────────┬───────────────────────────────────┘
+                                    │ WhatsApp Web protocol (WebSocket)
+                                    ▼
+                  WhatsApp Community → one linked sub-group (…@g.us JID)
+```
+
+### Hosting: Oracle Cloud Always Free (A1 ARM)
+- A1 ARM: 2 OCPU / 12 GB RAM / 200 GB persistent disk, always-on. Runs whatsapp-web.js's headless Chromium comfortably (install system `chromium`, set Puppeteer `executablePath`).
+- **Cost honesty (per critique):** Oracle Always Free **requires a card** for identity verification; A1 ARM capacity is frequently "Out of host capacity" in popular regions (can block creation for days); Oracle may reclaim idle Always-Free compute. Treat "I can get an A1 box in my region" as a live risk, not a given. Fallback: Baileys on a 1 GB `e2-micro` (no Chromium).
+- Django stays on Render, unchanged.
+
+### Library: whatsapp-web.js (final pick)
+- On a 12 GB box, the Chromium footprint — its only real downside — is a non-issue. Baileys' sole advantage (tiny RAM) doesn't matter here.
+- Higher-level API (`client.sendMessage`, `GroupChat` helpers) and **built-in `RemoteAuth`** session persistence (Mongo/S3) — solves redeploy-survival with no custom auth-state code.
+- Actively maintained (v1.34.7, Apr 2026), low open-issue backlog (~21 vs Baileys ~277), large tutorial ecosystem.
+- **Communities caveat (both libs):** neither models WhatsApp *Communities* as first-class. Target **one linked sub-group by its `<number>@g.us` JID**, never "the community" as a unit.
+
+## Session & Onboarding
+
+### Dedicated-SIM QR-scan (one-time, human-driven)
+1. Register the dedicated SIM on the **official WhatsApp app** first; set a real name + photo; **warm it up as a normal phone for 1–2 weeks** (some human chats) before any bot activity — biggest behavioural ban-risk reducer.
+2. A **human admin** owns the Community + target sub-group, then adds the bot's number as an ordinary member. Admin keeps ownership so the group survives a bot ban.
+3. Start the Node bot on the A1 VM interactively; it emits `'qr'` → render with `qrcode-terminal`.
+4. On the dedicated phone: WhatsApp → **Linked Devices → Link a Device → scan**. `'authenticated'` → `'ready'` fire.
+5. Capture the group JID once: on `'ready'`, `client.getChats()`, filter `chat.id.server === 'g.us'`, log `chat.id._serialized`, store as `WA_GROUP_JID`. (Prefer `getChats()`+filter over `getChatById`, which can return a `PrivateChat`.)
+
+### Session persistence — `RemoteAuth` + Mongo Atlas M0
+```js
+new Client({
+  authStrategy: new RemoteAuth({
+    clientId: 'indcric-bot',
+    store,                        // wwebjs-mongo MongoStore
+    backupSyncIntervalMs: 300000  // 5-min backup
+  }),
+  puppeteer: { headless: true, executablePath: process.env.CHROMIUM_PATH }
+});
+```
+- Mongo Atlas M0 is free + no card. **Caveat:** M0 auto-pauses after ~60 days of *zero* activity — our 5-min backups keep it warm, so fine.
+- `'remote_session_saved'` fires ~1 min after `'ready'`; log it to confirm persistence before relying on it.
+
+### Reconnect / supervision
+- Run under **PM2** (`pm2 start bot.js --name indcric-bot`, `pm2 save`, `pm2 startup`).
+- **Distinguish two failure classes (per critique — this matters):**
+  - **Process crash / transient disconnect** → `client.destroy()` then `client.initialize()`; `takeoverOnConflict:true`, `restartOnAuthFail:true`; ~9s graceful shutdown so Chrome flushes IndexedDB.
+  - **`'disconnected'` with reason `LOGOUT` / `'auth_failure'`** → WhatsApp invalidated the session. PM2 **cannot** self-heal this. Do NOT loop-restart. Flip a Django-visible `bot_logged_out` flag, alert the admin, and require a human QR re-scan with the physical SIM phone.
+- The linked device dies if the **physical SIM phone is offline >14 days** — keep it charged + online.
+
+## What the Bot Posts
+
+Ranked by value, anti-fatigue first. ~3–5 group posts per session lifecycle. Each enqueued with a `dedup_key` so re-saves post at most once.
+
+**1. Poll open — RSVP call (HIGH, interactive).** `on_poll(created)` (merge with `on_session(created)` — suppress the latter). Back-filled past session → nothing. `dedup_key=poll_opened:{poll.id}`.
+```
+🏏 *{session.name}* — who's in?
+📅 {date:%a %d %b} · {time:%H:%M}
+📍 {session.location}{cost_line}
+
+Reply *YES* or *NO* right here 👇
+Details: {session_url}
+```
+> ⚠️ **Do NOT reuse `build_group_invite_text`** — it emits wa.me *deep-link* text ("RSVP by tapping below"), which contradicts "reply here" and defeats the two-way premise. Add a **new composer `build_group_rsvp_text(poll, site_url)`** with the template above. Test asserts the body contains "Reply" and not "tapping below".
+
+**2. Attendance confirmed — cost split (HIGH, read-only).** `on_session` False→True `attendance_confirmed` with `cost_per_person` set. Free sessions → nothing. `dedup_key=session_confirmed:{session.id}`.
+```
+💰 *{session.name}* is settled — €{cost_per_person:.2f} per player.
+📅 played {date:%a %d %b}
+
+Check your share + pay: DM me *BALANCE*, or open {session_url}
+```
+
+**3. Match result (HIGH, read-only).** `on_match`: completed + winner/tie. `dedup_key=match_result:{match.id}`.
+```
+🏆 *{winner.name}* won {match.name}!
+{scoreline}
+📋 Scorecard: {match_url}
+```
+
+**4. Donation (MEDIUM, GATED).** `on_donation(created)`, only **≥€20 OR crossing a 25/50/75/100% milestone**. Bank micro-donations stay in-app. Respects anonymity. `dedup_key=donation:{donation.id}`.
+```
+❤️ *{display_name}* donated €{amount:.2f}{campaign_suffix} — thank you! 🙏
+{progress_line}
+Chip in: {support_url}
+```
+
+**5. Teams announced (MEDIUM, read-only).** From `save_teams_view` (add enqueue — no signal there today). Both teams populated. `dedup_key=teams:{session.id}`. **Length-guard** the player lists (WhatsApp ~4096-char cap).
+```
+📋 Teams for *{session.name}* ({date:%a %d %b})
+🔵 {teamA.name} (c: {teamA.captain})
+{teamA_players}
+🔴 {teamB.name} (c: {teamB.captain})
+{teamB_players}
+See you on the pitch! {session_url}
+```
+
+**6. Pre-session reminder (MEDIUM, interactive).** Scheduled job (reuse the existing `run_reminders` cron). **One reminder per session, only if non-voters remain.** Drop the old 24h/morning/2h cadence (that was the fatigue source).
+```
+⏰ *{session.name}* is tomorrow ({time:%H:%M}, {location}).
+Still need: {nonvoter_count} replies. Reply *YES*/*NO* if you haven't 👇
+```
+
+**IN-APP ONLY (never group-posted):** individual votes (`on_vote`) and individual payments (`on_payment`) — one-per-person would flood the group. Group sees aggregates on demand via `WHO`/`STATUS`.
+
+## What the Bot Reads
+
+Node `on('message')` (filtered to `WA_GROUP_JID`) → `POST /api/bot/inbound/`. Django reuses the existing parse/dispatch pipeline.
+
+- **RSVP parse:** reuse `RSVP_PATTERN` (`^\s*(yes|no|y|n|✅|❌|1|2)\s*(?:[#\s]*(\d+))?\s*$`, IGNORECASE). session_id → that poll; else latest open poll. `Vote.objects.update_or_create`.
+- **Phone→User:** Node strips group author `<number>@c.us` to E.164 with leading `+`; Django's `_normalize_inbound_phone` re-adds defensively. `User.objects.filter(phone=phone)`.
+- **Commands:** `YES/NO[ <id>]`, `BALANCE/BAL/WALLET`, `STATUS/POLL/WHO/COUNT`, `HELP/?` (reuse existing dispatcher).
+- **Idempotency:** Node sends a stable `wa_message_id` (`msg.id._serialized`); `BotEvent` unique constraint swallows duplicate deliveries.
+
+> ⚠️ **Group replies must route to the group, never a DM (per critique — this is bigger than one call site).** The existing handlers call `send_text_message(phone, …)` (a Cloud-API DM) in **8+ branches** (`not_recognised`, `no_active_poll`, balance/status/help/unknown, …). If only `_handle_rsvp` is rerouted, a group member typing `HELP` or RSVPing from an unregistered number triggers a Cloud-API DM to a closed 24h window — silent failure or a paid utility message.
+> **Fix:** thread a `reply_sink` through `dispatch_inbound`. For `chat=='community'`, **every** handler reply enqueues an `OutboundMessage` to `WA_GROUP_JID` — none call `send_text_message`. Test: a group-origin `HELP` and a group-origin RSVP from an unknown phone both produce an `OutboundMessage` and **zero** Cloud-API calls.
+
+## New Django Pieces
+
+All under the existing `/api/bot/` prefix, `csrf_exempt`, JSON. Put in a new `apps/notifications/views_bot.py`. Factor the token check from `run_reminders_view` into `_check_bot_token(request, token_setting)`.
+
+### New model — `OutboundMessage` (queue) in `apps/notifications/models.py`
+```python
+class OutboundMessage(models.Model):
+    PENDING, CLAIMED, SENT, FAILED = 'pending', 'claimed', 'sent', 'failed'
+    STATUS_CHOICES = [(PENDING,'Pending'),(CLAIMED,'Claimed'),(SENT,'Sent'),(FAILED,'Failed')]
+    body          = models.TextField()
+    target        = models.CharField(max_length=120, default='community')  # group JID/alias
+    status        = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PENDING, db_index=True)
+    dedup_key     = models.CharField(max_length=80, blank=True, default='')
+    claimed_at    = models.DateTimeField(null=True, blank=True)
+    sent_at       = models.DateTimeField(null=True, blank=True)
+    wa_message_id = models.CharField(max_length=100, blank=True, default='')
+    error         = models.CharField(max_length=255, blank=True, default='')
+    attempts      = models.PositiveSmallIntegerField(default=0)
+    created_at    = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        ordering = ['created_at']
+        constraints = [models.UniqueConstraint(
+            fields=['dedup_key'], condition=~models.Q(dedup_key=''),
+            name='uniq_outbound_dedup')]
+```
+Register in admin with `list_filter = ('status','target')`. `BotEvent` stays the audit log (no status/claim fields — can't be the queue).
+
+### Endpoints (`apps/notifications/urls.py`)
+```python
+path('api/bot/outbound/',     views_bot.outbound_drain,  name='bot_outbound'),
+path('api/bot/outbound/ack/', views_bot.outbound_ack,    name='bot_outbound_ack'),
+path('api/bot/inbound/',      views_bot.inbound_message, name='bot_inbound'),
+path('api/bot/heartbeat/',    views_bot.heartbeat,       name='bot_heartbeat'),
+```
+1. **`GET /api/bot/outbound/`** — in `transaction.atomic()`: `select_for_update(skip_locked=True).filter(status='pending')`, set **`status='claimed'`, `claimed_at=now`**, return `[{id,body,target}]`. (Claiming as a distinct status, not just stamping `claimed_at`, is what prevents duplicate re-sends — see below.)
+2. **`POST /api/bot/outbound/ack/`** — `{id,status:'sent',wa_message_id}` → `sent`, write outbound `BotEvent`; `{id,status:'failed',error}` → `failed`, `attempts+=1`.
+3. **`POST /api/bot/inbound/`** — `{from,wa_message_id,text,chat,author_name}` → `dispatch_inbound(...)` with `reply_sink` routing group replies to the queue.
+4. **`POST /api/bot/heartbeat/`** — Node pings each poll; stores `last_seen`. Backs the dead-man's-switch alerting (below).
+
+### `_process_message` refactor (per critique — half-day, not a rename)
+Current `_process_message(msg, value)` reads a Meta-webhook-shaped dict. Extract a shared `dispatch_inbound(wa_message_id, phone, text, chat, reply_sink)` callable from both the Meta webhook and `/api/bot/inbound/`. **Write a characterization test for the existing Meta path first** so the refactor is provably behaviour-preserving; build a synthetic `raw` payload for the group path so `BotEvent.payload` stays consistent.
+
+### Stuck-claim reclaim (per critique — prevents duplicate posts)
+If the bot crashes after claiming but before acking (likely on a Chromium OOM mid-send), the row is stuck `claimed`. `outbound_drain` also re-claims rows where `status='claimed' AND claimed_at < now - 90s`. Node additionally refuses to re-send a row whose `wa_message_id` it already recorded locally.
+
+### Env vars
+**Django (Render):** reuse `BOT_WEBHOOK_TOKEN` (outbound/ack); **add `BOT_INBOUND_TOKEN`** (separate, higher-trust — the inbound endpoint *writes Vote rows*, so don't gate it with the read-only token). `SITE_URL` already present.
+
+**Node (Oracle VM `.env`):**
+| Var | Purpose |
+|---|---|
+| `INDCRIC_BASE_URL` | `https://indcric.onrender.com` |
+| `BOT_WEBHOOK_TOKEN` | outbound/ack/heartbeat |
+| `BOT_INBOUND_TOKEN` | inbound |
+| `WA_GROUP_JID` | target sub-group `…@g.us` |
+| `POLL_INTERVAL_MS` | `25000` |
+| `CHROMIUM_PATH` | system Chromium on the A1 box |
+| `MONGODB_URI` | RemoteAuth store |
+| `RA_CLIENT_ID` | `indcric-bot` |
+
+## Operational Safety (the part that actually keeps it alive)
+
+The single biggest risk is **the bot dies and nobody notices for days** — PM2 restarts a *process* but can't fix a logged-out session, an OOM-looping Chromium, or a banned number. While down: outbound rows pile up `pending`; **inbound RSVPs are lost permanently** (WhatsApp doesn't replay missed linked-device messages).
+
+**Mandatory before relying on it:**
+- **Dead-man's-switch:** Node hits `/api/bot/heartbeat/` each poll. A separate external cron (cron-job.org) checks `last_seen` and pending-count, alerts the admin (email/Telegram) when `last_seen > ~3 poll intervals` OR a row is `pending > 5 min`.
+- **Surface session state:** push `'remote_session_saved'` and `'disconnected'`(LOGOUT) to Django so a logged-out bot is *visible*, not just a healthy-looking PID.
+- Because Django is always-on, the in-app feed + Cloud-API DM path keep working even when the group bot is dead — graceful degradation, not total outage.
+
+## Ban-Risk Mitigation
+
+Risk for *this* use case (one private group, ~30–50 known members, ~20–50 msgs/week, no cold outbound) is **LOW-to-MEDIUM** — the two heaviest triggers (cold outbound, low reply-ratio) are absent.
+
+**DO:** dedicated SIM you own; warm up 1–2 weeks as a real phone; ramp bot activity over ~7 days; keep all activity in the ONE consenting group; randomized Gaussian-jitter delays + typing simulation; vary wording; human admin owns the group; spare SIM + re-link runbook ready.
+
+**DON'T:** cold-DM anyone; bulk-blast identical messages; auto-add members / scrape contacts; install random "anti-ban" npm packages (the `lotusbail` package was caught exfiltrating sessions, Apr 2026); store anything critical only in the bot account; resume full activity right after a temp ban lifts.
+
+> ⚠️ **Datacenter-IP contradiction (per critique):** Oracle A1 is a datacenter IP, which violates the "don't run on datacenter IPs" guideline and raises the fingerprint. Either **accept this in writing** (low real risk at our volume) or route the bot's WA traffic through a **residential proxy / the admin's home connection** (changes the hosting calculus). Decide explicitly.
+
+## Cost Reality (blunt)
+
+Recurring **cash** cost is plausibly €0, but not trap-free:
+- **Oracle A1:** card required for identity; A1 capacity often unavailable in-region; idle-reclaim risk. Biggest asterisk.
+- **Mongo Atlas M0:** free, no card; auto-pauses after ~60 days *zero* activity (our backups prevent this).
+- **Dedicated SIM:** needs to stay active — many prepaid SIMs deactivate without periodic top-up, which would silently kill the bot.
+- **Hidden cost = admin time:** a ban = 1–2 week feature outage + re-warm a new SIM. whatsapp-web.js also breaks for a day or two after some WhatsApp protocol updates, independent of bans.
+
+## Phased Build Plan
+
+### Phase 0 — Local spike
+Throwaway Node script + `LocalAuth`, QR-scan dedicated SIM against a **private test group**. Log every `chat.id._serialized`; confirm `sendMessage` posts and `on('message')` fires for replies. **Exit:** send + read works end-to-end on a laptop.
+
+### Phase 1 — Receive (group → Django)
+Django: `OutboundMessage` model + migration; `_check_bot_token` helper; **`clean_phone` normalization** (handover #4 — ship before group rollout); characterization test for the Meta path; refactor `_process_message` → `dispatch_inbound` with `reply_sink`; `POST /api/bot/inbound/`; split `BOT_INBOUND_TOKEN`. Node: filter to `WA_GROUP_JID`, strip author to E.164, POST inbound. **Exit:** a group `YES`/`NO` records a `Vote` and a confirmation posts **in the group**; group `HELP` from an unknown number makes zero Cloud-API calls.
+
+### Phase 2 — Post (Django → group)
+Django: `outbound_drain` (with claimed-status + reclaim window) + `outbound_ack`; new `build_group_rsvp_text` composer; enqueue from `on_poll`/`on_session`(confirmed)/`on_match`/gated `on_donation`/`save_teams_view`; admin `list_filter`. Node: poll loop → send → ack, Gaussian jitter; local re-send guard. **Exit:** creating a poll auto-posts the invite within ~30s; dedupe prevents reposts; crash-after-claim doesn't double-post.
+
+### Phase 3 — Production hardening
+Provision Oracle A1; install Chromium; PM2 + `startup`/`save`. Switch to `RemoteAuth` + Mongo Atlas; confirm `'remote_session_saved'`; reboot VM → verify **no re-scan**. LOGOUT-vs-crash split handling + admin re-scan runbook. Dead-man's-switch heartbeat + external alerting. Failed-`OutboundMessage` sweep (`attempts<3`). Scheduled single reminder (reuse `run_reminders` cron). 7-day warmup. **Exit:** survives redeploy + VM reboot with zero manual re-scan; failures alert + retry.
+
+## Open Decisions for the User
+
+1. **Datacenter IP:** accept Oracle A1's datacenter IP (low real risk at our volume), or route WA traffic through a residential proxy / home connection?
+2. **Session store:** Mongo Atlas M0 (recommended, simplest `wwebjs-mongo`) vs S3 vs reuse Neon Postgres via custom store?
+3. **Group-reply verbosity:** confirm each RSVP in-thread (clear but chatty), emoji-react only, or silent + rely on in-app feed? (Recommend: terse one-liner or emoji react.)
+4. **Donation gate:** keep €20 / 25-50-75-100% milestones?
+5. **Reminder timing:** single reminder at T-24h vs T-12h; quiet hours?
+6. **Hosting confirmation:** you provisioning Oracle A1 (card + capacity-error risk), or evaluate the Baileys-on-`e2-micro` fallback?
+7. **Multi-group future:** ever more than one target group? (Today's design assumes one; `OutboundMessage.target` already carries a JID per row so it's extensible.)
+8. **Alerting channel:** where should the dead-man's-switch alert go — email, Telegram, or a WhatsApp message to the admin's personal number?
