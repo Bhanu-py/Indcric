@@ -35,7 +35,7 @@ the per-row unread dots and OOB-updates the header bell. Reactions live per-row.
                 @click="tab = '{{ key }}'"
                 hx-get="{% url 'activity' %}?tab={{ key }}"
                 hx-target="#activity-list" hx-swap="innerHTML"
-                :class="tab === '{{ key }}' ? 'bg-pitch-900 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'"
+                :class="tab === '{{ key }}' ? 'bg-pitch-700 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'"
                 class="shrink-0 inline-flex items-center min-h-[44px] sm:min-h-0 px-3.5 sm:py-1.5 rounded-full text-xs font-semibold transition-colors">
             {{ label }}
         </button>

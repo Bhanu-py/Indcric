@@ -27,7 +27,7 @@ function Header({ user, route, onNavigate, onLogout, unread=0 }) {
 
   return (
     <header style={{
-      background: 'var(--pitch-900)', color: '#fff',
+      background: 'var(--pitch-700)', color: '#fff',
       boxShadow: 'var(--shadow-header)', position: 'sticky', top: 0, zIndex: 40
     }}>
       <div style={{maxWidth: 1280, margin: '0 auto', padding: '0 24px',
@@ -114,7 +114,7 @@ function BellButton({ unread, onClick, active }) {
           background:'var(--amber-500)', color:'#fff',
           fontSize:9, fontWeight:700, fontFamily:'var(--font-mono)',
           display:'flex', alignItems:'center', justifyContent:'center',
-          boxShadow:'0 0 0 2px var(--pitch-900)',
+          boxShadow:'0 0 0 2px var(--pitch-700)',
         }}>{unread}</span>
       )}
     </button>

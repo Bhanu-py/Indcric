@@ -479,7 +479,7 @@ function Header({
   }, [manageOpen, userOpen]);
   return /*#__PURE__*/React.createElement("header", {
     style: {
-      background: 'var(--pitch-900)',
+      background: 'var(--pitch-700)',
       color: '#fff',
       boxShadow: 'var(--shadow-header)',
       position: 'sticky',

@@ -32,7 +32,7 @@ class UserHTMxTable(tables.Table):
         # (Games / Payments / Wallet tabs).
         url = reverse('profile_with_username', args=[record.username])
         return format_html(
-            '<a href="{}" class="font-medium text-pitch-700 hover:text-pitch-900 hover:underline">{}</a>',
+            '<a href="{}" class="font-medium text-pitch-700 hover:text-pitch-700 hover:underline">{}</a>',
             url, value,
         )
 

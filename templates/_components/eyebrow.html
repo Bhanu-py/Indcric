@@ -7,8 +7,9 @@ Usage:
 Args:
   label   eyebrow text (will be uppercased by class)
   past    if True, uses muted stone-300 accent bar (for past/inactive sections)
+  cls     optional extra classes on the wrapper (e.g. "!mb-0" when inline in a flex row)
 {% endcomment %}
-<div class="section-eyebrow">
+<div class="section-eyebrow{% if cls %} {{ cls }}{% endif %}">
     <div class="{% if past %}section-eyebrow-bar-past{% else %}section-eyebrow-bar{% endif %}"></div>
     <h2 class="eyebrow{% if past %} text-stone-500{% else %} text-stone-800{% endif %} !mb-0">{{ label }}</h2>
 </div>
