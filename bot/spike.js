@@ -26,14 +26,22 @@
 'use strict';
 
 require('dotenv').config();
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth, Poll } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 
 // Optional: set WA_GROUP_JID in .env once you've captured it from the READY log.
 const TARGET_GROUP_JID = (process.env.WA_GROUP_JID || '').trim();
-// Set SEND_HELLO=1 to post a one-line "spike is live" into the target group on
-// startup. Off by default so re-runs don't spam the group.
+// Set SEND_HELLO=1 to post a one-line text RSVP prompt into the target group on
+// startup. Members can REACT to it (👍 yes / 👎 no) or type YES/NO.
 const SEND_HELLO = process.env.SEND_HELLO === '1';
+// Set SEND_POLL=1 to post a native WhatsApp Poll (Yes/No) into the target group
+// on startup. Members tap an option; we listen for vote_update.
+const SEND_POLL = process.env.SEND_POLL === '1';
+
+// We remember the ids of the messages we post so we can tell whether an incoming
+// reaction / vote is against OUR RSVP message vs some other message.
+let lastRsvpMsgId = null;   // the text prompt people react to
+let lastPollMsgId = null;   // the native poll people vote on
 
 // Mirror of the Django RSVP_PATTERN so the spike behaves like the real parser.
 // Matches: "yes", "NO", "y", "n", "✅", "❌", "1", "2", optionally followed by
@@ -98,15 +106,39 @@ client.on('ready', async () => {
 
   if (TARGET_GROUP_JID && SEND_HELLO) {
     try {
-      await client.sendMessage(TARGET_GROUP_JID, '🏏 IndCric bot spike is live — reply YES or NO to test.');
-      console.log('[SEND] startup hello posted to', TARGET_GROUP_JID);
+      const sent = await client.sendMessage(
+        TARGET_GROUP_JID,
+        '🏏 IndCric RSVP test — react 👍 for YES / 👎 for NO on THIS message (or type YES/NO).'
+      );
+      lastRsvpMsgId = sent.id && sent.id._serialized;
+      console.log('[SEND] text RSVP prompt posted; msgId=', lastRsvpMsgId);
     } catch (e) {
-      console.error('[SEND] startup hello failed:', e.message);
+      console.error('[SEND] text RSVP prompt failed:', e.message);
     }
-  } else {
-    console.log('[SEND] startup hello skipped (set WA_GROUP_JID and SEND_HELLO=1 to enable).');
   }
-  console.log('Now send YES / NO / !ping in the group from another phone…\n');
+
+  if (TARGET_GROUP_JID && SEND_POLL) {
+    try {
+      // Native WhatsApp Poll. Single-answer so it behaves like yes/no.
+      const poll = new Poll('Are you in for the session?', ['Yes ✅', 'No ❌'], {
+        allowMultipleAnswers: false,
+      });
+      const sent = await client.sendMessage(TARGET_GROUP_JID, poll);
+      lastPollMsgId = sent.id && sent.id._serialized;
+      console.log('[SEND] native poll posted; msgId=', lastPollMsgId);
+    } catch (e) {
+      console.error('[SEND] native poll failed (vote_update may be unsupported on this version):', e.message);
+    }
+  }
+
+  if (!SEND_HELLO && !SEND_POLL) {
+    console.log('[SEND] nothing posted (set WA_GROUP_JID + SEND_HELLO=1 and/or SEND_POLL=1).');
+  }
+  console.log('\nNow, from another phone in the group, try ALL THREE inputs:');
+  console.log('  • type YES / NO            → [GROUP MSG] + [REACT]');
+  console.log('  • react 👍 / 👎 to the prompt → [REACTION]');
+  console.log('  • tap an option on the poll  → [POLL VOTE]');
+  console.log('Whichever of these logs reliably is the one we build on.\n');
 });
 
 client.on('message', async (msg) => {
@@ -147,6 +179,53 @@ client.on('message', async (msg) => {
 
   // Anything else: in production a command (HELP/STATUS/…) would get a text reply.
   console.log('        (not an RSVP — a command/other; Phase 1 routes this to the dispatcher)');
+});
+
+// ── INPUT MODE 2: reactions (👍 yes / 👎 no on our RSVP message) ──
+// Fires when someone adds, changes, or removes a reaction. `reaction` is '' on
+// removal. This is the event we're testing for reliability in a group.
+client.on('message_reaction', (reaction) => {
+  try {
+    const phone = toE164(reaction.senderId);
+    const emoji = reaction.reaction || '(removed)';
+    const onMsg = reaction.msgId && reaction.msgId._serialized;
+    const mine = lastRsvpMsgId && onMsg === lastRsvpMsgId ? ' (OUR rsvp message)' : '';
+    console.log(`[REACTION] from=${phone} emoji=${emoji} on=${onMsg}${mine}`);
+
+    let choice = null;
+    if (reaction.reaction === '👍') choice = 'yes';
+    else if (reaction.reaction === '👎') choice = 'no';
+    else if (reaction.reaction === '') choice = 'withdraw';
+
+    if (choice && mine) {
+      console.log(`        → maps to ${choice.toUpperCase()} for ${phone}; Phase 1 would update the Vote`);
+    } else if (choice) {
+      console.log(`        → ${choice} reaction, but not on our rsvp message — ignored`);
+    } else {
+      console.log('        → not a 👍/👎 reaction — ignored');
+    }
+  } catch (e) {
+    console.error('[REACTION] handler error:', e.message);
+  }
+});
+
+// ── INPUT MODE 3: native WhatsApp Poll votes ──
+// Fires when someone selects/changes a poll option. selectedOptions is the
+// current selection (empty when they deselect). vote_update is the most fragile
+// of the three on the unofficial lib — if this never logs, the poll path is out.
+client.on('vote_update', (vote) => {
+  try {
+    const phone = toE164(vote.voter);
+    const selected = (vote.selectedOptions || []).map((o) => o.name);
+    const onMsg = vote.parentMessage && vote.parentMessage.id && vote.parentMessage.id._serialized;
+    const mine = lastPollMsgId && onMsg === lastPollMsgId ? ' (OUR poll)' : '';
+    console.log(`[POLL VOTE] from=${phone} selected=${JSON.stringify(selected)} on=${onMsg}${mine}`);
+    const choice = selected.length === 0 ? 'withdraw'
+      : selected[0].toLowerCase().startsWith('yes') ? 'yes' : 'no';
+    console.log(`        → maps to ${choice.toUpperCase()} for ${phone}; Phase 1 would update the Vote`);
+  } catch (e) {
+    console.error('[POLL VOTE] handler error:', e.message);
+  }
 });
 
 // Graceful shutdown so Chrome flushes its session before exit.

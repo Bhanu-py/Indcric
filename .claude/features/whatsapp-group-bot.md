@@ -284,6 +284,23 @@ Provision Oracle A1; install Chromium; PM2 + `startup`/`save`. Switch to `Remote
 - **Alerting channel** (Phase 3): dead-man's-switch alert via email, Telegram, or WhatsApp to the admin?
 
 ### Emoji-react implications (from the locked reply-style decision)
-- Group **RSVP** → bot reacts ✅ (yes) / ❌ (no) to that message via `message.react('✅')`. No text reply, no `OutboundMessage`.
-- Group **command** (`HELP`, `STATUS`, `BALANCE`, unknown text) → still needs a text answer; that enqueues an `OutboundMessage` to the group (these are infrequent, so noise is acceptable).
-- Unknown-number RSVP → react with a neutral ❓ and stay silent, OR a one-time terse "not registered" reply rate-limited per number (avoid repeated public "I don't know you" posts). Decide during Phase 1.
+- Group **command** (`HELP`, `STATUS`, `BALANCE`, unknown text) → needs a text answer; that enqueues an `OutboundMessage` to the group (infrequent, so noise is acceptable).
+- Unknown-number RSVP → react with a neutral ❓ and stay silent, OR a one-time terse "not registered" reply rate-limited per number. Decide during Phase 1.
+
+## How members VOTE (input mechanism) — open, decided by the Phase 0 spike
+
+The user's preferred model: **bot posts the session once; members REACT (👍 yes / 👎 no); the bot reads the reactions and records `Vote` rows; Django updates.** Technically feasible — whatsapp-web.js fires `message_reaction` with `senderId` (→ `User.phone`), `reaction` (emoji; `''` on removal), and `msgId` (→ which poll). One reaction per person per message maps cleanly to one vote; reaction-change → vote-change; reaction-removed → withdraw.
+
+Three candidate input mechanisms, being tested head-to-head in the Phase 0 spike ([bot/spike.js](../../bot/spike.js)) because event reliability on an unofficial client can only be confirmed empirically:
+
+| Mechanism | Event | Friction | Native tally | Reliability risk |
+|---|---|---|---|---|
+| Typed `YES`/`NO` | `message` | High (type+send) | No | Lowest — robust |
+| **Reactions 👍/👎** | `message_reaction` | Low for 👍, **high for 👎** | No | Medium |
+| **Native Yes/No Poll** | `vote_update` | Lowest (equal taps) | **Yes** | **Highest — must verify** |
+
+**Key finding:** WhatsApp's quick-react bar is fixed (👍 ❤️ 😂 😮 😢 🙏) — **👎 is NOT one-tap** (requires "+" → search). So "👍 yes / 👎 no" is lopsided; expect lots of 👍 and few explicit 👎. The **native Poll** avoids this (both options equal one-tap) and gives a free live tally — *if* `vote_update` fires reliably in the group, which is the open question.
+
+**Decision rule:** after the spike, pick the mechanism that logged **every** vote/change reliably. Likely outcome — native Poll if `vote_update` is solid; else reactions (accepting 👎 friction) with typed YES/NO always supported as the robust fallback. If reactions win, only 👍 reliably means "yes"; treat absence/👎 carefully rather than assuming silence = no.
+
+Whichever wins, the Django mapping is identical: voter phone → `User` → `Vote.update_or_create`; removal/deselect → withdraw. The `/api/bot/inbound/` payload gains a `kind` field (`text` | `reaction` | `poll_vote`) so `dispatch_inbound` knows how to interpret it.

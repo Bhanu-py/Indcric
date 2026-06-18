@@ -4,9 +4,17 @@
 
 ## What it proves
 
-1. **SEND** — bot posts a message into the group (`!ping` reply + optional startup hello).
-2. **READ** — bot sees group replies and recovers the sender's phone number.
-3. **REACT** — bot reacts ✅/❌ to a `YES`/`NO` message (the locked confirmation style).
+1. **SEND** — bot posts into the group (text prompt, native poll, and `!ping` reply).
+2. **READ** — bot recovers the sender's/voter's phone number from group activity.
+3. **Three input mechanisms, compared head-to-head** — so we pick the one that
+   actually fires reliably in a real group (this is the whole point of Phase 0):
+   - **Typed** `YES`/`NO` → `[GROUP MSG]` (most robust, highest friction)
+   - **Reactions** 👍/👎 on the bot's prompt → `[REACTION]` (low friction, but 👎
+     isn't a one-tap default react; event reliability in groups is the question)
+   - **Native WhatsApp Poll** Yes/No → `[POLL VOTE]` (lowest friction, native
+     tally; but `vote_update` is the most fragile event on the unofficial lib)
+
+Whichever of the three logs **reliably** is what we build Phase 1 on.
 
 ## Prerequisites
 
@@ -28,20 +36,29 @@ node spike.js
    ```
    1234567890-1234567@g.us   "ICG Test Group"
    ```
-   Copy the target JID into `.env` as `WA_GROUP_JID` (and set `SEND_HELLO=1` if you want a startup post), then re-run.
-3. From the second phone, in that group, send:
-   - `YES` or `NO` → bot reacts ✅/❌ and logs the sender's number.
-   - `!ping` → bot replies `pong 🏓` (proves the text-send path).
+   Copy the target JID into `.env` as `WA_GROUP_JID`, set **`SEND_HELLO=1`** and
+   **`SEND_POLL=1`** (to post both a reaction prompt and a native poll), re-run.
+3. From the second phone, in that group, try **all three** inputs:
+   - type `YES` / `NO`           → `[GROUP MSG]` then `[REACT]` ✅/❌
+   - react 👍 / 👎 on the prompt  → `[REACTION]`
+   - tap an option on the poll    → `[POLL VOTE]`
+   - `!ping`                      → bot replies `pong 🏓` (proves text send)
 
 ## What success looks like
 
+The goal is to see which of these three log **every time**, not just once:
+
 ```
-[GROUP MSG] group=...@g.us from=+32471000000 body="YES"
-[REACT] ✅ for +32471000000 (choice=yes, session=latest)
-        → in Phase 1 this would POST {from:"+32471000000", text:"YES"} to /api/bot/inbound/
+[GROUP MSG]  from=+32471000000 body="YES"
+[REACTION]   from=+32471000000 emoji=👍 on=...  (OUR rsvp message)
+             → maps to YES for +32471000000; Phase 1 would update the Vote
+[POLL VOTE]  from=+32471000000 selected=["Yes ✅"]  (OUR poll)
+             → maps to YES for +32471000000; Phase 1 would update the Vote
 ```
 
-If you see that, Phase 0 is done — the send/read/react loop works end-to-end. Tell me and we move to Phase 1 (the Django side).
+**Report back which mechanism(s) fired reliably** (react each/poll-vote a few
+times, change your mind, remove the reaction — does every change log?). That
+decides the Phase 1 design. Then we build the Django side.
 
 ## Notes / gotchas
 
