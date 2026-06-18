@@ -116,8 +116,10 @@
         .btn-lg  { @apply px-[18px] py-3.5 sm:py-[9px] rounded-[9px]; }
         .btn-xl  { @apply px-6 py-3.5 sm:py-3 text-sm rounded-[10px]; }
 
+        /* Primary fill = the header navy (#2a5078, Deccan-Chargers-leaning royal).
+           Hover darkens to pitch-700 (#1e3c5d) for tactile feedback. */
         .btn-primary {
-            @apply bg-pitch-700 text-white hover:bg-pitch-800 focus:ring-pitch-600 active:scale-95;
+            @apply bg-[#2a5078] text-white hover:bg-pitch-700 focus:ring-pitch-600 active:scale-95;
         }
         .btn-secondary {
             @apply bg-white text-stone-700 border border-stone-300 hover:bg-stone-50 focus:ring-stone-400 active:scale-95;

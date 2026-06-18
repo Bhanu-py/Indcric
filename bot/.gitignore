@@ -1,0 +1,9 @@
+# Node
+node_modules/
+
+# whatsapp-web.js session (LocalAuth) — NEVER commit; it's a logged-in WhatsApp session
+.wwebjs_auth/
+.wwebjs_cache/
+
+# secrets
+.env

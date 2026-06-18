@@ -77,7 +77,8 @@
     {% endwith %}
     {% endif %}
 
-    <!-- Welcome row -->
+    <!-- Welcome row — staff create a session via the "Create one" CTA in the
+         Upcoming Sessions section (and the header Manage menu), so no duplicate button here. -->
     <div class="flex items-end justify-between gap-4 mb-6 flex-wrap">
         <div>
             <h1 class="text-2xl font-bold text-stone-900 -tracking-[0.02em]">
@@ -85,12 +86,6 @@
             </h1>
             <p class="text-sm text-stone-500 mt-1">Here's what's happening with ICG</p>
         </div>
-        {% if user.is_staff %}
-        <a href="{% url 'create_session' %}" class="btn btn-primary btn-md gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            New Session
-        </a>
-        {% endif %}
     </div>
 
     <!-- ── Member snapshot (same for staff — staff is also a member) ──

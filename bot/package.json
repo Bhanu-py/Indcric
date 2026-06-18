@@ -1,0 +1,18 @@
+{
+  "name": "indcric-bot-spike",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Phase 0 throwaway spike — prove whatsapp-web.js can post to + read from the club group. NOT production.",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "spike": "node spike.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.34.1"
+  }
+}

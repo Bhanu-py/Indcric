@@ -20,15 +20,15 @@
     <div class="grid grid-cols-3 gap-3.5 mb-5">
         <div class="card"><div class="p-4">
             {% with out_str=outstanding_total|stringformat:"s" %}
-                {% include "_components/stat_column.html" with label="Outstanding" value="€"|add:out_str dot="amber" first=True %}
+                {% include "_components/stat_column.html" with label="Outstanding" value="€"|add:out_str dot="amber" first=True cls="!px-0 !py-0" %}
             {% endwith %}
         </div></div>
         <div class="card"><div class="p-4">
-            {% include "_components/stat_column.html" with label="Sessions · 30d" value=sessions_30d dot="pitch" first=True %}
+            {% include "_components/stat_column.html" with label="Sessions · 30d" value=sessions_30d dot="pitch" first=True cls="!px-0 !py-0" %}
         </div></div>
         <div class="card"><div class="p-4">
             {% with settled_label=settled_count|stringformat:"s"|add:" / "|add:members_with_payments_count|stringformat:"s" %}
-                {% include "_components/stat_column.html" with label="Settled" value=settled_label dot="emerald" first=True %}
+                {% include "_components/stat_column.html" with label="Settled" value=settled_label dot="emerald" first=True cls="!px-0 !py-0" %}
             {% endwith %}
         </div></div>
     </div>

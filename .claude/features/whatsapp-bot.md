@@ -101,22 +101,41 @@ Add a small `WhatsAppGroup` model so admins can map each sub-group to a default 
 - **Opt-in:** Is group membership sufficient consent for the bot to DM a player, or do we need an explicit `/optin` first?
 - **UPI:** Static per-user UPI ID stored on the profile, or per-payment generated link with amount pre-filled?
 
-## Status of Original Next Steps
+## Status — Shipped on Master (2026-06-18)
 
-- ✅ `User.phone` field shipped (E.164, indexed, unique)
-- ✅ `BotEvent` model shipped (`apps/notifications/models.py`)
-- ✅ Cloud API webhook + signature verification (`apps/notifications/views.py`)
-- ✅ Approved `session_rsvp_temp` template (Meta-approved)
-- ✅ Inbound RSVP / balance / help commands
-- ✅ Delivery status webhook (`statuses` → `BotEvent.action='wa_status'`) — surfaces Meta error codes for diagnosis
-- ✅ Group-share flow (`build_group_invite_text` + `build_group_share_url`, "Share to WhatsApp Group" button on session detail)
-- ✅ Inbound parser accepts `YES <session_id>` / `NO <session_id>` from `wa.me` deep links
-- ⏸ `WhatsAppGroup` model — not built (not needed for the current admin-paste flow)
-- ⏸ `whatsapp-web.js` Node bot — not built (not needed unless we want bot-posts-in-group)
+**Tier 1 — done:**
+- ✅ `User.phone` field (E.164, indexed, unique-when-set)
+- ✅ `BotEvent` model (`apps/notifications/models.py`) — keyed on `wa_message_id` for idempotency
+- ✅ Cloud API webhook + `X-Hub-Signature-256` verification (`apps/notifications/views.py`)
+- ✅ Approved `session_rsvp_temp` template (still in Meta — kept around even though we no longer broadcast)
+- ✅ Delivery `statuses` webhook handler — surfaces Meta error codes in `BotEvent.payload.errors`
+- ✅ Group-share flow: `build_group_invite_text` + `build_group_share_url`; "Share to WhatsApp Group" link on session detail (3-dot menu)
+- ✅ `WHATSAPP_BOT_NUMBER` env var, digit-stripped at use site for forgiving formats
+- ✅ Inbound parser (`RSVP_PATTERN`) matches case-insensitive `YES <session_id>` / `NO <session_id>` from wa.me deep links, plus bare YES/NO against latest open poll
+- ✅ Bot replies (all free, service-window): vote confirmation with switch hint, balance, status, help, "I don't recognise this number" for unknown phones, "I didn't understand 'X'" with echo for unparseable text
+- ✅ STATUS / POLL / WHO / COUNT command — current open poll counts + voter lists
+- ✅ Activity feed: red X for "no" RSVPs, green check for "yes" (body-text inspection in `_decorate`)
+
+**Out of scope / parked:**
+- ⏸ `WhatsAppGroup` model — not built; not needed for admin-paste flow
+- ⏸ `whatsapp-web.js` Node bot — explicitly not built. Would unlock bot-posts-in-group but with ban risk + hosting cost. Only revisit if admin-paste friction becomes unworkable.
+
+**Disabled but still in `services.py` as paid escape hatches:**
+- `notify_poll_created` — broadcast template DM
+- `resend_poll_invite` — non-voters resend with 6h cooldown
+- `send_session_reminders` — 24h / morning / 2h reminders (also gated by `WHATSAPP_REMINDER_TEMPLATE` env var being empty)
+
+## What's Next (Post-Pivot Priorities)
+
+1. **Phone-onboarding deep-link** (~15 min) — "I don't recognise this number" reply currently tells users to add their number but doesn't link to the profile-edit page.
+2. **`STATUS <session_id>` + `MYVOTE`** (~20 min) — extend the dispatcher; both are tiny additions on existing handlers.
+3. **Free reminder system** (~1 hour) — use the `BotEvent` inbound log to find users with an active 24h service window, send them a free text reminder. Covers the engaged subset only — won't ping cold users.
+4. **Phone validation on save** — `User.phone` form accepts whatever's typed; the inbound webhook expects E.164 with `+`. Add a `clean_phone` that normalises on save so deep links land on the right user.
+5. **`BotEvent` admin filter** — add `list_filter = ('direction', 'action')` so debugging is faster.
 
 ## Future / Open Questions
 
-- **Should the bot reply with a confirmation** ("Got it — YES for Saturday Net Practice") when a wa.me RSVP arrives? Free in service window, improves UX. Currently silent.
-- **Reminders.** Currently disabled by clearing `WHATSAPP_REMINDER_TEMPLATE` env var. Three reactivation options if engagement drops: (a) keep paid as the one premium feature, (b) only remind users with an open service window (free, partial coverage), (c) admin pastes a reminder in the group manually.
-- **Group-post automation.** If the admin-paste step proves too friction-y, we can revisit `whatsapp-web.js` to have the bot post into the group itself. Ban risk + brittleness flagged in earlier drafts of this doc.
-- **Payments.** Payment DMs (the Tier-1.2 idea) are utility conversations and would cost. Cheapest path: include unpaid totals in the bot's reply to a `balance` query (free, user-initiated).
+- **Group-post automation.** If admin-paste friction becomes painful, we revisit `whatsapp-web.js` to have the bot post into the group itself. Ban risk + brittleness + persistent-volume hosting cost remain the trade-offs.
+- **Payments.** Payment DMs (the original Tier-1.2 idea) are utility conversations and would cost. Cheapest path: include unpaid totals in the bot's reply to `BALANCE` (free, user-initiated — already shipped).
+- **Reminders in the group, not in DM.** Admin could paste a "reminder" message into the group same way they pasted the invite. Considered, deferred — adds friction per session.
+- **Confirmation reply on RSVP via web app.** Currently only WhatsApp-channel votes get a "Got it" reply (because that's the only place the bot has a side channel). Web votes are silent. Probably fine, but worth flagging if behaviour feels inconsistent.

@@ -20,13 +20,10 @@
 
         <div class="w-full max-w-[440px] lg:max-w-[380px] bg-white rounded-2xl shadow-2xl p-6 sm:p-8 lg:bg-transparent lg:shadow-none lg:rounded-none lg:p-0">
 
-            <!-- Mobile-only logo — pitch-950 tile so the PNG's residual navy in the
-                 wordmark blends with the background instead of clashing on white. -->
+            <!-- Mobile-only logo — trimmed crest is transparent and reads on the white card,
+                 so no dark tile is needed. -->
             <div class="lg:hidden flex flex-col items-center mb-6">
-                <div class="w-[120px] h-[120px] mx-auto overflow-hidden flex items-center justify-center bg-pitch-950 rounded-2xl shadow-md">
-                    <img src="{% static 'icons/logo-mark.png' %}" alt="ICG"
-                         class="w-full h-full object-contain scale-[2.6] origin-center">
-                </div>
+                <img src="{% static 'icons/logo-mark-trim.png' %}" alt="ICG" class="h-28 w-auto">
                 <span class="font-mono text-[11px] text-stone-400 uppercase tracking-[0.08em] mt-2">Cricket Club Manager</span>
             </div>
 
