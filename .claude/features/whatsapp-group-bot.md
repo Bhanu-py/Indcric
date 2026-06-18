@@ -268,13 +268,22 @@ Django: `outbound_drain` (with claimed-status + reclaim window) + `outbound_ack`
 ### Phase 3 — Production hardening
 Provision Oracle A1; install Chromium; PM2 + `startup`/`save`. Switch to `RemoteAuth` + Mongo Atlas; confirm `'remote_session_saved'`; reboot VM → verify **no re-scan**. LOGOUT-vs-crash split handling + admin re-scan runbook. Dead-man's-switch heartbeat + external alerting. Failed-`OutboundMessage` sweep (`attempts<3`). Scheduled single reminder (reuse `run_reminders` cron). 7-day warmup. **Exit:** survives redeploy + VM reboot with zero manual re-scan; failures alert + retry.
 
-## Open Decisions for the User
+## Decisions
 
-1. **Datacenter IP:** accept Oracle A1's datacenter IP (low real risk at our volume), or route WA traffic through a residential proxy / home connection?
-2. **Session store:** Mongo Atlas M0 (recommended, simplest `wwebjs-mongo`) vs S3 vs reuse Neon Postgres via custom store?
-3. **Group-reply verbosity:** confirm each RSVP in-thread (clear but chatty), emoji-react only, or silent + rely on in-app feed? (Recommend: terse one-liner or emoji react.)
-4. **Donation gate:** keep €20 / 25-50-75-100% milestones?
-5. **Reminder timing:** single reminder at T-24h vs T-12h; quiet hours?
-6. **Hosting confirmation:** you provisioning Oracle A1 (card + capacity-error risk), or evaluate the Baileys-on-`e2-micro` fallback?
-7. **Multi-group future:** ever more than one target group? (Today's design assumes one; `OutboundMessage.target` already carries a JID per row so it's extensible.)
-8. **Alerting channel:** where should the dead-man's-switch alert go — email, Telegram, or a WhatsApp message to the admin's personal number?
+**Locked (2026-06-18):**
+- ✅ **Bot IP:** accept Oracle A1's datacenter IP — low real risk at our volume. No residential proxy.
+- ✅ **Group-reply style:** **emoji-react only** (bot reacts ✅/❌ to the member's RSVP message). Quietest; no per-RSVP message clutter. This means the `reply_sink` for group RSVPs is a *reaction*, not a queued text post — text posts are reserved for command replies (HELP/STATUS/etc.) and the auto-posts.
+- ✅ **Kickoff:** Phase 0 spike first (see [bot/](../../bot/)).
+
+**Still open (revisit before the phase they gate):**
+- **Session store** (Phase 3): Mongo Atlas M0 (recommended) vs S3 vs Neon Postgres custom store.
+- **Donation gate** (Phase 2): keep €20 / 25-50-75-100% milestones?
+- **Reminder timing** (Phase 3): single reminder at T-24h vs T-12h; quiet hours?
+- **Hosting confirmation** (Phase 3): provision Oracle A1, or fall back to Baileys-on-`e2-micro`?
+- **Multi-group future:** ever more than one target group? (`OutboundMessage.target` already carries a JID per row, so extensible.)
+- **Alerting channel** (Phase 3): dead-man's-switch alert via email, Telegram, or WhatsApp to the admin?
+
+### Emoji-react implications (from the locked reply-style decision)
+- Group **RSVP** → bot reacts ✅ (yes) / ❌ (no) to that message via `message.react('✅')`. No text reply, no `OutboundMessage`.
+- Group **command** (`HELP`, `STATUS`, `BALANCE`, unknown text) → still needs a text answer; that enqueues an `OutboundMessage` to the group (these are infrequent, so noise is acceptable).
+- Unknown-number RSVP → react with a neutral ❓ and stay silent, OR a one-time terse "not registered" reply rate-limited per number (avoid repeated public "I don't know you" posts). Decide during Phase 1.
