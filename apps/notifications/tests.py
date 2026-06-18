@@ -111,6 +111,7 @@ from apps.notifications.models import (
     ActivityEvent, ActivityFeedState, Reaction, unread_count_for,
 )
 from apps.payments.models import Payment
+from apps.polls.models import Poll, Vote
 
 
 class ActivityEmitTests(TestCase):
@@ -145,6 +146,34 @@ class ActivityEmitTests(TestCase):
         self.assertTrue(
             ActivityEvent.objects.filter(kind=ActivityEvent.KIND_SESSION, body__icontains="Sunday Nets").exists()
         )
+
+    def _poll(self):
+        s = Session.objects.create(
+            name="Sunday Nets", duration=Decimal("2"),
+            date=date(2026, 6, 21), time=time(18, 0), location="Hall",
+        )
+        return Poll.objects.create(session=s)
+
+    def test_vote_emits_rsvp(self):
+        Vote.objects.create(poll=self._poll(), user=self.donor, choice='yes')
+        ev = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_RSVP).first()
+        self.assertIsNotNone(ev)
+        self.assertIn("Riya", ev.body)
+        self.assertIn("in for", ev.body)
+        self.assertEqual(ev.actor, self.donor)
+
+    def test_vote_change_refreshes_single_row(self):
+        v = Vote.objects.create(poll=self._poll(), user=self.donor, choice='yes')
+        v.choice = 'no'
+        v.save()
+        rows = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_RSVP)
+        self.assertEqual(rows.count(), 1)          # deduped on the vote, not spammed
+        self.assertIn("out of", rows.first().body)
+
+    def test_vote_withdraw_removes_row(self):
+        v = Vote.objects.create(poll=self._poll(), user=self.donor, choice='yes')
+        v.delete()
+        self.assertFalse(ActivityEvent.objects.filter(kind=ActivityEvent.KIND_RSVP).exists())
 
     def test_attendance_confirmed_emits_cost_split(self):
         """Confirming attendance on a paid session posts a settlement / cost-split

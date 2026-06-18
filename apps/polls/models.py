@@ -31,6 +31,8 @@ class Vote(models.Model):
     )
     choice = models.CharField(max_length=3, choices=CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Withdrawing a vote (delete) removes its activity-feed row (#45).
+    feed_events = GenericRelation('notifications.ActivityEvent')
 
     class Meta:
         unique_together = ('poll', 'user')

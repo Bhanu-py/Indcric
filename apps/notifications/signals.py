@@ -18,7 +18,7 @@ from django.utils import timezone
 from apps.donations.models import Donation
 from apps.matches.models import Match
 from apps.payments.models import Payment
-from apps.polls.models import Poll
+from apps.polls.models import Poll, Vote
 from apps.sessions.models import Session
 
 from .activity import safe_emit
@@ -100,6 +100,30 @@ def on_poll(sender, instance, created, **kwargs):
         action_label='Vote',
         context=session.name,
         target=instance,
+    )
+
+
+@receiver(post_save, sender=Vote)
+def on_vote(sender, instance, **kwargs):
+    """A member RSVP'd (or changed their RSVP) — show the session's pulse (#45).
+
+    Deduped on the Vote so flipping in↔out refreshes a single row instead of
+    spamming the feed; withdrawing the vote deletes the row via the Vote's
+    GenericRelation cascade. Covers both web votes and WhatsApp RSVPs (both
+    update_or_create the same Vote)."""
+    user = instance.user
+    who = (user.first_name or user.username) if user else 'Someone'
+    session = instance.poll.session
+    standing = 'in for' if instance.choice == 'yes' else 'out of'
+    safe_emit(
+        ActivityEvent.KIND_RSVP,
+        f"{who} is {standing} {session.name}",
+        actor=user,
+        url=session.get_absolute_url(),
+        action_label='View',
+        context=session.name,
+        target=instance,
+        dedup=True,
     )
 
 
