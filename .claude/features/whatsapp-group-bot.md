@@ -70,10 +70,26 @@ Replaces the manual "admin copy-pastes a wa.me invite" flow. Django stays the so
 - Actively maintained (v1.34.7, Apr 2026), low open-issue backlog (~21 vs Baileys ~277), large tutorial ecosystem.
 - **Communities caveat (both libs):** neither models WhatsApp *Communities* as first-class. Target **one linked sub-group by its `<number>@g.us` JID**, never "the community" as a unit.
 
+## Two-Number Architecture (LOCKED 2026-06-18)
+
+**Hard constraint discovered during Phase 0:** a Meta **Cloud-API** number **cannot be added to WhatsApp groups** ("this business can't be added to groups" — no setting fixes it). A phone number is on the Cloud API **XOR** the consumer/Business app, never both.
+
+So IndCric uses **two separate numbers**:
+
+| | Number A — "ICG" (existing) | Number B — group bot (new SIM) |
+|---|---|---|
+| Platform | Meta **Cloud API** | Regular **WhatsApp app** (consumer) |
+| Can join groups? | ❌ No (barred by Meta) | ✅ Yes |
+| Role | 1:1 DM features (`BALANCE`, leftover Cloud-API flow) | whatsapp-web.js group bot — posts + reads the group |
+| Linked how | `WHATSAPP_PHONE_NUMBER_ID` / access token | QR scan via Linked Devices |
+| **Must NOT** | be added to groups | **ever be registered on the Cloud API / Meta Business** |
+
+Number B is a fresh dedicated SIM, set up on the **plain WhatsApp app** (not the API, not even strictly the Business app). If it ever gets registered on the Cloud API it hits the same group wall — keep it consumer-only.
+
 ## Session & Onboarding
 
 ### Dedicated-SIM QR-scan (one-time, human-driven)
-1. Register the dedicated SIM on the **official WhatsApp app** first; set a real name + photo; **warm it up as a normal phone for 1–2 weeks** (some human chats) before any bot activity — biggest behavioural ban-risk reducer.
+1. Register **Number B** (the new dedicated SIM) on the **plain WhatsApp app** — **never on the Meta Cloud API / Business Platform** (that's what poisons a number for groups). Set a real name + photo; **warm it up as a normal phone for 1–2 weeks** (some human chats) before any bot activity — biggest behavioural ban-risk reducer.
 2. A **human admin** owns the Community + target sub-group, then adds the bot's number as an ordinary member. Admin keeps ownership so the group survives a bot ban.
 3. Start the Node bot on the A1 VM interactively; it emits `'qr'` → render with `qrcode-terminal`.
 4. On the dedicated phone: WhatsApp → **Linked Devices → Link a Device → scan**. `'authenticated'` → `'ready'` fire.
