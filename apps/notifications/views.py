@@ -14,7 +14,7 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth import get_user_model
 
 from . import bot_messages
-from .activity import FEED_TABS, KIND_STYLE, REACTION_EMOJIS, TAB_KINDS
+from .activity import FEED_TABS, KIND_STYLE, REACTION_EMOJIS, RSVP_NO_STYLE, TAB_KINDS
 from .models import ActivityEvent, ActivityFeedState, BotEvent, Reaction, seen_at_for
 
 
@@ -542,9 +542,18 @@ def _reaction_summary(event, user):
 
 def _decorate(events, user, seen_before):
     """Attach row presentation + read-state + reaction summary to each event for
-    the template. Own actions never show as unread (mirrors the bell count)."""
+    the template. Own actions never show as unread (mirrors the bell count).
+
+    RSVP rows are split visually: 'no' votes get the red-X style, 'yes' keeps
+    the green check. Detected by ' is out of ' in the body — the signal that
+    emits these events writes exactly that phrase for no votes (signals.on_vote),
+    so the check is deterministic and avoids a DB hit on the GenericForeignKey.
+    """
     for ev in events:
-        ev.style = KIND_STYLE.get(ev.kind, _DEFAULT_STYLE)
+        style = KIND_STYLE.get(ev.kind, _DEFAULT_STYLE)
+        if ev.kind == ActivityEvent.KIND_RSVP and ev.body and ' is out of ' in ev.body:
+            style = RSVP_NO_STYLE
+        ev.style = style
         ev.is_unread = ev.created_at > seen_before and ev.actor_id != user.id
         ev.reactions_view = _reaction_summary(ev, user)
     return events

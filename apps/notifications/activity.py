@@ -32,6 +32,12 @@ KIND_STYLE = {
     ActivityEvent.KIND_PING:     {'bg': 'bg-stone-100',   'fg': 'text-stone-700',   'icon': 'send',     'tab': None},
 }
 
+# An RSVP that's a 'no' vote — same tab as the 'yes' style, but red X.
+# Picked in _decorate() by body-text inspection (the signal writes 'is out of'
+# for no votes; see signals.on_vote). Kept separate from KIND_STYLE so the
+# (kind → style) map stays 1:1 and dedup_key keeps working on vote flips.
+RSVP_NO_STYLE = {'bg': 'bg-red-100', 'fg': 'text-red-700', 'icon': 'x', 'tab': 'sessions'}
+
 # Tabs shown on the feed, in order. 'all' is the catch-all. Each maps to the set
 # of kinds it includes (derived from KIND_STYLE['tab']). 'Donations' extends the
 # design's five tabs since it's the headline event with no home otherwise.
