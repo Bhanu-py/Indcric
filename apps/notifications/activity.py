@@ -16,7 +16,7 @@ from .models import ActivityEvent
 logger = logging.getLogger(__name__)
 
 # Fixed reaction palette — tap to toggle. Kept short so the bar stays mobile-tidy.
-REACTION_EMOJIS = ['👍', '❤️', '🎉', '🏏']
+REACTION_EMOJIS = ['👍', '❤️', '🔥', '🏏']
 
 # kind -> row presentation. `tab` is which filter tab the row falls under
 # (None = only ever shows under "All"). Colours are Tailwind utility classes;
