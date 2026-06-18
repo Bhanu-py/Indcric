@@ -14,6 +14,7 @@ Args: event (decorated: .style {bg,fg,icon}, .is_unread, .reactions_view), last
             {% elif event.style.icon == 'heart' %}<path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
             {% elif event.style.icon == 'users' %}<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
             {% elif event.style.icon == 'send' %}<path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+            {% elif event.style.icon == 'x' %}<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             {% else %}<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>{% endif %}
         </svg>
     </span>
