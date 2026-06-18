@@ -228,7 +228,7 @@
         {% if user.is_staff and addable_users %}
         <div x-data="{ open: false }" class="px-5 py-3 border-b border-stone-100 bg-stone-50">
             <button type="button" @click="open = !open"
-                    class="w-full flex items-center justify-between gap-2 text-sm font-medium text-pitch-700 hover:text-pitch-700 py-2 min-h-[44px]"
+                    class="w-full flex items-center justify-between gap-2 text-sm font-medium text-pitch-700 hover:text-pitch-900 py-2 min-h-[44px]"
                     :aria-expanded="open">
                 <span class="inline-flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -636,7 +636,7 @@
                     <div class="flex items-center gap-3 mt-2.5 pt-2.5 border-t border-stone-100">
                         {% if match.innings.all %}
                         <a href="{% url 'scorecard' match.id %}"
-                           class="inline-flex items-center gap-1 text-xs font-medium text-pitch-700 hover:text-pitch-700 transition-colors">
+                           class="inline-flex items-center gap-1 text-xs font-medium text-pitch-700 hover:text-pitch-900 transition-colors">
                             View scorecard
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                         </a>
