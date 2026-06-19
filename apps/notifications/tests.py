@@ -519,3 +519,56 @@ class OutboundQueueTests(TestCase):
         self.assertEqual(m.status, OutboundMessage.FAILED)
         self.assertEqual(m.attempts, 1)
         self.assertEqual(m.error, 'boom')
+
+
+@override_settings(WHATSAPP_GROUP_BOT_ENABLED=True)
+class AutoPostEnqueueTests(TestCase):
+    """Domain events auto-queue group posts (gated on WHATSAPP_GROUP_BOT_ENABLED)."""
+
+    def _session(self, **kw):
+        defaults = dict(
+            name="Sunday Nets", duration=Decimal("2"),
+            date=date(2026, 6, 21), time=time(18, 0), location="Hall",
+        )
+        defaults.update(kw)
+        return Session.objects.create(**defaults)
+
+    def test_poll_open_enqueues_native_poll(self):
+        s = self._session()
+        Poll.objects.create(session=s)
+        m = OutboundMessage.objects.filter(dedup_key=f'poll_opened:{s.poll.id}').first()
+        self.assertIsNotNone(m)
+        self.assertEqual(m.kind, OutboundMessage.POLL)
+        self.assertEqual(m.poll_options, ['Yes ✅', 'No ❌'])
+        self.assertIn("Sunday Nets", m.body)
+
+    def test_past_session_poll_does_not_enqueue(self):
+        s = self._session(date=date(2020, 1, 1))
+        Poll.objects.create(session=s)
+        self.assertFalse(OutboundMessage.objects.exists())
+
+    def test_session_confirmed_enqueues_cost_split_text(self):
+        s = self._session(cost=Decimal("20"))
+        s.cost_per_person = Decimal("5.00")
+        s.attendance_confirmed = True
+        s.save()
+        m = OutboundMessage.objects.filter(dedup_key=f'session_confirmed:{s.id}').first()
+        self.assertIsNotNone(m)
+        self.assertEqual(m.kind, OutboundMessage.TEXT)
+        self.assertIn("€5.00 per player", m.body)
+
+    def test_confirm_twice_does_not_double_post(self):
+        s = self._session(cost=Decimal("20"))
+        s.cost_per_person = Decimal("5.00")
+        s.attendance_confirmed = True
+        s.save()
+        s.save()  # re-save while confirmed
+        self.assertEqual(
+            OutboundMessage.objects.filter(dedup_key=f'session_confirmed:{s.id}').count(), 1
+        )
+
+    @override_settings(WHATSAPP_GROUP_BOT_ENABLED=False)
+    def test_disabled_enqueues_nothing(self):
+        s = self._session()
+        Poll.objects.create(session=s)
+        self.assertFalse(OutboundMessage.objects.exists())

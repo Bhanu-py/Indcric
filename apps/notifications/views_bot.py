@@ -168,7 +168,10 @@ def outbound_drain(request):
             r.status = OutboundMessage.CLAIMED
             r.claimed_at = now
             r.save(update_fields=['status', 'claimed_at'])
-            claimed.append({'id': r.id, 'body': r.body, 'target': r.target})
+            claimed.append({
+                'id': r.id, 'kind': r.kind, 'body': r.body,
+                'poll_options': r.poll_options, 'target': r.target,
+            })
 
     return JsonResponse({'ok': True, 'messages': claimed})
 

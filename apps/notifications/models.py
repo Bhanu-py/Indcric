@@ -48,8 +48,14 @@ class OutboundMessage(models.Model):
         (PENDING, 'Pending'), (CLAIMED, 'Claimed'),
         (SENT, 'Sent'), (FAILED, 'Failed'),
     ]
+    TEXT, POLL = 'text', 'poll'
+    KIND_CHOICES = [(TEXT, 'Text'), (POLL, 'Poll')]
 
+    # 'text' = a plain message; 'poll' = a native WhatsApp poll, where `body` is
+    # the question and `poll_options` are the choices the Node bot posts.
+    kind = models.CharField(max_length=8, choices=KIND_CHOICES, default=TEXT)
     body = models.TextField()
+    poll_options = models.JSONField(default=list, blank=True)
     # Group JID or an alias the Node bot resolves to a JID ('community' default).
     target = models.CharField(max_length=120, default='community')
     status = models.CharField(

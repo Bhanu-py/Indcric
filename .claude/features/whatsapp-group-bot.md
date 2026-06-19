@@ -305,10 +305,14 @@ Django: `outbound_drain` (with claimed-status + reclaim window) + `outbound_ack`
 - `POST /api/bot/outbound/ack/` (`outbound_ack`) — `{id,status:'sent',wa_message_id}` → SENT + outbound `BotEvent` audit; `{id,status:'failed',error}` → FAILED, `attempts+=1`.
 - 6 queue tests (auth, claim, skip-fresh-claimed, reclaim-stale, ack sent+audit, ack failed). Suite now 39/39 green.
 
-**NOT yet built (remaining Phase 2):**
-- `build_group_rsvp_text(poll, site_url)` composer (do NOT reuse `build_group_invite_text` — that emits wa.me deep links; the group bot wants "reply here / react").
-- Enqueue `OutboundMessage` from signals (`on_poll` created, `on_session` confirmed, `on_match` result, gated `on_donation`, `save_teams_view`) with `dedup_key`.
-- **The Node production client** (`bot/`): poll `/api/bot/outbound/` → post via whatsapp-web.js → `/api/bot/outbound/ack/`; forward group reactions-on-bot-message + poll votes to `/api/bot/inbound/` and apply the returned `react` action; RemoteAuth + PM2 (Phase 3). This is the deployment-coupled piece.
+**Composers + signal enqueue — BUILT 2026-06-19:**
+- `OutboundMessage` extended with `kind` (`text`|`poll`) + `poll_options` (migration `0006`); `outbound_drain` returns them so the Node bot knows whether to post a native poll or text.
+- Composers in `services.py`: `build_group_rsvp_poll(poll)` → `(question, ['Yes ✅','No ❌'])` (the RSVP post is a **native poll**, per the locked vote-input decision — NOT "reply YES/NO" text); `build_group_cost_split_text`, `build_group_match_result_text` (read-only).
+- `enqueue_group_post(...)` — savepoint-wrapped, deduped on `dedup_key`, **no-ops unless `WHATSAPP_GROUP_BOT_ENABLED`** (so the queue doesn't fill before the bot is deployed).
+- Wired into signals: `on_poll`(created, upcoming only) → poll; `on_session`(confirmed, paid) → cost split; `on_match`(completed) → result. Deduped (`poll_opened:{id}`, `session_confirmed:{id}`, `match_result:{id}`). 5 enqueue tests; suite 44/44 green.
+
+**NOT yet built (the only remaining Phase 2 piece):**
+- **The Node production client** (`bot/`): poll `GET /api/bot/outbound/` → post text or a native `Poll(body, poll_options)` via whatsapp-web.js → `POST /api/bot/outbound/ack/`; record each posted RSVP-poll's message id; forward group reactions-on-the-bot-message + poll votes to `POST /api/bot/inbound/` (`kind=reaction|poll_vote`) and apply the returned `react` action. RemoteAuth + PM2 + hosting = Phase 3. This is the deployment-coupled piece that can't be unit-tested here.
 
 ### Phase 3 — Production hardening
 Provision Oracle A1; install Chromium; PM2 + `startup`/`save`. Switch to `RemoteAuth` + Mongo Atlas; confirm `'remote_session_saved'`; reboot VM → verify **no re-scan**. LOGOUT-vs-crash split handling + admin re-scan runbook. Dead-man's-switch heartbeat + external alerting. Failed-`OutboundMessage` sweep (`attempts<3`). Scheduled single reminder (reuse `run_reminders` cron). 7-day warmup. **Exit:** survives redeploy + VM reboot with zero manual re-scan; failures alert + retry.
