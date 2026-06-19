@@ -22,7 +22,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from . import views as nviews
-from .models import BotEvent, OutboundMessage
+from .models import BotEvent, OutboundMessage, WhatsAppIdentity
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +79,8 @@ def inbound_message(request):
 
     wa_message_id = (data.get('wa_message_id') or '').strip()
     phone = nviews._normalize_inbound_phone(data.get('from', ''))
+    lid = ''.join(ch for ch in (data.get('lid') or '') if ch.isdigit())
+    wa_name = (data.get('author_name') or '')[:100]
     chat = data.get('chat') or 'community'
     target = data.get('target') or 'community'
     kind = (data.get('kind') or 'text').lower()
@@ -91,6 +93,13 @@ def inbound_message(request):
     bot = _bot_digits()
     if bot and phone.lstrip('+') == bot:
         return JsonResponse({'ok': True, 'ignored': 'self'})
+
+    # Passively stage every LID we see (with its latest display name) so admins
+    # can map even members who never trigger the roster import.
+    if lid:
+        WhatsAppIdentity.objects.update_or_create(
+            lid=lid, defaults={'name': wa_name} if wa_name else {},
+        )
 
     # Normalise reactions / poll votes into the YES/NO text the dispatcher parses.
     if kind == 'reaction':
@@ -116,7 +125,7 @@ def inbound_message(request):
     is_vote = kind in ('reaction', 'poll_vote')
     result = nviews.dispatch_inbound(
         wa_message_id, phone, text, chat='community', reply=reply, raw=raw,
-        allow_text_rsvp=is_vote, reply_unknown=False,
+        allow_text_rsvp=is_vote, reply_unknown=False, lid=lid, wa_name=wa_name,
     )
 
     actions = []
@@ -128,6 +137,33 @@ def inbound_message(request):
         })
 
     return JsonResponse({'ok': True, 'result': result, 'actions': actions})
+
+
+@csrf_exempt
+@require_POST
+def roster_import(request):
+    """Bulk-import the group's members as (lid, name) so admins can map them all
+    at once, without waiting for each to vote. Auth: ?token=$BOT_WEBHOOK_TOKEN.
+    Body: {members: [{lid, name}, ...]}. Upserts WhatsAppIdentity rows (keeps the
+    existing user mapping; refreshes the name)."""
+    if not nviews._check_bot_token(request, 'BOT_WEBHOOK_TOKEN'):
+        return JsonResponse({'ok': False, 'error': 'unauthorized'}, status=401)
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({'ok': False, 'error': 'bad json'}, status=400)
+
+    imported = 0
+    for m in (data.get('members') or []):
+        lid = ''.join(ch for ch in (m.get('lid') or '') if ch.isdigit())
+        if not lid:
+            continue
+        name = (m.get('name') or '')[:120]
+        WhatsAppIdentity.objects.update_or_create(
+            lid=lid, defaults={'name': name} if name else {},
+        )
+        imported += 1
+    return JsonResponse({'ok': True, 'imported': imported})
 
 
 @csrf_exempt
@@ -202,7 +238,7 @@ def outbound_ack(request):
     if status == 'sent':
         msg.status = OutboundMessage.SENT
         msg.sent_at = timezone.now()
-        msg.wa_message_id = (data.get('wa_message_id') or '')[:100]
+        msg.wa_message_id = (data.get('wa_message_id') or '')[:255]
         msg.save(update_fields=['status', 'sent_at', 'wa_message_id'])
         try:
             BotEvent.objects.create(

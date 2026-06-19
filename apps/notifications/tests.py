@@ -322,7 +322,7 @@ from datetime import timedelta
 
 from django.test import override_settings
 
-from apps.notifications.models import BotEvent, OutboundMessage
+from apps.notifications.models import BotEvent, OutboundMessage, WhatsAppIdentity
 
 
 @override_settings(WHATSAPP_APP_SECRET='')
@@ -360,7 +360,8 @@ class MetaPathCharacterizationTests(TestCase):
         mock_send.assert_called_once()  # DM confirmation — Meta path unchanged
 
 
-@override_settings(BOT_INBOUND_TOKEN='tok', WHATSAPP_BOT_NUMBER='+32465110367')
+@override_settings(BOT_INBOUND_TOKEN='tok', WHATSAPP_BOT_NUMBER='+32465110367',
+                   WHATSAPP_GROUP_BOT_ENABLED=False)
 class GroupInboundTests(TestCase):
     """The new /api/bot/inbound/ endpoint: records group votes, reacts ✅/❌,
     queues command replies, and makes ZERO Cloud-API calls for group traffic."""
@@ -428,6 +429,21 @@ class GroupInboundTests(TestCase):
         self._post({'from': '32470000001', 'wa_message_id': 'g4', 'kind': 'poll_vote', 'selected': ['No ❌']})
         self.assertTrue(
             Vote.objects.filter(poll=self.poll, user=self.member, choice='no').exists()
+        )
+
+    def test_group_vote_matched_by_lid_when_phone_hidden(self):
+        # Community/privacy groups expose only a LID, never the phone — match on
+        # User.wa_lid. The 'from' here is the opaque LID-derived value (no phone
+        # match); the lid links it to the member.
+        self.member.wa_lid = '267418135986186'
+        self.member.save()
+        resp = self._post({
+            'from': '+267418135986186', 'lid': '267418135986186',
+            'wa_message_id': 'glid1', 'kind': 'poll_vote', 'selected': ['Yes ✅'],
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(
+            Vote.objects.filter(poll=self.poll, user=self.member, choice='yes').exists()
         )
 
     @patch("apps.notifications.services.send_text_message")
@@ -572,3 +588,37 @@ class AutoPostEnqueueTests(TestCase):
         s = self._session()
         Poll.objects.create(session=s)
         self.assertFalse(OutboundMessage.objects.exists())
+
+
+@override_settings(BOT_WEBHOOK_TOKEN='wtok')
+class RosterAndIdentityTests(TestCase):
+    """LID onboarding: bulk roster import + mapping an identity to a user."""
+
+    def test_roster_requires_token(self):
+        resp = self.client.post(
+            reverse('bot_roster') + '?token=bad',
+            data=json.dumps({'members': []}), content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 401)
+
+    def test_roster_import_creates_identities(self):
+        resp = self.client.post(
+            reverse('bot_roster') + '?token=wtok',
+            data=json.dumps({'members': [
+                {'lid': '267418135986186', 'name': 'Bhanu'},
+                {'lid': '8826174587110', 'name': 'Sam'},
+            ]}), content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['imported'], 2)
+        self.assertTrue(
+            WhatsAppIdentity.objects.filter(lid='267418135986186', name='Bhanu').exists()
+        )
+
+    def test_mapping_identity_sets_user_wa_lid(self):
+        u = User.objects.create_user(username='bhanu', password='x')
+        ident = WhatsAppIdentity.objects.create(lid='267418135986186', name='Bhanu')
+        ident.user = u
+        ident.save()
+        u.refresh_from_db()
+        self.assertEqual(u.wa_lid, '267418135986186')  # mirrored for vote matching

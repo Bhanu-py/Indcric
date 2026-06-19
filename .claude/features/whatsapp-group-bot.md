@@ -311,6 +311,13 @@ Django: `outbound_drain` (with claimed-status + reclaim window) + `outbound_ack`
 - `enqueue_group_post(...)` — savepoint-wrapped, deduped on `dedup_key`, **no-ops unless `WHATSAPP_GROUP_BOT_ENABLED`** (so the queue doesn't fill before the bot is deployed).
 - Wired into signals: `on_poll`(created, upcoming only) → poll; `on_session`(confirmed, paid) → cost split; `on_match`(completed) → result. Deduped (`poll_opened:{id}`, `session_confirmed:{id}`, `match_result:{id}`). 5 enqueue tests; suite 44/44 green.
 
+**Identity — LID, not phone (MAJOR finding, BUILT 2026-06-19):**
+- Live testing proved this group addresses members by an opaque WhatsApp **LID** (`<digits>@lid`), and `getContactById` does NOT reveal the phone (privacy). So the original `<number>@c.us → User.phone` assumption is **dead for Community/privacy groups** — votes must be matched by LID.
+- `User.wa_lid` added (migration `accounts/0005`); `_handle_rsvp` matches phone → then `wa_lid`. The bot resolves `{phone, lid, name}` and forwards `lid` + `author_name`.
+- `WhatsAppIdentity` model (`notifications/0008`) stages discovered `(lid, name)`; saving with a `user` mirrors `lid → user.wa_lid`. Admin page `/admin/notifications/whatsappidentity/` with an Unmapped filter + inline user dropdown.
+- Harvest: `node bot.js roster` enumerates the group → `POST /api/bot/roster/`; plus passive capture on every group inbound. Admin onboarding runbook = **issue #48**.
+- `BotEvent.wa_message_id` / `OutboundMessage.wa_message_id` widened 100→255 (migration `0007`) — `@lid` ids + composite vote keys overflow 100.
+
 **NOT yet built (the only remaining Phase 2 piece):**
 - **The Node production client** (`bot/`): poll `GET /api/bot/outbound/` → post text or a native `Poll(body, poll_options)` via whatsapp-web.js → `POST /api/bot/outbound/ack/`; record each posted RSVP-poll's message id; forward group reactions-on-the-bot-message + poll votes to `POST /api/bot/inbound/` (`kind=reaction|poll_vote`) and apply the returned `react` action. RemoteAuth + PM2 + hosting = Phase 3. This is the deployment-coupled piece that can't be unit-tested here.
 

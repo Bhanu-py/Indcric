@@ -1,5 +1,34 @@
 from django.contrib import admin
-from .models import ActivityEvent, ActivityFeedState, BotEvent, OutboundMessage
+from .models import (
+    ActivityEvent, ActivityFeedState, BotEvent, OutboundMessage, WhatsAppIdentity,
+)
+
+
+class _MappedFilter(admin.SimpleListFilter):
+    title = 'mapped'
+    parameter_name = 'mapped'
+
+    def lookups(self, request, model_admin):
+        return [('no', 'Unmapped'), ('yes', 'Mapped')]
+
+    def queryset(self, request, qs):
+        if self.value() == 'no':
+            return qs.filter(user__isnull=True)
+        if self.value() == 'yes':
+            return qs.filter(user__isnull=False)
+        return qs
+
+
+@admin.register(WhatsAppIdentity)
+class WhatsAppIdentityAdmin(admin.ModelAdmin):
+    """Map each discovered WhatsApp LID to an IndCric user. Saving sets the
+    user's wa_lid, so their group votes start counting. Filter to 'Unmapped',
+    match the display name to a member, pick the user, Save."""
+    list_display = ('lid', 'name', 'user', 'last_seen')
+    list_editable = ('user',)            # assign the user inline from the list
+    list_filter = (_MappedFilter,)
+    search_fields = ('lid', 'name', 'user__username', 'user__first_name')
+    list_per_page = 50
 
 
 @admin.register(OutboundMessage)

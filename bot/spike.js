@@ -200,9 +200,11 @@ client.on('message_reaction', (reaction) => {
     const mine = lastRsvpMsgId && onMsg === lastRsvpMsgId ? ' (OUR rsvp message)' : '';
     console.log(`[REACTION] from=${phone} emoji=${emoji} on=${onMsg}${mine}`);
 
+    // Strip skin-tone modifiers + variation selector so '👍🏾' matches '👍'.
+    const base = (reaction.reaction || '').replace(/[\u{1F3FB}-\u{1F3FF}️]/gu, '');
     let choice = null;
-    if (reaction.reaction === '👍') choice = 'yes';
-    else if (reaction.reaction === '👎') choice = 'no';
+    if (base === '👍') choice = 'yes';
+    else if (base === '👎') choice = 'no';
     else if (reaction.reaction === '') choice = 'withdraw';
 
     if (choice && mine) {

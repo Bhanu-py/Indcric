@@ -7,6 +7,7 @@ urlpatterns = [
     path('api/bot/inbound/', views_bot.inbound_message, name='bot_inbound'),
     path('api/bot/outbound/', views_bot.outbound_drain, name='bot_outbound'),
     path('api/bot/outbound/ack/', views_bot.outbound_ack, name='bot_outbound_ack'),
+    path('api/bot/roster/', views_bot.roster_import, name='bot_roster'),
 
     path('activity/', views.activity_feed_view, name='activity'),
     path('activity/read-all/', views.activity_read_all_view, name='activity_read_all'),

@@ -21,6 +21,12 @@ class User(AbstractUser):
         validators=[MinValueValidator(0), MaxValueValidator(5)]
     )
     phone = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    # WhatsApp LID — the opaque per-account id WhatsApp exposes in Community /
+    # privacy-on groups INSTEAD of the phone number. The group bot can't see a
+    # member's real number there, so group votes are matched on this. Populated
+    # by mapping an unknown LID (logged with the member's display name) to the
+    # right user. Separate from `phone`, which still drives the Cloud-API DM path.
+    wa_lid = models.CharField(max_length=30, blank=True, default='', db_index=True)
     # Stored on Cloudinary in staging/prod (MediaCloudinaryStorage), on the local
     # filesystem in dev. django-cleanup deletes the old file on replace/remove.
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)

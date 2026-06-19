@@ -10,7 +10,9 @@ class BotEvent(models.Model):
     OUTBOUND = 'outbound'
     DIRECTION_CHOICES = [(INBOUND, 'Inbound'), (OUTBOUND, 'Outbound')]
 
-    wa_message_id = models.CharField(max_length=100, unique=True)
+    # 255, not 100: WhatsApp's multi-device '…@lid' ids are long, and the group
+    # bot composes longer composite keys (e.g. 'pollvote:<msgId>:<voter>:<sel>').
+    wa_message_id = models.CharField(max_length=255, unique=True)
     phone = models.CharField(max_length=20)
     user = models.ForeignKey(
         'accounts.User',
@@ -64,7 +66,7 @@ class OutboundMessage(models.Model):
     dedup_key = models.CharField(max_length=80, blank=True, default='')
     claimed_at = models.DateTimeField(null=True, blank=True)
     sent_at = models.DateTimeField(null=True, blank=True)
-    wa_message_id = models.CharField(max_length=100, blank=True, default='')
+    wa_message_id = models.CharField(max_length=255, blank=True, default='')
     error = models.CharField(max_length=255, blank=True, default='')
     attempts = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -81,6 +83,42 @@ class OutboundMessage(models.Model):
 
     def __str__(self):
         return f"[{self.status}] → {self.target}: {self.body[:40]}"
+
+
+class WhatsAppIdentity(models.Model):
+    """A WhatsApp group member discovered by LID.
+
+    In Community / privacy-on groups the bot sees only an opaque '<lid>@lid' and
+    the member's display name — never the phone — so members can't be matched by
+    number. Each discovered (lid, name) is staged here; an admin maps it to a
+    User, and saving mirrors the lid onto User.wa_lid so group votes start
+    matching. Populated by the roster import (/api/bot/roster/) and passively as
+    members vote/react. See whatsapp-group-bot.md 'Identity'.
+    """
+    lid = models.CharField(max_length=30, unique=True)
+    name = models.CharField(max_length=120, blank=True, default='')
+    user = models.ForeignKey(
+        'accounts.User', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='wa_identities',
+    )
+    first_seen = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['user_id', 'name']
+        verbose_name = 'WhatsApp identity'
+        verbose_name_plural = 'WhatsApp identities'
+
+    def __str__(self):
+        return f"{self.name or '(no name)'} [{self.lid}]"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Mirror the mapping onto the user so inbound matching (User.wa_lid) works.
+        # .update() avoids re-triggering signals / recursion.
+        if self.user_id and self.lid:
+            from django.contrib.auth import get_user_model
+            get_user_model().objects.filter(pk=self.user_id).update(wa_lid=self.lid)
 
 
 class ActivityEvent(models.Model):
