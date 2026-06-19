@@ -1,6 +1,14 @@
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 
+from django.db import models
+
+class TemporaryScoringPeriod(models.Model):
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    teams = models.ManyToManyField(Team, blank=True)
+    players = models.ManyToManyField(Player, blank=True)
+
 
 class Match(models.Model):
     # Deleting a match removes its activity-feed rows (e.g. the result entry).
@@ -42,7 +50,18 @@ class Match(models.Model):
 
     def __str__(self):
         return f"{self.name} in {self.session.name}"
+from django.db import connections
+from decimal import Decimal
 
+class Session(models.Model):
+    # assuming cric_sessions.Session already exists, add this for previous session
+    matches = models.ManyToManyField('Match', related_name='previous_sessions')
+
+    def get_previous_session(self):
+        try:
+            return self.matches.filter(is_completed=True)[0]
+        except IndexError:
+            return None
 
 class Team(models.Model):
     match = models.ForeignKey(Match, on_delete=models.CASCADE, related_name='teams')
