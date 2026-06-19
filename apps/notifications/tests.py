@@ -318,9 +318,11 @@ class ActivityViewTests(TestCase):
 
 import json
 
+from datetime import timedelta
+
 from django.test import override_settings
 
-from apps.notifications.models import OutboundMessage
+from apps.notifications.models import BotEvent, OutboundMessage
 
 
 @override_settings(WHATSAPP_APP_SECRET='')
@@ -447,3 +449,73 @@ class GroupInboundTests(TestCase):
         self.assertEqual(
             Vote.objects.filter(poll=self.poll, user=self.member).count(), 1
         )
+
+
+@override_settings(BOT_WEBHOOK_TOKEN='wtok')
+class OutboundQueueTests(TestCase):
+    """The group-post queue the Node bot drains: claim, reclaim-stale, ack."""
+
+    def setUp(self):
+        self.drain = reverse('bot_outbound')
+        self.ack = reverse('bot_outbound_ack')
+
+    def test_drain_requires_token(self):
+        OutboundMessage.objects.create(body='hi', target='community')
+        self.assertEqual(self.client.get(f"{self.drain}?token=wrong").status_code, 401)
+
+    def test_drain_claims_pending(self):
+        m = OutboundMessage.objects.create(body='RSVP please', target='community')
+        resp = self.client.get(f"{self.drain}?token=wtok")
+        self.assertEqual(resp.status_code, 200)
+        msgs = resp.json()['messages']
+        self.assertEqual(len(msgs), 1)
+        self.assertEqual(msgs[0]['body'], 'RSVP please')
+        m.refresh_from_db()
+        self.assertEqual(m.status, OutboundMessage.CLAIMED)
+        self.assertIsNotNone(m.claimed_at)
+
+    def test_drain_skips_freshly_claimed(self):
+        OutboundMessage.objects.create(
+            body='x', status=OutboundMessage.CLAIMED, claimed_at=timezone.now(),
+        )
+        self.assertEqual(self.client.get(f"{self.drain}?token=wtok").json()['messages'], [])
+
+    def test_drain_reclaims_stale_claimed(self):
+        stale = OutboundMessage.objects.create(
+            body='stuck', status=OutboundMessage.CLAIMED,
+            claimed_at=timezone.now() - timedelta(seconds=200),
+        )
+        ids = [m['id'] for m in self.client.get(f"{self.drain}?token=wtok").json()['messages']]
+        self.assertIn(stale.id, ids)
+
+    def test_ack_sent_marks_sent_and_audits(self):
+        m = OutboundMessage.objects.create(
+            body='x', status=OutboundMessage.CLAIMED, claimed_at=timezone.now(),
+        )
+        resp = self.client.post(
+            f"{self.ack}?token=wtok",
+            data=json.dumps({'id': m.id, 'status': 'sent', 'wa_message_id': 'wamid.out1'}),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        m.refresh_from_db()
+        self.assertEqual(m.status, OutboundMessage.SENT)
+        self.assertIsNotNone(m.sent_at)
+        self.assertTrue(
+            BotEvent.objects.filter(action='group_post', direction=BotEvent.OUTBOUND).exists()
+        )
+
+    def test_ack_failed_increments_attempts(self):
+        m = OutboundMessage.objects.create(
+            body='x', status=OutboundMessage.CLAIMED, claimed_at=timezone.now(),
+        )
+        resp = self.client.post(
+            f"{self.ack}?token=wtok",
+            data=json.dumps({'id': m.id, 'status': 'failed', 'error': 'boom'}),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        m.refresh_from_db()
+        self.assertEqual(m.status, OutboundMessage.FAILED)
+        self.assertEqual(m.attempts, 1)
+        self.assertEqual(m.error, 'boom')

@@ -11,16 +11,24 @@ queued OutboundMessage rows. See .claude/features/whatsapp-group-bot.md.
 """
 import json
 import logging
+from datetime import timedelta
 
 from django.conf import settings
+from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from . import views as nviews
-from .models import OutboundMessage
+from .models import BotEvent, OutboundMessage
 
 logger = logging.getLogger(__name__)
+
+# A claimed row whose Node worker died mid-send is reclaimable after this long,
+# so a crash-after-claim doesn't strand the message as 'claimed' forever.
+CLAIM_RECLAIM_SECONDS = 90
 
 
 def _enqueue_group_reply(target):
@@ -120,3 +128,95 @@ def inbound_message(request):
         })
 
     return JsonResponse({'ok': True, 'result': result, 'actions': actions})
+
+
+@csrf_exempt
+def outbound_drain(request):
+    """The Node bot pulls pending group posts here, claims them, and posts them.
+
+    Auth: ?token=$BOT_WEBHOOK_TOKEN (read/queue token — outbound posts don't write
+    Votes, so they use the lower-trust token, not BOT_INBOUND_TOKEN).
+
+    Claims up to `limit` rows in one atomic, row-locked batch (skip_locked so
+    concurrent drains never block each other): each PENDING row — or a CLAIMED row
+    stuck past CLAIM_RECLAIM_SECONDS (worker died mid-send) — flips to CLAIMED with
+    a fresh claimed_at. Claiming as a *status* (not just stamping claimed_at) is
+    what stops a second drain from re-handing the same row out.
+    """
+    if not nviews._check_bot_token(request, 'BOT_WEBHOOK_TOKEN'):
+        return JsonResponse({'ok': False, 'error': 'unauthorized'}, status=401)
+
+    try:
+        limit = max(1, min(int(request.GET.get('limit', 10)), 50))
+    except (TypeError, ValueError):
+        limit = 10
+
+    reclaim_cutoff = timezone.now() - timedelta(seconds=CLAIM_RECLAIM_SECONDS)
+    claimed = []
+    with transaction.atomic():
+        rows = list(
+            OutboundMessage.objects
+            .select_for_update(skip_locked=True)
+            .filter(
+                Q(status=OutboundMessage.PENDING)
+                | Q(status=OutboundMessage.CLAIMED, claimed_at__lt=reclaim_cutoff)
+            )
+            .order_by('created_at')[:limit]
+        )
+        now = timezone.now()
+        for r in rows:
+            r.status = OutboundMessage.CLAIMED
+            r.claimed_at = now
+            r.save(update_fields=['status', 'claimed_at'])
+            claimed.append({'id': r.id, 'body': r.body, 'target': r.target})
+
+    return JsonResponse({'ok': True, 'messages': claimed})
+
+
+@csrf_exempt
+@require_POST
+def outbound_ack(request):
+    """The Node bot reports the outcome of a claimed post.
+
+    Auth: ?token=$BOT_WEBHOOK_TOKEN. Body: {id, status:'sent', wa_message_id}
+    → SENT (+ an outbound BotEvent for the audit log); {id, status:'failed', error}
+    → FAILED with attempts incremented (a Phase 3 sweep re-queues attempts<3).
+    """
+    if not nviews._check_bot_token(request, 'BOT_WEBHOOK_TOKEN'):
+        return JsonResponse({'ok': False, 'error': 'unauthorized'}, status=401)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({'ok': False, 'error': 'bad json'}, status=400)
+
+    try:
+        msg = OutboundMessage.objects.get(id=data.get('id'))
+    except (OutboundMessage.DoesNotExist, ValueError, TypeError):
+        return JsonResponse({'ok': False, 'error': 'not found'}, status=404)
+
+    status = (data.get('status') or '').lower()
+    if status == 'sent':
+        msg.status = OutboundMessage.SENT
+        msg.sent_at = timezone.now()
+        msg.wa_message_id = (data.get('wa_message_id') or '')[:100]
+        msg.save(update_fields=['status', 'sent_at', 'wa_message_id'])
+        try:
+            BotEvent.objects.create(
+                wa_message_id=f"outbound:{msg.id}",
+                phone='', user=None, action='group_post',
+                direction=BotEvent.OUTBOUND,
+                payload={'outbound_id': msg.id, 'target': msg.target,
+                         'wa_message_id': msg.wa_message_id},
+            )
+        except IntegrityError:
+            pass  # duplicate ack — already audited
+    elif status == 'failed':
+        msg.status = OutboundMessage.FAILED
+        msg.error = (data.get('error') or '')[:255]
+        msg.attempts = (msg.attempts or 0) + 1
+        msg.save(update_fields=['status', 'error', 'attempts'])
+    else:
+        return JsonResponse({'ok': False, 'error': 'bad status'}, status=400)
+
+    return JsonResponse({'ok': True, 'id': msg.id, 'status': msg.status})

@@ -5,6 +5,8 @@ urlpatterns = [
     path('api/bot/whatsapp/', views.whatsapp_webhook, name='bot_whatsapp'),
     path('api/bot/run-reminders/', views.run_reminders_view, name='bot_run_reminders'),
     path('api/bot/inbound/', views_bot.inbound_message, name='bot_inbound'),
+    path('api/bot/outbound/', views_bot.outbound_drain, name='bot_outbound'),
+    path('api/bot/outbound/ack/', views_bot.outbound_ack, name='bot_outbound_ack'),
 
     path('activity/', views.activity_feed_view, name='activity'),
     path('activity/read-all/', views.activity_read_all_view, name='activity_read_all'),

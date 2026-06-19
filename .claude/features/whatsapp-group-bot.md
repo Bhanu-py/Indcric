@@ -297,8 +297,18 @@ Django: `OutboundMessage` model + migration; `_check_bot_token` helper; **`clean
 
 **NOT yet built:** the Node side (poll `WA_GROUP_JID`, strip author→E.164, POST `/api/bot/inbound/`, perform the returned `react` action) — that's wired in Phase 2 alongside the outbound drain. **RSVP confirmation is emoji-react (returned as an action); command replies queue as text** — matches the locked decision.
 
-### Phase 2 — Post (Django → group)
+### Phase 2 — Post (Django → group) — 🟡 QUEUE API BUILT 2026-06-19
 Django: `outbound_drain` (with claimed-status + reclaim window) + `outbound_ack`; new `build_group_rsvp_text` composer; enqueue from `on_poll`/`on_session`(confirmed)/`on_match`/gated `on_donation`/`save_teams_view`; admin `list_filter`. Node: poll loop → send → ack, Gaussian jitter; local re-send guard. **Exit:** creating a poll auto-posts the invite within ~30s; dedupe prevents reposts; crash-after-claim doesn't double-post.
+
+**Built (Django, on `feature/whatsapp-group-bot`):**
+- `GET /api/bot/outbound/` (`outbound_drain`) — token-auth (`BOT_WEBHOOK_TOKEN`); claims up to `limit` rows in one `select_for_update(skip_locked=True)` atomic batch; flips PENDING→CLAIMED with `claimed_at`; **reclaims** CLAIMED rows older than `CLAIM_RECLAIM_SECONDS=90` (crash-after-claim safety); returns `[{id,body,target}]`.
+- `POST /api/bot/outbound/ack/` (`outbound_ack`) — `{id,status:'sent',wa_message_id}` → SENT + outbound `BotEvent` audit; `{id,status:'failed',error}` → FAILED, `attempts+=1`.
+- 6 queue tests (auth, claim, skip-fresh-claimed, reclaim-stale, ack sent+audit, ack failed). Suite now 39/39 green.
+
+**NOT yet built (remaining Phase 2):**
+- `build_group_rsvp_text(poll, site_url)` composer (do NOT reuse `build_group_invite_text` — that emits wa.me deep links; the group bot wants "reply here / react").
+- Enqueue `OutboundMessage` from signals (`on_poll` created, `on_session` confirmed, `on_match` result, gated `on_donation`, `save_teams_view`) with `dedup_key`.
+- **The Node production client** (`bot/`): poll `/api/bot/outbound/` → post via whatsapp-web.js → `/api/bot/outbound/ack/`; forward group reactions-on-bot-message + poll votes to `/api/bot/inbound/` and apply the returned `react` action; RemoteAuth + PM2 (Phase 3). This is the deployment-coupled piece.
 
 ### Phase 3 — Production hardening
 Provision Oracle A1; install Chromium; PM2 + `startup`/`save`. Switch to `RemoteAuth` + Mongo Atlas; confirm `'remote_session_saved'`; reboot VM → verify **no re-scan**. LOGOUT-vs-crash split handling + admin re-scan runbook. Dead-man's-switch heartbeat + external alerting. Failed-`OutboundMessage` sweep (`attempts<3`). Scheduled single reminder (reuse `run_reminders` cron). 7-day warmup. **Exit:** survives redeploy + VM reboot with zero manual re-scan; failures alert + retry.
