@@ -34,8 +34,7 @@ class BotEvent(models.Model):
 class ActivityEvent(models.Model):
     """One entry in the club-wide activity feed (the design's Notifications /
     Activity screen). The feed is GLOBAL — every member sees the same timeline;
-    per-user read state lives in :class:`ActivityFeedState` and reactions in
-    :class:`Reaction`.
+    per-user read state lives in :class:`ActivityFeedState`.
 
     Events are emitted by signal receivers in ``signals.py`` when things happen
     elsewhere (a donation lands, a session is created/confirmed, a match
@@ -121,30 +120,6 @@ class ActivityEvent(models.Model):
         if u.startswith('/') or u.startswith('https://') or u.startswith('http://'):
             return u
         return ''
-
-
-class Reaction(models.Model):
-    """A member's emoji reaction on an activity row. One row per (event, user,
-    emoji) — tapping the same emoji again toggles it off."""
-    activity = models.ForeignKey(
-        ActivityEvent, on_delete=models.CASCADE, related_name='reactions'
-    )
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='activity_reactions'
-    )
-    emoji = models.CharField(max_length=8)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['created_at']
-        constraints = [
-            models.UniqueConstraint(
-                fields=['activity', 'user', 'emoji'], name='uniq_reaction_per_user_emoji'
-            ),
-        ]
-
-    def __str__(self):
-        return f"{self.user} {self.emoji} on {self.activity_id}"
 
 
 class ActivityFeedState(models.Model):

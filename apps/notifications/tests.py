@@ -108,7 +108,7 @@ from django.utils import timezone
 
 from apps.donations.models import Donation, DonationCampaign
 from apps.notifications.models import (
-    ActivityEvent, ActivityFeedState, Reaction, unread_count_for,
+    ActivityEvent, ActivityFeedState, unread_count_for,
 )
 from apps.payments.models import Payment
 from apps.polls.models import Poll, Vote
@@ -304,19 +304,6 @@ class ActivityViewTests(TestCase):
         resp = self.client.get(reverse('activity'), {'tab': 'donations'}, HTTP_HX_REQUEST='true')
         self.assertContains(resp, "Riya donated")
         self.assertNotContains(resp, "Sam paid")
-
-    def test_react_toggles(self):
-        self.client.force_login(self.user)
-        url = reverse('activity_react', args=[self.donation_ev.id])
-        self.client.post(url, {'emoji': '👍'})
-        self.assertEqual(Reaction.objects.filter(activity=self.donation_ev, emoji='👍').count(), 1)
-        self.client.post(url, {'emoji': '👍'})   # tap again → toggle off
-        self.assertEqual(Reaction.objects.filter(activity=self.donation_ev, emoji='👍').count(), 0)
-
-    def test_react_rejects_unknown_emoji(self):
-        self.client.force_login(self.user)
-        self.client.post(reverse('activity_react', args=[self.donation_ev.id]), {'emoji': '💩'})
-        self.assertEqual(Reaction.objects.filter(activity=self.donation_ev).count(), 0)
 
     def test_mark_all_read_view_resets_and_oob_bell(self):
         self.client.force_login(self.user)

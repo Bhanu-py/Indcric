@@ -7,5 +7,4 @@ urlpatterns = [
 
     path('activity/', views.activity_feed_view, name='activity'),
     path('activity/read-all/', views.activity_read_all_view, name='activity_read_all'),
-    path('activity/<int:activity_id>/react/', views.activity_react_view, name='activity_react'),
 ]

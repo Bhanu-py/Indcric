@@ -1,6 +1,6 @@
 {% comment %}
-One activity row: category icon · body + meta + reactions · unread dot + action.
-Args: event (decorated: .style {bg,fg,icon}, .is_unread, .reactions_view), last
+One activity row: category icon · body + meta · unread dot + action.
+Args: event (decorated: .style {bg,fg,icon}, .is_unread), last
 {% endcomment %}
 <div class="grid grid-cols-[auto_1fr_auto] gap-3 px-4 py-3.5 {% if not last %}border-b border-stone-100{% endif %} {% if event.is_unread %}bg-pitch-50/40{% endif %}">
 
@@ -19,7 +19,7 @@ Args: event (decorated: .style {bg,fg,icon}, .is_unread, .reactions_view), last
         </svg>
     </span>
 
-    {# Body + meta + reactions #}
+    {# Body + meta #}
     <div class="min-w-0">
         {% if event.safe_url %}
         <a href="{{ event.safe_url }}" class="block text-sm text-stone-800 leading-snug hover:text-pitch-700">{{ event.body }}</a>
@@ -29,7 +29,6 @@ Args: event (decorated: .style {bg,fg,icon}, .is_unread, .reactions_view), last
         <p class="font-mono text-xs sm:text-[10px] uppercase tracking-wider text-stone-400 mt-1">
             {{ event.created_at|timesince }} ago{% if event.context %} · {{ event.context }}{% endif %}
         </p>
-        {% include "notifications/partials/_reaction_bar.html" with event=event %}
     </div>
 
     {# Unread dot + optional action #}
