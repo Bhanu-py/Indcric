@@ -8,35 +8,6 @@ from .models import Match, Team, Player, Innings
 from . import scoring
 
 
-from .models import TemporaryScoringPeriod
-
-class GrantTemporaryScoringAccess(APIView):
-    def post(self, request):
-        # Get the session ID from the request
-        session_id = self.request.data['session_id']
-        
-        # Create a new temporary scoring period
-        temp_scoring_period = TemporaryScoringPeriod.objects.create(
-            start_time=self.request.data['start_time'],
-            end_time=self.request.data['end_time']
-        )
-        
-        # Assign players and teams to the temporary scoring period
-        temp_scoring_period.players.set(self.request.data['players'])
-        temp_scoring_period.teams.set(self.request.data['teams'])
-        
-        return Response({'message': 'Temporary scoring access granted'})
-
-class RevokeTemporaryScoringAccess(APIView):
-    def post(self, request):
-        # Get the session ID from the request
-        session_id = self.request.data['session_id']
-        
-        # Delete the temporary scoring period
-        TemporaryScoringPeriod.objects.filter(session__id=session_id).delete()
-        
-        return Response({'message': 'Temporary scoring access revoked'})
-
 @login_required
 def scorecard_view(request, match_id):
     """Read-only scorecard for everyone — both innings, batting/bowling cards,

@@ -1446,16 +1446,3 @@
 {% endblock %}
 
 
-{% extends 'base.html' %}
-
-{% block content %}
-  <!-- Display team names and players for temporary scoring period -->
-  <h2>Temporary Scoring Period:</h2>
-  <p>Start Time: {{ temp_scoring_period.start_time }}</p>
-  <p>End Time: {{ temp_scoring_period.end_time }}</p>
-  <ul>
-    {% for player in temp_scoring_period.players.all %}
-      <li>{{ player.name }}</li>
-    {% endfor %}
-  </ul>
-{% endblock %}

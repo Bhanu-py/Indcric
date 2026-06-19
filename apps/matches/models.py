@@ -1,13 +1,6 @@
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 
-from django.db import models
-
-class TemporaryScoringPeriod(models.Model):
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
-    teams = models.ManyToManyField('Team', blank=True)
-    players = models.ManyToManyField('Player', blank=True)
 
 
 class Match(models.Model):
