@@ -7,6 +7,23 @@ from django.contrib import messages
 from .models import Match, Team, Player, Innings
 from . import scoring
 
+from django.shortcuts import render, redirect
+from .models import Match
+
+def grant_temporary_access(request, pk):
+    match = Match.objects.get(pk=pk)
+    # Grant temporary access to score for the live match
+    match.live_match_score_granted = True
+    match.save()
+    return redirect('match_detail', pk=pk)
+
+def revoke_temporary_access(request, pk):
+    match = Match.objects.get(pk=pk)
+    # Revoke temporary access to score for the live match
+    match.live_match_score_granted = False
+    match.save()
+    return redirect('match_detail', pk=pk)
+
 
 @login_required
 def scorecard_view(request, match_id):

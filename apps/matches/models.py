@@ -1,7 +1,7 @@
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 
-
+from django.http import HttpResponse
 
 class Match(models.Model):
     # Deleting a match removes its activity-feed rows (e.g. the result entry).
@@ -84,6 +84,18 @@ class Player(models.Model):
 
     def __str__(self):
         return self.user.username
+
+def grant_temporary_access(self, request):
+        if request.user.is_staff:
+            self.live_match_score_granted = True
+            self.save()
+            return HttpResponse('Temporary access granted')
+
+def revoke_temporary_access(self, request):
+        if request.user.is_staff:
+            self.live_match_score_granted = False
+            self.save()
+            return HttpResponse('Temporary access revoked')
 
 
 class Innings(models.Model):
