@@ -5,7 +5,7 @@ import logging
 import re
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -180,59 +180,103 @@ def _process_status(status):
         pass  # duplicate webhook delivery — Meta retries on non-2xx
 
 
-def _process_message(msg, value):
-    wa_message_id = msg.get('id', '')
-    phone = _normalize_inbound_phone(msg.get('from', ''))
-    text = _extract_text(msg)
+def _dm_sink(phone):
+    """Default reply sink — a Cloud-API DM back to `phone` (the Meta path).
+
+    Built lazily so the `services.send_text_message` patch target used in tests
+    still applies, and so importing this module doesn't pull in `services`."""
+    def _send(text):
+        from .services import send_text_message
+        return send_text_message(phone, text)
+    return _send
+
+
+def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None):
+    """Shared inbound parser + dispatcher for BOTH the Meta Cloud-API webhook
+    and the group-resident bot's /api/bot/inbound/ endpoint.
+
+    `reply(text)` is the reply sink: a Cloud-API DM for ``chat='dm'`` (default),
+    or a group-queue enqueue for ``chat='community'``. `raw` is the source
+    payload stored verbatim in the BotEvent audit row. Returns a small result
+    dict describing what happened so the group endpoint can translate an RSVP
+    into an emoji reaction (✅/❌) instead of a text post.
+    """
+    if reply is None:
+        reply = _dm_sink(phone)
+    if raw is None:
+        raw = {}
 
     if not text:
-        return
+        return {'kind': 'empty'}
 
     rsvp = RSVP_PATTERN.match(text)
     if rsvp:
         token = rsvp.group(1).lower()
         session_id = int(rsvp.group(2)) if rsvp.group(2) else None
         choice = 'yes' if token in ('yes', 'y', '✅', '1') else 'no'
-        _handle_rsvp(wa_message_id, phone, choice, msg, session_id=session_id)
-        return
+        result = _handle_rsvp(
+            wa_message_id, phone, choice, raw,
+            session_id=session_id, reply=reply, chat=chat,
+        )
+        return {'kind': 'rsvp', **(result or {})}
 
     text_lower = text.lower()
     if text_lower in ('balance', 'bal', '/balance', 'wallet'):
-        _handle_balance(wa_message_id, phone, msg)
+        _handle_balance(wa_message_id, phone, raw, reply=reply)
+        return {'kind': 'command', 'command': 'balance'}
     elif text_lower in ('status', 'poll', 'who', 'count', '/status'):
-        _handle_status(wa_message_id, phone, msg)
+        _handle_status(wa_message_id, phone, raw, reply=reply)
+        return {'kind': 'command', 'command': 'status'}
     elif text_lower in ('score', 'scores', '/score', 'live'):
-        _handle_score(wa_message_id, phone, msg)
+        _handle_score(wa_message_id, phone, raw, reply=reply)
+        return {'kind': 'command', 'command': 'score'}
     elif text_lower in ('history', 'hist', '/history', 'games'):
-        _handle_history(wa_message_id, phone, msg)
+        _handle_history(wa_message_id, phone, raw, reply=reply)
+        return {'kind': 'command', 'command': 'history'}
     elif text_lower in ('help', '/help', '?'):
-        _handle_help(wa_message_id, phone, msg)
+        _handle_help(wa_message_id, phone, raw, reply=reply)
+        return {'kind': 'command', 'command': 'help'}
     else:
         logger.info('Unrecognised WhatsApp message from %s: %s', phone, text)
-        _handle_unknown(wa_message_id, phone, text, msg)
+        _handle_unknown(wa_message_id, phone, text, raw, reply=reply)
+        return {'kind': 'unknown'}
 
 
-def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None):
-    """Record an inbound RSVP and reply with a confirmation.
+def _process_message(msg, value):
+    """Adapter: turn a Meta-webhook message dict into a dispatch_inbound call.
+
+    Behaviour-preserving wrapper around the shared dispatcher — the Meta path is
+    always a DM, so the reply sink defaults to send_text_message and `raw` is the
+    original Meta message dict (kept in BotEvent.payload as before)."""
+    wa_message_id = msg.get('id', '')
+    phone = _normalize_inbound_phone(msg.get('from', ''))
+    text = _extract_text(msg)
+    dispatch_inbound(wa_message_id, phone, text, chat='dm', raw=msg)
+
+
+def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None, reply=None, chat='dm'):
+    """Record an inbound RSVP. Confirms via the reply sink on the DM path; on the
+    group path stays silent here (the /api/bot/inbound/ endpoint reacts ✅/❌ to
+    the member's message — per-vote text would flood the group).
 
     If session_id is given (from a wa.me deep link), target that specific
-    session's poll; otherwise fall back to the latest open poll. Replies are
-    sent inside the user's free 24h service window (the same inbound that
-    triggered this handler opened it), so they don't cost anything.
+    session's poll; otherwise fall back to the latest open poll. Returns a result
+    dict: {'recorded': bool, 'choice': str, 'reason': str?}.
     """
     from apps.polls.models import Poll, Vote
-    from .services import send_text_message
+    if reply is None:
+        reply = _dm_sink(phone)
 
     user = User.objects.filter(phone=phone).first()
 
     payload = {'raw': raw, 'requested_session_id': session_id, 'choice': choice}
     if not _log_inbound(wa_message_id, phone, user, 'rsvp', payload):
-        return  # duplicate webhook delivery — first call already handled this
+        return {'recorded': False, 'reason': 'duplicate', 'choice': choice}
 
     if user is None:
         logger.warning('WhatsApp RSVP from unknown phone %s', phone)
-        send_text_message(phone, bot_messages.not_recognised())
-        return
+        reply(bot_messages.not_recognised())
+        return {'recorded': False, 'reason': 'unknown_phone', 'choice': choice}
 
     poll_obj = None
     if session_id is not None:
@@ -246,43 +290,49 @@ def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None):
     if poll_obj is None:
         poll_obj = _next_open_poll()
     if poll_obj is None:
-        send_text_message(phone, bot_messages.no_active_poll())
-        return
+        reply(bot_messages.no_active_poll())
+        return {'recorded': False, 'reason': 'no_poll', 'choice': choice}
 
     Vote.objects.update_or_create(
         poll=poll_obj, user=user, defaults={'choice': choice}
     )
 
-    session = poll_obj.session
-    date_str = session.date.strftime("%a %d %b")
-    yes_names, no_names = _poll_voter_names(poll_obj)
-    send_text_message(
-        phone,
-        bot_messages.rsvp_recorded(choice, session.name, date_str, yes_names, no_names),
-    )
+    if chat != 'community':
+        session = poll_obj.session
+        date_str = session.date.strftime("%a %d %b")
+        yes_names, no_names = _poll_voter_names(poll_obj)
+        reply(bot_messages.rsvp_recorded(choice, session.name, date_str, yes_names, no_names))
+
+    return {'recorded': True, 'choice': choice}
 
 
 def _log_inbound(wa_message_id, phone, user, action, payload):
+    # Savepoint so a duplicate (caught IntegrityError) only rolls back this INSERT
+    # — without it, Postgres aborts the whole surrounding transaction and the next
+    # query raises TransactionManagementError (matters under ATOMIC_REQUESTS / in
+    # the group inbound endpoint where we keep working after a dedupe).
     try:
-        BotEvent.objects.create(
-            wa_message_id=wa_message_id, phone=phone, user=user,
-            action=action, direction=BotEvent.INBOUND, payload=payload,
-        )
+        with transaction.atomic():
+            BotEvent.objects.create(
+                wa_message_id=wa_message_id, phone=phone, user=user,
+                action=action, direction=BotEvent.INBOUND, payload=payload,
+            )
         return True
     except IntegrityError:
         return False
 
 
-def _handle_balance(wa_message_id, phone, raw):
+def _handle_balance(wa_message_id, phone, raw, reply=None):
     from django.db.models import Sum
     from apps.payments.models import Wallet, Payment
-    from .services import send_text_message
+    if reply is None:
+        reply = _dm_sink(phone)
 
     try:
         user = User.objects.get(phone=phone)
     except User.DoesNotExist:
         if _log_inbound(wa_message_id, phone, None, 'balance', raw):
-            send_text_message(phone, bot_messages.not_recognised())
+            reply(bot_messages.not_recognised())
         return
 
     if not _log_inbound(wa_message_id, phone, user, 'balance', raw):
@@ -295,10 +345,10 @@ def _handle_balance(wa_message_id, phone, raw):
         .order_by('session__date')
     )
     unpaid_rows = [(p.session.name, p.amount) for p in unpaid]
-    send_text_message(phone, bot_messages.balance(wallet_total, unpaid_rows))
+    reply(bot_messages.balance(wallet_total, unpaid_rows))
 
 
-def _handle_history(wa_message_id, phone, raw):
+def _handle_history(wa_message_id, phone, raw, reply=None):
     """Reply with the user's last few games — their batting/bowling line, result,
     and per-session cost — plus a career summary and wallet balance. Read-only.
 
@@ -309,13 +359,14 @@ def _handle_history(wa_message_id, phone, raw):
     from apps.payments.models import Wallet
     from apps.sessions.models import SessionPlayer
     from apps.matches.scoring import career_stats, player_recent_matches
-    from .services import send_text_message
+    if reply is None:
+        reply = _dm_sink(phone)
 
     try:
         user = User.objects.get(phone=phone)
     except User.DoesNotExist:
         if _log_inbound(wa_message_id, phone, None, 'history', raw):
-            send_text_message(phone, bot_messages.not_recognised())
+            reply(bot_messages.not_recognised())
         return
 
     if not _log_inbound(wa_message_id, phone, user, 'history', raw):
@@ -337,7 +388,7 @@ def _handle_history(wa_message_id, phone, raw):
             'paid': paid_by_session.get(s.id) if s else None,
         })
     wallet_total = Wallet.objects.filter(user=user).aggregate(s=Sum('amount'))['s'] or 0
-    send_text_message(phone, bot_messages.history(games, career_stats(user), wallet_total))
+    reply(bot_messages.history(games, career_stats(user), wallet_total))
 
 
 def _display_name(user):
@@ -358,16 +409,17 @@ def _poll_voter_names(poll):
     return names('yes'), names('no')
 
 
-def _handle_status(wa_message_id, phone, raw):
+def _handle_status(wa_message_id, phone, raw, reply=None):
     """Reply with the current open poll's vote counts and voter lists."""
     from apps.polls.models import Poll
-    from .services import send_text_message
+    if reply is None:
+        reply = _dm_sink(phone)
 
     try:
         user = User.objects.get(phone=phone)
     except User.DoesNotExist:
         if _log_inbound(wa_message_id, phone, None, 'status', raw):
-            send_text_message(phone, bot_messages.not_recognised())
+            reply(bot_messages.not_recognised())
         return
 
     if not _log_inbound(wa_message_id, phone, user, 'status', raw):
@@ -375,13 +427,13 @@ def _handle_status(wa_message_id, phone, raw):
 
     poll = _next_open_poll()
     if poll is None:
-        send_text_message(phone, bot_messages.no_active_poll())
+        reply(bot_messages.no_active_poll())
         return
 
     session = poll.session
     date_str = session.date.strftime("%a %d %b")
     yes_names, no_names = _poll_voter_names(poll)
-    send_text_message(phone, bot_messages.status(
+    reply(bot_messages.status(
         session.name, date_str, yes_names, no_names,
     ))
 
@@ -409,7 +461,7 @@ def _next_open_poll():
     )
 
 
-def _handle_score(wa_message_id, phone, raw):
+def _handle_score(wa_message_id, phone, raw, reply=None):
     """Reply with live scores for the most relevant session.
 
     Picks today's session if there is one, else the most recent past session,
@@ -419,12 +471,13 @@ def _handle_score(wa_message_id, phone, raw):
     """
     from apps.sessions.models import Session
     from apps.matches.scoring import innings_score
-    from .services import send_text_message
+    if reply is None:
+        reply = _dm_sink(phone)
 
     user = User.objects.filter(phone=phone).first()
     if user is None:
         if _log_inbound(wa_message_id, phone, None, 'score', raw):
-            send_text_message(phone, bot_messages.not_recognised())
+            reply(bot_messages.not_recognised())
         return
 
     if not _log_inbound(wa_message_id, phone, user, 'score', raw):
@@ -445,7 +498,7 @@ def _handle_score(wa_message_id, phone, raw):
             .first()
         )
     if session is None:
-        send_text_message(phone, bot_messages.no_recent_session())
+        reply(bot_messages.no_recent_session())
         return
 
     matches = list(
@@ -456,7 +509,7 @@ def _handle_score(wa_message_id, phone, raw):
 
     if not matches:
         date_str = session.date.strftime("%a %d %b")
-        send_text_message(phone, bot_messages.match_not_started(session.name, date_str))
+        reply(bot_messages.match_not_started(session.name, date_str))
         return
 
     match_blocks = []
@@ -474,11 +527,12 @@ def _handle_score(wa_message_id, phone, raw):
         })
 
     date_str = session.date.strftime("%a %d %b")
-    send_text_message(phone, bot_messages.score(session.name, date_str, match_blocks))
+    reply(bot_messages.score(session.name, date_str, match_blocks))
 
 
-def _handle_help(wa_message_id, phone, raw):
-    from .services import send_text_message
+def _handle_help(wa_message_id, phone, raw, reply=None):
+    if reply is None:
+        reply = _dm_sink(phone)
 
     try:
         user = User.objects.get(phone=phone)
@@ -487,22 +541,35 @@ def _handle_help(wa_message_id, phone, raw):
 
     if not _log_inbound(wa_message_id, phone, user, 'help', raw):
         return
-    send_text_message(phone, bot_messages.help_text())
+    reply(bot_messages.help_text())
 
 
-def _handle_unknown(wa_message_id, phone, text, raw):
+def _handle_unknown(wa_message_id, phone, text, raw, reply=None):
     """Reply when we couldn't parse the message. Echoes the user's input back
     (with the case they actually typed) so they can see what got through —
     helpful when mobile auto-capitalize or autocorrect mangled their RSVP.
     """
-    from .services import send_text_message
+    if reply is None:
+        reply = _dm_sink(phone)
 
     user = User.objects.filter(phone=phone).first()
     if not _log_inbound(wa_message_id, phone, user, 'unknown', {'raw': raw, 'text': text}):
         return
 
     safe_echo = text[:60] if text else ''
-    send_text_message(phone, bot_messages.unknown(safe_echo))
+    reply(bot_messages.unknown(safe_echo))
+
+
+def _check_bot_token(request, token_setting):
+    """Validate ?token=… (or X-Bot-Token header) against the named setting.
+
+    Shared by the read-only reminder URL (BOT_WEBHOOK_TOKEN) and the higher-trust
+    group-inbound URL (BOT_INBOUND_TOKEN). Fails closed: a blank/unset expected
+    token denies, so a Vote-writing endpoint can never go live unauthenticated.
+    """
+    expected = getattr(settings, token_setting, '')
+    token = request.GET.get('token', '') or request.headers.get('X-Bot-Token', '')
+    return bool(expected) and token == expected
 
 
 def run_reminders_view(request):
@@ -510,9 +577,7 @@ def run_reminders_view(request):
 
     Auth via ?token=$BOT_WEBHOOK_TOKEN query string. Doubles as a Render keepalive.
     """
-    expected = getattr(settings, 'BOT_WEBHOOK_TOKEN', '')
-    token = request.GET.get('token', '')
-    if not expected or token != expected:
+    if not _check_bot_token(request, 'BOT_WEBHOOK_TOKEN'):
         return _bad('unauthorized', 401)
 
     from .services import send_session_reminders

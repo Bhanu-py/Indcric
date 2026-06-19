@@ -26,13 +26,23 @@
    - **Number A** = existing "ICG" Cloud-API number → 1:1 DM features only.
    - **Number B** = a NEW dedicated SIM on the **plain WhatsApp app** (never the Cloud API) → the group bot, linked via QR.
 
-## 🔴 THE IMMEDIATE NEXT ACTION
+## 🟢 PHASE 0 PASSED 2026-06-19 — group-bot unblocked, build Phase 1 next
 
-**Validate the Phase 0 spike** — answer empirically: which vote-input mechanism fires reliably in a real WhatsApp group? (typed `YES`/`NO` vs reactions 👍/👎 vs native Yes/No Poll). This is the only thing blocking the Phase 1 (Django) build.
+Ran on a fresh machine. After fixing a real upstream bug, **SEND + READ both work end-to-end.**
+- ✅ Number B (`+32465110367`) linked via QR; bot posted the text prompt **and** a native poll into the "App development" test group.
+- ✅ With multiple real members testing: typed `YES`/`NO` (rock solid), native poll `vote_update` (reliable), reactions (fire, with caveats below).
+- **The blocker + fix:** npm `whatsapp-web.js@1.34.7` can't read events on live WhatsApp Web `2.3000.x` (events dead, `Client.inject` crashes — bugs [#127084](https://github.com/pedroslopez/whatsapp-web.js/issues/127084), [#5765](https://github.com/wwebjs/whatsapp-web.js/issues/5765)). **Fix:** NO `webVersionCache`; delete `node_modules`/`.wwebjs_auth`/`.wwebjs_cache`; `npm install github:pedroslopez/whatsapp-web.js#main` (commit `2dc9466`, still labels itself 1.34.7).
+- **Two Phase-1 must-fixes the spike found:** (1) normalize emoji — skin-tone modifiers (`👍🏾`) broke the bare `=== '👍'` match and dropped a valid vote; (2) ignore reactions/messages from the bot's own number (it sees its own ✅/❌ confirmations echoed).
+- **Recommended input:** native Poll primary + typed `YES`/`NO` fallback; reactions secondary.
 
-Two ways to do it:
-- **Quick tech check (today, no new SIM):** scan the spike with ANY spare consumer WhatsApp number into a throwaway test group, react + poll-vote a few times, see which `[REACTION]` / `[POLL VOTE]` / `[GROUP MSG]` lines log reliably. No club data touched.
-- **Real setup:** register **Number B** (new SIM) on plain WhatsApp, warm it up ~1–2 weeks, then run the spike.
+## 🟢 PHASE 1 (Django) BUILT 2026-06-19 — 31/31 tests green (uncommitted on `stage`)
+
+Receive-side Django is done and tested; the Node client is the only remaining piece.
+- **Files:** `OutboundMessage` model + migration `0005_outboundmessage.py` + admin; `dispatch_inbound` + optional `reply` sink on every handler in `views.py` (Meta path unchanged — defaults to DM); `_check_bot_token` + `BOT_INBOUND_TOKEN`; new `views_bot.py` with `POST /api/bot/inbound/`; `clean_phone` strips internal separators in `accounts/forms.py`.
+- **Endpoint behaviour:** auth via `?token=$BOT_INBOUND_TOKEN`; `kind=text|reaction|poll_vote`; emoji-normalized (`👍🏾`==`👍`); ignores the bot's own number; RSVP → records `Vote` + returns `{type:'react'}` action; commands → enqueue `OutboundMessage`; idempotent.
+- **Also fixed:** `_log_inbound` now uses a `transaction.atomic()` savepoint so a deduped insert doesn't break the surrounding transaction (Postgres).
+- **Run tests:** `python manage.py test apps.notifications --keepdb --noinput` (always pass `--noinput`, or a leftover `test_indcric_db` makes it hang on a stdin prompt).
+- **Next action:** **Phase 2** — Node client (`bot/`) that polls `/api/bot/inbound/`-feeds group activity and performs the returned `react` action, plus `outbound_drain`/`ack` so it posts queued `OutboundMessage` rows. See [whatsapp-group-bot.md](whatsapp-group-bot.md) Phase 2.
 
 ### Running the spike on a new machine
 ```bash
@@ -68,8 +78,8 @@ Local `.env` minimum: `DEBUG=True`, the `db_*` vars, `BOT_WEBHOOK_TOKEN`. WhatsA
 | Cloud-API resend / STATUS / group-share | ✅ Shipped on master | `apps/notifications/{services,views}.py`, `apps/sessions/views.py` |
 | Activity feed red-X + 🔥 | ✅ Shipped on master | `apps/notifications/{activity,views}.py`, `_activity_row.html` |
 | Group-bot spec | ✅ Designed, locked decisions | [whatsapp-group-bot.md](whatsapp-group-bot.md) |
-| Group-bot Phase 0 spike | ✅ Written, ⏳ NOT YET RUN by user | [bot/](../../bot/) |
-| Group-bot Phase 1 (Django) | ⛔ Blocked on Phase 0 result | — |
+| Group-bot Phase 0 spike | ✅ PASSED 2026-06-19 — SEND + READ work (git-main fix) | [bot/](../../bot/) |
+| Group-bot Phase 1 (Django) | 🔜 Unblocked — ready to build | [whatsapp-group-bot.md](whatsapp-group-bot.md) |
 
 ## Group-Bot Build Plan (after Phase 0)
 
