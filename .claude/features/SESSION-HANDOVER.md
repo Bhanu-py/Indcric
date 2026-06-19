@@ -42,7 +42,8 @@ Receive-side Django is done and tested; the Node client is the only remaining pi
 - **Endpoint behaviour:** auth via `?token=$BOT_INBOUND_TOKEN`; `kind=text|reaction|poll_vote`; emoji-normalized (`👍🏾`==`👍`); ignores the bot's own number; RSVP → records `Vote` + returns `{type:'react'}` action; commands → enqueue `OutboundMessage`; idempotent.
 - **Also fixed:** `_log_inbound` now uses a `transaction.atomic()` savepoint so a deduped insert doesn't break the surrounding transaction (Postgres).
 - **Run tests:** `python manage.py test apps.notifications --keepdb --noinput` (always pass `--noinput`, or a leftover `test_indcric_db` makes it hang on a stdin prompt).
-- **Next action:** **Phase 2** — Node client (`bot/`) that polls `/api/bot/inbound/`-feeds group activity and performs the returned `react` action, plus `outbound_drain`/`ack` so it posts queued `OutboundMessage` rows. See [whatsapp-group-bot.md](whatsapp-group-bot.md) Phase 2.
+- **Behaviour locked 2026-06-19:** group votes come from the **native poll + 👍/👎 reactions on the bot's message ONLY** — typed `yes`/`no` in the group is NOT a vote (false-positive from normal chat). `dispatch_inbound` gained `allow_text_rsvp` / `reply_unknown`; the inbound endpoint sets `allow_text_rsvp=True` only for `kind=reaction|poll_vote`, and `reply_unknown=False` for all group text. DM path unchanged. (33/33 tests green.)
+- **Next action:** **Phase 2** — Node client (`bot/`) that forwards group activity to `/api/bot/inbound/` (only reactions on the bot's RSVP message + poll votes as votes; text only for commands) and performs the returned `react` action, plus `outbound_drain`/`ack` so it posts queued `OutboundMessage` rows. See [whatsapp-group-bot.md](whatsapp-group-bot.md) Phase 2.
 
 ### Running the spike on a new machine
 ```bash

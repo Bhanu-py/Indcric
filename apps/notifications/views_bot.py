@@ -101,8 +101,14 @@ def inbound_message(request):
 
     raw = {'source': 'group_bot', 'kind': kind, 'chat': chat, 'payload': data}
     reply = _enqueue_group_reply(target)
+    # Only reactions (on the bot's message) and native poll votes count as RSVPs.
+    # Typed 'yes'/'no' in the group is normal conversation — NOT a vote — so text
+    # is dispatched with allow_text_rsvp=False (commands still work). The group
+    # never gets an "I didn't understand" reply (reply_unknown=False).
+    is_vote = kind in ('reaction', 'poll_vote')
     result = nviews.dispatch_inbound(
         wa_message_id, phone, text, chat='community', reply=reply, raw=raw,
+        allow_text_rsvp=is_vote, reply_unknown=False,
     )
 
     actions = []

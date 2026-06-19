@@ -386,8 +386,26 @@ class GroupInboundTests(TestCase):
         self.assertFalse(Vote.objects.exists())
 
     @patch("apps.notifications.services.send_text_message")
-    def test_group_text_yes_records_vote_reacts_and_no_cloud_calls(self, mock_send):
+    def test_group_typed_yes_is_not_a_vote(self, mock_send):
+        # Typed 'yes' in the group is conversation, not an RSVP — must NOT record
+        # (members say yes/no all the time). Votes come from poll + reactions only.
         resp = self._post({'from': '32470000001', 'wa_message_id': 'g2', 'text': 'YES', 'kind': 'text'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Vote.objects.filter(poll=self.poll, user=self.member).exists())
+        self.assertEqual(resp.json()['actions'], [])
+        mock_send.assert_not_called()
+
+    @patch("apps.notifications.services.send_text_message")
+    def test_group_random_text_ignored_silently(self, mock_send):
+        resp = self._post({'from': '32470000001', 'wa_message_id': 'g2b', 'text': 'see you there!'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Vote.objects.exists())
+        self.assertFalse(OutboundMessage.objects.exists())  # no "didn't understand" spam
+        mock_send.assert_not_called()
+
+    @patch("apps.notifications.services.send_text_message")
+    def test_reaction_on_bot_message_records_yes_and_reacts(self, mock_send):
+        resp = self._post({'from': '32470000001', 'wa_message_id': 'g2c', 'kind': 'reaction', 'emoji': '👍'})
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(
             Vote.objects.filter(poll=self.poll, user=self.member, choice='yes').exists()
@@ -423,7 +441,7 @@ class GroupInboundTests(TestCase):
         self.assertFalse(Vote.objects.exists())
 
     def test_duplicate_inbound_is_idempotent(self):
-        p = {'from': '32470000001', 'wa_message_id': 'g7', 'text': 'NO'}
+        p = {'from': '32470000001', 'wa_message_id': 'g7', 'kind': 'reaction', 'emoji': '👎'}
         self._post(p)
         self._post(p)  # same wa_message_id → BotEvent unique swallows it
         self.assertEqual(

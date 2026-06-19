@@ -170,22 +170,12 @@ client.on('message', async (msg) => {
     return;
   }
 
-  // RSVP → emoji-react (the locked confirmation style). No text reply.
-  const rsvp = classifyRsvp(body);
-  if (rsvp) {
-    const emoji = rsvp.choice === 'yes' ? '✅' : '❌';
-    try {
-      await msg.react(emoji);
-      console.log(`[REACT] ${emoji} for ${phone} (choice=${rsvp.choice}, session=${rsvp.sessionId ?? 'latest'})`);
-      console.log(`        → in Phase 1 this would POST {from:"${phone}", text:${JSON.stringify(body)}} to /api/bot/inbound/`);
-    } catch (e) {
-      console.error('[REACT] failed:', e.message);
-    }
-    return;
-  }
-
-  // Anything else: in production a command (HELP/STATUS/…) would get a text reply.
-  console.log('        (not an RSVP — a command/other; Phase 1 routes this to the dispatcher)');
+  // Typed 'yes'/'no' is intentionally NOT treated as a vote. Members say yes/no
+  // in normal conversation, which produced false RSVPs. Votes come ONLY from
+  // native poll votes (vote_update) and 👍/👎 reactions on the bot's OWN message
+  // (the message_reaction handler below, gated on lastRsvpMsgId). Typed text is
+  // only ever a command (HELP/STATUS/…) in production — never a vote.
+  console.log('        (text is not a vote — use the poll, or react 👍/👎 on the bot message)');
 });
 
 // DIAGNOSTIC (Phase 0 debug): fires for EVERY group message incl. the bot's own.

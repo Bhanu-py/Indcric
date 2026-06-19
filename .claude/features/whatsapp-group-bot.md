@@ -310,6 +310,9 @@ Provision Oracle A1; install Chromium; PM2 + `startup`/`save`. Switch to `Remote
 - ✅ **Group-reply style:** **emoji-react only** (bot reacts ✅/❌ to the member's RSVP message). Quietest; no per-RSVP message clutter. This means the `reply_sink` for group RSVPs is a *reaction*, not a queued text post — text posts are reserved for command replies (HELP/STATUS/etc.) and the auto-posts.
 - ✅ **Kickoff:** Phase 0 spike first (see [bot/](../../bot/)).
 
+**Locked (2026-06-19):**
+- ✅ **Group vote inputs = native poll + 👍/👎 reactions on the bot's own message ONLY.** Typed `yes`/`no` in the group is **NOT** counted as a vote — members say yes/no in normal conversation, which produced false RSVPs. Implemented via `dispatch_inbound(allow_text_rsvp=False)` for group text; the group also never gets an "I didn't understand" reply (`reply_unknown=False`). Group text is only ever a *command* (HELP/STATUS/…). DMs to the bot still accept typed `YES <session_id>` (the deep-link path is unambiguous). The Node client must therefore only forward `kind='reaction'` for reactions on the bot's RSVP message and `kind='poll_vote'` for its poll — not arbitrary group text as votes.
+
 **Still open (revisit before the phase they gate):**
 - **Session store** (Phase 3): Mongo Atlas M0 (recommended) vs S3 vs Neon Postgres custom store.
 - **Donation gate** (Phase 2): keep €20 / 25-50-75-100% milestones?

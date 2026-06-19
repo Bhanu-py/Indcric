@@ -191,7 +191,8 @@ def _dm_sink(phone):
     return _send
 
 
-def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None):
+def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None,
+                     allow_text_rsvp=True, reply_unknown=True):
     """Shared inbound parser + dispatcher for BOTH the Meta Cloud-API webhook
     and the group-resident bot's /api/bot/inbound/ endpoint.
 
@@ -200,6 +201,15 @@ def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None
     payload stored verbatim in the BotEvent audit row. Returns a small result
     dict describing what happened so the group endpoint can translate an RSVP
     into an emoji reaction (✅/❌) instead of a text post.
+
+    `allow_text_rsvp`: when False, typed 'yes'/'no' is NOT counted as a vote.
+    Used for GROUP text — members say "yes"/"no" in normal conversation, so free
+    text must not record RSVPs. Group votes come ONLY from native poll votes and
+    reactions on the bot's own message (the endpoint forwards those as a vote
+    with allow_text_rsvp=True). DMs to the bot keep text RSVP (the deep link
+    sends 'YES <session_id>').
+    `reply_unknown`: when False, an unrecognised message is ignored silently — so
+    the bot doesn't reply to every non-command line typed in the group.
     """
     if reply is None:
         reply = _dm_sink(phone)
@@ -209,16 +219,17 @@ def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None
     if not text:
         return {'kind': 'empty'}
 
-    rsvp = RSVP_PATTERN.match(text)
-    if rsvp:
-        token = rsvp.group(1).lower()
-        session_id = int(rsvp.group(2)) if rsvp.group(2) else None
-        choice = 'yes' if token in ('yes', 'y', '✅', '1') else 'no'
-        result = _handle_rsvp(
-            wa_message_id, phone, choice, raw,
-            session_id=session_id, reply=reply, chat=chat,
-        )
-        return {'kind': 'rsvp', **(result or {})}
+    if allow_text_rsvp:
+        rsvp = RSVP_PATTERN.match(text)
+        if rsvp:
+            token = rsvp.group(1).lower()
+            session_id = int(rsvp.group(2)) if rsvp.group(2) else None
+            choice = 'yes' if token in ('yes', 'y', '✅', '1') else 'no'
+            result = _handle_rsvp(
+                wa_message_id, phone, choice, raw,
+                session_id=session_id, reply=reply, chat=chat,
+            )
+            return {'kind': 'rsvp', **(result or {})}
 
     text_lower = text.lower()
     if text_lower in ('balance', 'bal', '/balance', 'wallet'):
@@ -237,9 +248,12 @@ def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None
         _handle_help(wa_message_id, phone, raw, reply=reply)
         return {'kind': 'command', 'command': 'help'}
     else:
-        logger.info('Unrecognised WhatsApp message from %s: %s', phone, text)
-        _handle_unknown(wa_message_id, phone, text, raw, reply=reply)
-        return {'kind': 'unknown'}
+        if reply_unknown:
+            logger.info('Unrecognised WhatsApp message from %s: %s', phone, text)
+            _handle_unknown(wa_message_id, phone, text, raw, reply=reply)
+            return {'kind': 'unknown'}
+        logger.info('Ignored group message from %s: %s', phone, text)
+        return {'kind': 'ignored'}
 
 
 def _process_message(msg, value):
