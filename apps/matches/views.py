@@ -7,8 +7,7 @@ from django.contrib import messages
 from .models import Match, Team, Player, Innings
 from . import scoring
 
-from rest_framework.response import Response
-from rest_framework.views import APIView
+
 from .models import TemporaryScoringPeriod
 
 class GrantTemporaryScoringAccess(APIView):
