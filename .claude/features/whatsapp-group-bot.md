@@ -1,6 +1,8 @@
 # WhatsApp Group-Resident Bot — Feature Spec
 
-**Status:** Designed, not built. Reverses the earlier "walked away from whatsapp-web.js" decision in [whatsapp-bot.md](whatsapp-bot.md).
+**Status:** Phase 0 spike **PASSED 2026-06-19** — SEND + READ both work end-to-end against a real group. Next: build Phase 1 (Django).
+
+> **The fix that unblocked it (was blocked on an upstream bug):** published npm `whatsapp-web.js@1.34.7` cannot read events on live WhatsApp Web `2.3000.x` (no `message`/`message_reaction`/`vote_update`; `Client.inject` crashes). Per issue [#127084](https://github.com/pedroslopez/whatsapp-web.js/issues/127084): use **NO `webVersionCache`**, delete `node_modules`/`.wwebjs_auth`/`.wwebjs_cache`, then `npm install github:pedroslopez/whatsapp-web.js#main` (the unreleased patch; commit `2dc9466`, still self-reports 1.34.7). On a server use Puppeteer's bundled Chrome, not system Chromium. Reverses the earlier "walked away from whatsapp-web.js" decision in [whatsapp-bot.md](whatsapp-bot.md).
 **Owner:** Bhanu
 **Created:** 2026-06-18
 **Decided by:** multi-agent design pass (library / hosting / integration / ban-risk / product) + adversarial critique.
@@ -272,11 +274,28 @@ Recurring **cash** cost is plausibly €0, but not trap-free:
 
 ## Phased Build Plan
 
-### Phase 0 — Local spike
+### Phase 0 — Local spike — ✅ PASSED 2026-06-19
 Throwaway Node script + `LocalAuth`, QR-scan dedicated SIM against a **private test group**. Log every `chat.id._serialized`; confirm `sendMessage` posts and `on('message')` fires for replies. **Exit:** send + read works end-to-end on a laptop.
 
-### Phase 1 — Receive (group → Django)
+**Result (after the git-main fix above):** Two-number setup confirmed — Number B (`+32465110367`) linked via QR against the "App development" test group; `getChats()` listed groups; bot posted both the text RSVP prompt and a native Poll (**SEND ✅**). With multiple real members testing (**READ ✅**):
+- **Typed `YES`/`NO`** (`message`) — rock solid, fired every time; bot reacted ✅/❌ correctly; `!ping`→`pong` worked.
+- **Native WhatsApp Poll** (`vote_update`) — works reliably; both voters logged with correct number + selection. The most fragile event is solid on `main`.
+- **Reactions** (`message_reaction`) — fire, but with **two gotchas Phase 1 MUST handle:** (1) **skin-tone modifiers break equality** — a member's `👍🏾` failed the bare `=== '👍'` check and a valid YES was dropped; normalize emoji to base codepoint before matching. (2) **the bot sees its OWN reactions echoed** (`message_reaction` author == bot number); ignore events whose author is the bot's own number.
+
+**Recommended input mechanism (Phase 1):** native Poll as primary (lowest friction, free tally, `vote_update` proven) + typed `YES`/`NO` always supported as the robust fallback; reactions secondary (only if emoji-normalized + self-filtered). **Exit met.**
+
+### Phase 1 — Receive (group → Django) — 🟢 DJANGO SIDE BUILT 2026-06-19
 Django: `OutboundMessage` model + migration; `_check_bot_token` helper; **`clean_phone` normalization** (handover #4 — ship before group rollout); characterization test for the Meta path; refactor `_process_message` → `dispatch_inbound` with `reply_sink`; `POST /api/bot/inbound/`; split `BOT_INBOUND_TOKEN`. Node: filter to `WA_GROUP_JID`, strip author to E.164, POST inbound. **Exit:** a group `YES`/`NO` records a `Vote` and a confirmation posts **in the group**; group `HELP` from an unknown number makes zero Cloud-API calls.
+
+**Built (Django, on `stage`, uncommitted):**
+- `OutboundMessage` queue model (`apps/notifications/models.py`) + migration `0005_outboundmessage.py`; admin with `list_filter=('status','target')`.
+- `dispatch_inbound(wa_message_id, phone, text, chat, reply, raw)` extracted in `views.py`; every handler (`_handle_rsvp/balance/status/score/history/help/unknown`) now takes an optional `reply` sink (defaults to the Cloud-API DM, so the Meta path + existing tests are unchanged). `_process_message` is now a thin Meta→dispatch adapter.
+- `_check_bot_token(request, token_setting)` helper (factored from `run_reminders_view`, fails closed); `BOT_INBOUND_TOKEN` added to settings (separate from `BOT_WEBHOOK_TOKEN`).
+- `POST /api/bot/inbound/` in new `apps/notifications/views_bot.py`: auth via `BOT_INBOUND_TOKEN`; accepts `kind` = `text|reaction|poll_vote`; **emoji-normalizes** (strips skin-tone modifiers + U+FE0F so `👍🏾`==`👍` — Phase 0 bug) and maps 👍/✅→yes, 👎/❌→no; **ignores the bot's own number** (self-reaction echo); RSVP → records `Vote` + returns a `{type:'react',emoji}` action (no per-vote text); commands → enqueue `OutboundMessage` to the group; idempotent via `BotEvent.wa_message_id`.
+- `clean_phone`: `_normalize_phone` (accounts/forms) now strips internal spaces/dashes/parens → canonical `+<digits>`.
+- Tests: Meta-path characterization + 7 group-inbound tests (vote record, skin-tone reaction, poll vote, unknown-HELP→queue+zero Cloud calls, self-ignore, idempotency, auth).
+
+**NOT yet built:** the Node side (poll `WA_GROUP_JID`, strip author→E.164, POST `/api/bot/inbound/`, perform the returned `react` action) — that's wired in Phase 2 alongside the outbound drain. **RSVP confirmation is emoji-react (returned as an action); command replies queue as text** — matches the locked decision.
 
 ### Phase 2 — Post (Django → group)
 Django: `outbound_drain` (with claimed-status + reclaim window) + `outbound_ack`; new `build_group_rsvp_text` composer; enqueue from `on_poll`/`on_session`(confirmed)/`on_match`/gated `on_donation`/`save_teams_view`; admin `list_filter`. Node: poll loop → send → ack, Gaussian jitter; local re-send guard. **Exit:** creating a poll auto-posts the invite within ~30s; dedupe prevents reposts; crash-after-claim doesn't double-post.

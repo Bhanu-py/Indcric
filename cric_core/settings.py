@@ -117,6 +117,10 @@ else:
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "IndCric <indiancricket.ghent@gmail.com>")
 
 BOT_WEBHOOK_TOKEN = os.getenv("BOT_WEBHOOK_TOKEN", "")
+# Separate, higher-trust token for the group-bot inbound endpoint (/api/bot/inbound/).
+# That endpoint WRITES Vote rows from group messages, so it must not share the
+# read-only reminder/keepalive token above. See whatsapp-group-bot.md.
+BOT_INBOUND_TOKEN = os.getenv("BOT_INBOUND_TOKEN", "")
 
 # WhatsApp Cloud API
 WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")

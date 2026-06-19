@@ -1,5 +1,13 @@
 from django.contrib import admin
-from .models import ActivityEvent, ActivityFeedState, BotEvent
+from .models import ActivityEvent, ActivityFeedState, BotEvent, OutboundMessage
+
+
+@admin.register(OutboundMessage)
+class OutboundMessageAdmin(admin.ModelAdmin):
+    list_display = ('created_at', 'status', 'target', 'body', 'attempts', 'sent_at')
+    list_filter = ('status', 'target')
+    search_fields = ('body', 'dedup_key', 'wa_message_id')
+    readonly_fields = ('created_at', 'claimed_at', 'sent_at')
 
 
 @admin.register(BotEvent)
