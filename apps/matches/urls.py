@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import grant_temporary_access, revoke_temporary_access
+
 
 
 urlpatterns = [
