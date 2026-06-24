@@ -589,7 +589,7 @@
                         {% include "_components/live_badge.html" %}
                         {% endif %}
                     </button>
-                    {% if user.is_staff or user.temporary_scoring_access.filter(session=session, is_active=True, expires_at__gt=now).exists %}
+                    {% if user.is_staff or user_has_scoring_access %}
                     {% with locked=match.innings.exists %}
                     <div class="flex items-center gap-2 shrink-0 flex-wrap w-full sm:w-auto sm:justify-end">
                         {% if match.teams.all|length >= 2 %}

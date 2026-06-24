@@ -405,6 +405,17 @@ def session_detail_view(request, session_id):
         base = request.build_absolute_uri('/')
         whatsapp_share_url = build_group_share_url(session.poll, base)
 
+    # Check if user has valid temporary scoring access for this session
+    user_has_scoring_access = False
+    if request.user.is_authenticated and not request.user.is_staff:
+        from apps.matches.models import TemporaryScoringAccess
+        user_has_scoring_access = TemporaryScoringAccess.objects.filter(
+            user=request.user,
+            session=session,
+            is_active=True,
+            expires_at__gt=timezone.now()
+        ).exists()
+
     context = {
         'session': session,
         'is_past': is_past,
@@ -428,6 +439,7 @@ def session_detail_view(request, session_id):
         'whatsapp_share_url': whatsapp_share_url,
         'addable_users': addable_users,
         'now': timezone.now(),
+        'user_has_scoring_access': user_has_scoring_access,
     }
     return render(request, 'cric/pages/session_detail.html', context)
 
