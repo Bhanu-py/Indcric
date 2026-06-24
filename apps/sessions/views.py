@@ -355,6 +355,17 @@ def session_detail_view(request, session_id):
     for voter in yes_voters:
         voter['team_assigned'] = voter['user'].id in assigned_ids
 
+    # Check if user has valid temporary scoring access for this session
+    user_has_scoring_access = False
+    if request.user.is_authenticated:
+        if not request.user.is_staff:
+            user_has_scoring_access = TemporaryScoringAccess.objects.filter(
+                user=request.user,
+                session=session,
+                is_active=True,
+                expires_at__gt=timezone.now()
+            ).exists()
+
     # Staff or authorized scoring access players can add any active member to the draft pool
     # (e.g. late arrivals who never voted) — everyone not already shown in the editor (pool + teams).
     addable_pool = []
@@ -405,17 +416,6 @@ def session_detail_view(request, session_id):
         from apps.notifications.services import build_group_share_url
         base = request.build_absolute_uri('/')
         whatsapp_share_url = build_group_share_url(session.poll, base)
-
-    # Check if user has valid temporary scoring access for this session
-    user_has_scoring_access = False
-    if request.user.is_authenticated:
-        if not request.user.is_staff:
-            user_has_scoring_access = TemporaryScoringAccess.objects.filter(
-                user=request.user,
-                session=session,
-                is_active=True,
-                expires_at__gt=timezone.now()
-            ).exists()
 
     context = {
         'session': session,
