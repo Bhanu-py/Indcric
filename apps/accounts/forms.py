@@ -84,20 +84,35 @@ class CustomSignupForm(SignupForm):
         user.phone = self.cleaned_data['phone']
         user.save(update_fields=['phone'])
         
-        # Create UserConsent record
+        # Update or create UserConsent record with actual consent values
         from apps.gdpr.models import UserConsent
+        import logging
+        logger = logging.getLogger(__name__)
+        
         try:
             ip_address = self._get_client_ip(request) if request else None
-        except Exception:
+        except Exception as e:
+            logger.exception(f"Error getting client IP: {e}")
             ip_address = None
         
-        UserConsent.objects.create(
-            user=user,
-            privacy_policy_accepted=self.cleaned_data.get('privacy_policy_accepted', False),
-            terms_accepted=self.cleaned_data.get('terms_accepted', False),
-            whatsapp_accepted=self.cleaned_data.get('whatsapp_accepted', False),
-            ip_address=ip_address,
-        )
+        try:
+            # Use get_or_create + update instead of just create
+            # This handles the case where the post_save signal already created a record
+            consent, created = UserConsent.objects.get_or_create(user=user)
+            
+            # Update with actual consent values from form
+            consent.privacy_policy_accepted = self.cleaned_data.get('privacy_policy_accepted', False)
+            consent.terms_accepted = self.cleaned_data.get('terms_accepted', False)
+            consent.whatsapp_accepted = self.cleaned_data.get('whatsapp_accepted', False)
+            if ip_address:
+                consent.ip_address = ip_address
+            consent.save()
+            
+            logger.info(f"UserConsent {'created' if created else 'updated'} for user {user.id}")
+        except Exception as e:
+            logger.exception(f"Error creating/updating UserConsent: {e}")
+            # Don't fail signup if consent creation fails
+            pass
         
         return user
 
