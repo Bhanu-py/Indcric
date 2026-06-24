@@ -635,11 +635,21 @@ def save_teams_view(request, session_id):
 
 @login_required
 def add_match_view(request, session_id):
-    if not request.user.is_staff:
+    session = get_object_or_404(Session, id=session_id)
+    
+    # Check permission: staff OR player with valid scoring access for this session
+    has_permission = request.user.is_staff
+    if not has_permission and request.user.is_authenticated:
+        has_permission = TemporaryScoringAccess.objects.filter(
+            user=request.user,
+            session=session,
+            is_active=True,
+            expires_at__gt=timezone.now()
+        ).exists()
+    
+    if not has_permission:
         messages.error(request, "You don't have permission to perform this action.")
         return redirect('session_detail', session_id=session_id)
-
-    session = get_object_or_404(Session, id=session_id)
 
     if session.date < timezone.now().date():
         messages.error(request, "This session has already ended — new matches can't be added.")
