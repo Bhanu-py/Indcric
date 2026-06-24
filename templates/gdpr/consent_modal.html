@@ -196,10 +196,10 @@ function consentModal() {
         const data = await response.json();
 
         if (data.status === 'success') {
-          // Close modal and redirect to dashboard
+          // Close modal and redirect to home page
           this.open = false;
           setTimeout(() => {
-            window.location.href = '/dashboard/';
+            window.location.href = '/';
           }, 500);
         } else {
           alert('Error: ' + (data.message || 'Failed to accept consent'));
