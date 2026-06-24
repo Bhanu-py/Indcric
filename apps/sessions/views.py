@@ -408,14 +408,15 @@ def session_detail_view(request, session_id):
 
     # Check if user has valid temporary scoring access for this session
     user_has_scoring_access = False
-    if request.user.is_authenticated and not request.user.is_staff:
-        from apps.matches.models import TemporaryScoringAccess
-        user_has_scoring_access = TemporaryScoringAccess.objects.filter(
-            user=request.user,
-            session=session,
-            is_active=True,
-            expires_at__gt=timezone.now()
-        ).exists()
+    if request.user.is_authenticated:
+        if not request.user.is_staff:
+            from apps.matches.models import TemporaryScoringAccess
+            user_has_scoring_access = TemporaryScoringAccess.objects.filter(
+                user=request.user,
+                session=session,
+                is_active=True,
+                expires_at__gt=timezone.now()
+            ).exists()
 
     context = {
         'session': session,
