@@ -125,22 +125,28 @@ client.on('ready', async () => {
 // so an admin can map them in bulk (no waiting for each to vote).
 async function dumpRoster() {
   if (!GROUP_JID) { console.error('[ROSTER] WA_GROUP_JID not set'); return; }
-  let participants = [];
+  let chat;
   try {
-    const chat = await client.getChatById(GROUP_JID);
-    participants = (chat && chat.participants) || [];
+    chat = await client.getChatById(GROUP_JID);
   } catch (e) { console.error('[ROSTER] getChatById failed:', e.message); return; }
+
+  // Participants can live on .participants or .groupMetadata.participants
+  // depending on lib/sync state.
+  let participants = (chat && chat.participants) || [];
+  if (!participants.length && chat && chat.groupMetadata) {
+    participants = chat.groupMetadata.participants || [];
+  }
+  console.log(`[ROSTER] chat="${chat && chat.name}" isGroup=${chat && chat.isGroup} participants=${participants.length}`);
 
   const members = [];
   for (const p of participants) {
     const pid = p.id && p.id._serialized;
-    const id = await resolveIdentity(pid);
-    if (!id.lid) continue;   // @c.us members expose a real number — no LID needed
-    members.push({ lid: id.lid, name: id.name });
-    console.log(`[ROSTER] ${id.lid}  ${id.name || '(no name)'}`);
+    const id = await resolveIdentity(pid);   // @c.us → phone+name; @lid → lid+name
+    members.push({ phone: id.phone, lid: id.lid, name: id.name });
+    console.log(`[ROSTER] ${pid} phone=${id.phone} lid=${id.lid || '-'} name="${id.name}"`);
   }
   const { json } = await api('/api/bot/roster/', WEBHOOK_TOKEN, { members });
-  console.log(`[ROSTER] sent ${members.length}; imported ${json && json.imported}`);
+  console.log(`[ROSTER] sent ${members.length}; linked ${json && json.linked}; staged ${json && json.staged}`);
 }
 
 // ── 1. DRAIN: pull queued posts from Django and post them into the group ──
@@ -196,13 +202,21 @@ async function forwardInbound(payload) {
 
 client.on('vote_update', async (vote) => {
   const onMsg = vote.parentMessage && vote.parentMessage.id && vote.parentMessage.id._serialized;
-  if (!onMsg || !ourPollMsgIds.has(onMsg)) return;            // only OUR polls
+  if (!onMsg) return;
+  // Forward votes on ANY poll in the target group — not only ones we remember
+  // posting. ourPollMsgIds is in-memory and forgotten on restart, but the bot is
+  // the only thing posting IndCric polls and Django maps every poll vote to the
+  // latest open poll, so a vote on an earlier poll still records correctly.
+  const groupId = (GROUP_JID || '').split('@')[0];
+  if (groupId && !onMsg.includes(groupId)) return;            // target group only
   const selected = (vote.selectedOptions || []).map((o) => o.name);
   const id = await resolveIdentity(vote.voter);
   console.log(`[VOTE] raw=${vote.voter} → phone=${id.phone} lid=${id.lid} name=${id.name} → ${JSON.stringify(selected)}`);
   forwardInbound({
     from: id.phone, lid: id.lid, author_name: id.name,
-    wa_message_id: `pollvote:${onMsg}:${vote.voter}:${selected.join('|')}`,
+    // Timestamp makes each vote action a distinct event so a re-vote / change
+    // always records (the Vote.update_or_create is the real idempotency).
+    wa_message_id: `pollvote:${onMsg}:${vote.voter}:${selected.join('|')}:${Date.now()}`,
     kind: 'poll_vote', selected, chat: 'community',
   });
 });
@@ -214,7 +228,7 @@ client.on('message_reaction', async (reaction) => {
   console.log(`[REACT-IN] raw=${reaction.senderId} → phone=${id.phone} lid=${id.lid} ${reaction.reaction || '(removed)'} on ${onMsg}`);
   forwardInbound({
     from: id.phone, lid: id.lid, author_name: id.name,
-    wa_message_id: `react:${onMsg}:${reaction.senderId}:${reaction.reaction || 'x'}`,
+    wa_message_id: `react:${onMsg}:${reaction.senderId}:${reaction.reaction || 'x'}:${Date.now()}`,
     kind: 'reaction', emoji: reaction.reaction || '', chat: 'community',
   });
 });

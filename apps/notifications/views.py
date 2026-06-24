@@ -284,9 +284,22 @@ def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None, reply=None,
     if reply is None:
         reply = _dm_sink(phone)
 
+    # Identity match, in order of confidence:
+    #   1. phone        — DM / wa.me path, or a group that exposes @c.us numbers
+    #   2. wa_lid       — already-learned LID for this group member
+    #   3. wa_name      — the WhatsApp display name (from the roster), used the
+    #                     first time a member votes; we then LEARN their wa_lid.
     user = User.objects.filter(phone=phone).first()
     if user is None and lid:
         user = User.objects.filter(wa_lid=lid).first()
+    if user is None and wa_name:
+        named = list(User.objects.filter(wa_name__iexact=wa_name)[:2])
+        if len(named) == 1:                      # unique name → confident match
+            user = named[0]
+
+    # Learn the LID for next time, so future votes match directly (tier 2).
+    if user is not None and lid and user.wa_lid != lid:
+        User.objects.filter(pk=user.pk).update(wa_lid=lid)
 
     payload = {'raw': raw, 'requested_session_id': session_id, 'choice': choice,
                'lid': lid, 'wa_name': wa_name}

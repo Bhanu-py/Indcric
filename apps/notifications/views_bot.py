@@ -153,17 +153,27 @@ def roster_import(request):
     except (json.JSONDecodeError, UnicodeDecodeError):
         return JsonResponse({'ok': False, 'error': 'bad json'}, status=400)
 
-    imported = 0
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
+    linked = 0   # phone matched a user → wa_name set (enables name-matched votes)
+    staged = 0   # lid staged as a WhatsAppIdentity (manual-map fallback)
     for m in (data.get('members') or []):
-        lid = ''.join(ch for ch in (m.get('lid') or '') if ch.isdigit())
-        if not lid:
-            continue
         name = (m.get('name') or '')[:120]
-        WhatsAppIdentity.objects.update_or_create(
-            lid=lid, defaults={'name': name} if name else {},
-        )
-        imported += 1
-    return JsonResponse({'ok': True, 'imported': imported})
+        phone = nviews._normalize_inbound_phone(m.get('phone', ''))
+        lid = ''.join(ch for ch in (m.get('lid') or '') if ch.isdigit())
+        if phone and name:
+            u = User.objects.filter(phone=phone).first()
+            if u and u.wa_name != name:
+                u.wa_name = name
+                u.save(update_fields=['wa_name'])
+                linked += 1
+        if lid:
+            WhatsAppIdentity.objects.update_or_create(
+                lid=lid, defaults={'name': name} if name else {},
+            )
+            staged += 1
+    return JsonResponse({'ok': True, 'linked': linked, 'staged': staged})
 
 
 @csrf_exempt

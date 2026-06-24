@@ -431,6 +431,24 @@ class GroupInboundTests(TestCase):
             Vote.objects.filter(poll=self.poll, user=self.member, choice='no').exists()
         )
 
+    def test_group_vote_matched_by_wa_name_learns_lid(self):
+        # First-ever vote from a member: no wa_lid yet, but the roster set their
+        # wa_name. Match by name, record the vote, and LEARN their LID.
+        self.member.wa_name = 'Bhanu Angam'
+        self.member.wa_lid = ''
+        self.member.save()
+        resp = self._post({
+            'from': '+267418135986186', 'lid': '267418135986186',
+            'author_name': 'Bhanu Angam', 'wa_message_id': 'gname1',
+            'kind': 'poll_vote', 'selected': ['Yes ✅'],
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(
+            Vote.objects.filter(poll=self.poll, user=self.member, choice='yes').exists()
+        )
+        self.member.refresh_from_db()
+        self.assertEqual(self.member.wa_lid, '267418135986186')  # learned
+
     def test_group_vote_matched_by_lid_when_phone_hidden(self):
         # Community/privacy groups expose only a LID, never the phone — match on
         # User.wa_lid. The 'from' here is the opaque LID-derived value (no phone
@@ -542,9 +560,12 @@ class AutoPostEnqueueTests(TestCase):
     """Domain events auto-queue group posts (gated on WHATSAPP_GROUP_BOT_ENABLED)."""
 
     def _session(self, **kw):
+        # Future date so the poll counts as 'upcoming' (the group RSVP poll only
+        # auto-posts for upcoming sessions). Relative to today, not hardcoded.
         defaults = dict(
             name="Sunday Nets", duration=Decimal("2"),
-            date=date(2026, 6, 21), time=time(18, 0), location="Hall",
+            date=timezone.localdate() + timedelta(days=7), time=time(18, 0),
+            location="Hall",
         )
         defaults.update(kw)
         return Session.objects.create(**defaults)
@@ -601,7 +622,7 @@ class RosterAndIdentityTests(TestCase):
         )
         self.assertEqual(resp.status_code, 401)
 
-    def test_roster_import_creates_identities(self):
+    def test_roster_stages_lids(self):
         resp = self.client.post(
             reverse('bot_roster') + '?token=wtok',
             data=json.dumps({'members': [
@@ -610,10 +631,24 @@ class RosterAndIdentityTests(TestCase):
             ]}), content_type='application/json',
         )
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json()['imported'], 2)
+        self.assertEqual(resp.json()['staged'], 2)
         self.assertTrue(
             WhatsAppIdentity.objects.filter(lid='267418135986186', name='Bhanu').exists()
         )
+
+    def test_roster_links_wa_name_by_phone(self):
+        u = User.objects.create_user(username='bhanu', password='x')
+        u.phone = '+32470756917'
+        u.save()
+        resp = self.client.post(
+            reverse('bot_roster') + '?token=wtok',
+            data=json.dumps({'members': [
+                {'phone': '+32470756917', 'name': 'Bhanu Angam'},
+            ]}), content_type='application/json',
+        )
+        self.assertEqual(resp.json()['linked'], 1)
+        u.refresh_from_db()
+        self.assertEqual(u.wa_name, 'Bhanu Angam')
 
     def test_mapping_identity_sets_user_wa_lid(self):
         u = User.objects.create_user(username='bhanu', password='x')
