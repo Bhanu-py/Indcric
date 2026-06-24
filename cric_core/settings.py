@@ -206,6 +206,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.notifications.context_processors.activity_unread",
+                "apps.gdpr.context_processors.gdpr_context",
             ],
         },
     },
