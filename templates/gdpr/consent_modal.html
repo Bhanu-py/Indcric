@@ -101,25 +101,46 @@ function consentModal() {
     submitting: false,
     
     init() {
-      console.log('[GDPR Modal] Initializing...');
+      console.log('[GDPR Modal] ===== INIT STARTING =====');
+      console.log('[GDPR Modal] Window:', typeof window);
+      console.log('[GDPR Modal] Document:', typeof document);
+      
+      // Get the element
+      const modalEl = document.getElementById('consentModal');
+      console.log('[GDPR Modal] Modal element found:', !!modalEl);
+      
+      if (!modalEl) {
+        console.error('[GDPR Modal] ERROR: consentModal element not found in DOM!');
+        return;
+      }
+      
+      const dataAttr = modalEl.getAttribute('data-show-modal');
+      console.log('[GDPR Modal] data-show-modal attribute value:', dataAttr);
+      console.log('[GDPR Modal] Checking: dataAttr === "true":', dataAttr === 'true');
       
       // Check if we should show modal on page load
-      const shouldShow = document.getElementById('consentModal')?.getAttribute('data-show-modal') === 'true';
-      console.log('[GDPR Modal] data-show-modal:', shouldShow);
+      const shouldShow = dataAttr === 'true';
+      console.log('[GDPR Modal] shouldShow:', shouldShow);
       
       if (shouldShow) {
         this.open = true;
-        console.log('[GDPR Modal] Modal OPEN (because showConsent=true)');
+        console.log('[GDPR Modal] ✓ Modal OPEN (because data-show-modal=true)');
       } else {
         this.open = false;
-        console.log('[GDPR Modal] Modal CLOSED (consent already accepted)');
+        console.log('[GDPR Modal] ✗ Modal CLOSED (data-show-modal != true)');
       }
+      
+      console.log('[GDPR Modal] this.open after init:', this.open);
       
       // Check form validation state after DOM is ready
       this.$nextTick(() => {
-        console.log('[GDPR Modal] Running $nextTick, current open state:', this.open);
+        console.log('[GDPR Modal] [NEXTTICK] Starting nextTick callback');
+        console.log('[GDPR Modal] [NEXTTICK] this.open state:', this.open);
         this.checkAllFilled();
+        console.log('[GDPR Modal] [NEXTTICK] checkAllFilled completed, this.allFilled:', this.allFilled);
       });
+      
+      console.log('[GDPR Modal] ===== INIT COMPLETE =====');
     },
 
     closeModal() {
@@ -127,19 +148,33 @@ function consentModal() {
     },
 
     checkAllFilled() {
+      console.log('[GDPR Modal] [checkAllFilled] Starting...');
       const form = document.getElementById('consentForm');
+      console.log('[GDPR Modal] [checkAllFilled] Form element:', !!form);
+      
       if (!form) {
         this.allFilled = false;
-        console.log('[GDPR Modal] Form not found, allFilled=false');
+        console.log('[GDPR Modal] [checkAllFilled] ERROR: Form not found, allFilled=false');
         return;
       }
       
-      const privacy = form.querySelector('input[name="privacy_policy_accepted"]').checked;
-      const terms = form.querySelector('input[name="terms_accepted"]').checked;
-      // WhatsApp is optional, so only require privacy_policy and terms
+      const privacyInput = form.querySelector('input[name="privacy_policy_accepted"]');
+      const termsInput = form.querySelector('input[name="terms_accepted"]');
+      
+      console.log('[GDPR Modal] [checkAllFilled] privacyInput found:', !!privacyInput);
+      console.log('[GDPR Modal] [checkAllFilled] termsInput found:', !!termsInput);
+      
+      if (!privacyInput || !termsInput) {
+        console.error('[GDPR Modal] [checkAllFilled] ERROR: Missing input fields!');
+        this.allFilled = false;
+        return;
+      }
+      
+      const privacy = privacyInput.checked;
+      const terms = termsInput.checked;
       
       this.allFilled = privacy && terms;
-      console.log('[GDPR Modal] checkAllFilled: privacy=' + privacy + ', terms=' + terms + ', result=' + this.allFilled);
+      console.log('[GDPR Modal] [checkAllFilled] privacy=' + privacy + ', terms=' + terms + ', result=' + this.allFilled);
     },
 
     async handleSubmit() {
