@@ -1,20 +1,21 @@
 <!-- GDPR Consent Modal - Alpine.js Modal for Tailwind CSS -->
-<div x-data="consentModal()" @keydown.escape="open = false" x-cloak
+<div x-data="consentModal()" @keydown.escape="closeModal()" x-cloak
      id="consentModal" data-show-modal="{% if show_consent_modal %}true{% else %}false{% endif %}">
   <!-- Backdrop -->
   <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300"
-       :class="{ 'opacity-0 pointer-events-none': !open, 'opacity-100': open }"
-       @click="open = false">
+       x-show="open"
+       @click="closeModal()"
+       style="z-index: 40;">
   </div>
 
   <!-- Modal -->
   <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
-       :class="{ 'opacity-0 pointer-events-none': !open, 'opacity-100': open }"
-       style="transition: opacity 0.3s ease-in-out;">
+       x-show="open"
+       style="transition: opacity 0.3s ease-in-out; z-index: 50;">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
       <!-- Header -->
       <div class="px-8 py-6 border-b border-stone-200 bg-gradient-to-r from-stone-50 to-white">
-        <h2 class="text-2xl font-bold text-stone-900">⚖️ Legal Consent Required</h2>
+        <h2 class="text-2xl font-bold text-stone-900">Legal Consent Required</h2>
         <p class="text-sm text-stone-600 mt-1">Please review and accept our terms to continue</p>
       </div>
 
@@ -100,24 +101,36 @@ function consentModal() {
     submitting: false,
     
     init() {
+      console.log('[GDPR Modal] Initializing...');
+      
       // Check if we should show modal on page load
       const shouldShow = document.getElementById('consentModal')?.getAttribute('data-show-modal') === 'true';
+      console.log('[GDPR Modal] data-show-modal:', shouldShow);
+      
       if (shouldShow) {
         this.open = true;
-        console.log('[GDPR Modal] Opening consent modal on page load');
+        console.log('[GDPR Modal] Modal OPEN (because showConsent=true)');
       } else {
-        console.log('[GDPR Modal] Consent already accepted or not required');
+        this.open = false;
+        console.log('[GDPR Modal] Modal CLOSED (consent already accepted)');
       }
-      // Check form validation state
+      
+      // Check form validation state after DOM is ready
       this.$nextTick(() => {
+        console.log('[GDPR Modal] Running $nextTick, current open state:', this.open);
         this.checkAllFilled();
       });
+    },
+
+    closeModal() {
+      this.open = false;
     },
 
     checkAllFilled() {
       const form = document.getElementById('consentForm');
       if (!form) {
         this.allFilled = false;
+        console.log('[GDPR Modal] Form not found, allFilled=false');
         return;
       }
       
@@ -126,6 +139,7 @@ function consentModal() {
       // WhatsApp is optional, so only require privacy_policy and terms
       
       this.allFilled = privacy && terms;
+      console.log('[GDPR Modal] checkAllFilled: privacy=' + privacy + ', terms=' + terms + ', result=' + this.allFilled);
     },
 
     async handleSubmit() {
