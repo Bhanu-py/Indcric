@@ -189,6 +189,8 @@ class TemporaryScoringAccess(models.Model):
     def is_valid(self):
         """Check if access is currently valid (active and not expired)."""
         from django.utils import timezone
+        if self.expires_at is None:
+            return False
         return self.is_active and self.expires_at > timezone.now()
 
 

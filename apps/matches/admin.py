@@ -28,31 +28,41 @@ class TemporaryScoringAccessAdmin(admin.ModelAdmin):
     list_display = ('user', 'session', 'granted_by', 'expires_at', 'is_active', 'is_valid_display')
     list_filter = ('is_active', 'session__date', 'granted_at')
     search_fields = ('user__username', 'user__first_name', 'session__name')
-    readonly_fields = ('granted_at', 'granted_by', 'is_valid')
-    fieldsets = (
-        ('Grant Information', {
-            'fields': ('user', 'session', 'granted_by', 'granted_at')
-        }),
-        ('Duration', {
-            'fields': ('expires_at', 'is_active')
-        }),
-        ('Details', {
-            'fields': ('reason', 'is_valid'),
-            'classes': ('collapse',)
-        }),
-    )
+    readonly_fields = ('granted_at', 'granted_by')
+    
+    def get_fieldsets(self, request, obj=None):
+        """Show is_valid only when editing existing object."""
+        if obj is None:  # Creating new object
+            return (
+                ('Grant Information', {
+                    'fields': ('user', 'session', 'granted_by', 'granted_at')
+                }),
+                ('Duration', {
+                    'fields': ('expires_at', 'is_active')
+                }),
+                ('Details', {
+                    'fields': ('reason',),
+                    'classes': ('collapse',)
+                }),
+            )
+        else:  # Editing existing object
+            return (
+                ('Grant Information', {
+                    'fields': ('user', 'session', 'granted_by', 'granted_at')
+                }),
+                ('Duration', {
+                    'fields': ('expires_at', 'is_active')
+                }),
+                ('Details', {
+                    'fields': ('reason', 'is_valid'),
+                    'classes': ('collapse',)
+                }),
+            )
 
     def is_valid_display(self, obj):
         """Display validity status in the list view."""
         return '✓ Valid' if obj.is_valid else '✗ Expired/Inactive'
     is_valid_display.short_description = 'Status'
-
-    def get_readonly_fields(self, request, obj=None):
-        """Make granted_by read-only, set it automatically on creation."""
-        readonly = list(self.readonly_fields)
-        if obj is not None:  # Editing existing object
-            readonly.extend(['user', 'session', 'granted_at'])
-        return readonly
 
     def save_model(self, request, obj, form, change):
         """Auto-populate granted_by with the current user."""

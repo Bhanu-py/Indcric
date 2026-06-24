@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ("sessions", "0001_initial"),
+        ("cric_sessions", "0003_alter_sessionplayer_team"),
         ("matches", "0006_innings_single_batting"),
     ]
 
@@ -58,7 +58,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="temporary_scoring_access",
-                        to="sessions.session",
+                        to="cric_sessions.session",
                     ),
                 ),
                 (
