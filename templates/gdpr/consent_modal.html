@@ -20,7 +20,7 @@
 
       <!-- Body -->
       <div class="px-8 py-6">
-        <form @submit.prevent="handleSubmit" id="consentForm">
+        <form @submit.prevent="handleSubmit" id="consentForm" action="{% url 'gdpr:consent_accept' %}">
           {% csrf_token %}
           
           <!-- Consent Checkboxes -->
@@ -51,13 +51,13 @@
               </div>
             </label>
 
-            <!-- WhatsApp Consent -->
+            <!-- WhatsApp Consent (Optional) -->
             <label class="flex items-start gap-3 p-4 bg-stone-50 rounded-lg hover:bg-stone-100 transition cursor-pointer">
               <input type="checkbox" name="whatsapp_accepted" 
                      class="mt-1 w-5 h-5 rounded border-stone-300 text-blue-600 focus:ring-blue-500"
-                     required @change="checkAllFilled">
+                     @change="checkAllFilled">
               <div class="flex-1">
-                <span class="font-medium text-stone-900">WhatsApp for Voting</span>
+                <span class="font-medium text-stone-900">WhatsApp for Voting <span class="text-xs text-stone-500">(optional)</span></span>
                 <p class="text-sm text-stone-600 mt-0.5">
                   I understand that WhatsApp is required to vote on polls
                 </p>
@@ -116,9 +116,9 @@ function consentModal() {
       
       const privacy = form.querySelector('input[name="privacy_policy_accepted"]').checked;
       const terms = form.querySelector('input[name="terms_accepted"]').checked;
-      const whatsapp = form.querySelector('input[name="whatsapp_accepted"]').checked;
+      // WhatsApp is optional, so only require privacy_policy and terms
       
-      this.allFilled = privacy && terms && whatsapp;
+      this.allFilled = privacy && terms;
     },
 
     async handleSubmit() {
@@ -140,10 +140,10 @@ function consentModal() {
         const data = await response.json();
 
         if (data.status === 'success') {
-          // Close modal and redirect
+          // Close modal and redirect to dashboard
           this.open = false;
           setTimeout(() => {
-            window.location.href = '/';
+            window.location.href = '/dashboard/';
           }, 500);
         } else {
           alert('Error: ' + (data.message || 'Failed to accept consent'));

@@ -68,7 +68,7 @@ class CustomSignupForm(SignupForm):
     )
 
     whatsapp_accepted = forms.BooleanField(
-        required=True,
+        required=False,
         label="I accept that WhatsApp is required to vote on polls",
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
     )
