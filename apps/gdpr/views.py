@@ -73,6 +73,11 @@ def consent_accept_view(request):
     user_consent.ip_address = get_client_ip(request)
     user_consent.save()
     
+    # Clear the session flag since consent has been accepted
+    if 'show_consent_modal' in request.session:
+        del request.session['show_consent_modal']
+        logger.info(f"[CONSENT] Cleared session flag for {request.user.username}")
+    
     logger.info(f"[CONSENT] Successfully saved consent for {request.user.username}")
     logger.info(f"[CONSENT] Database values: privacy={user_consent.privacy_policy_accepted}, terms={user_consent.terms_accepted}, whatsapp={user_consent.whatsapp_accepted}, all_accepted={user_consent.all_consents_accepted}")
     
