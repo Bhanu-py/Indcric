@@ -3,8 +3,9 @@ import uuid
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.utils import timezone
 
-from .models import Match, Team, Player, Innings
+from .models import Match, Team, Player, Innings, TemporaryScoringAccess
 from . import scoring
 
 @login_required
@@ -188,10 +189,31 @@ def _render_console(request, innings):
     return render(request, 'cric/partials/_score_console.html', _console_context(innings))
 
 
-def _staff_or_redirect(request, match):
+def _can_score(request, match):
+    """Check if user can score: staff OR has valid temporary access for this session."""
     if request.user.is_staff:
+        return True
+    
+    # Check temporary access for this session
+    if match.session_id is None:
+        return False
+    
+    access = TemporaryScoringAccess.objects.filter(
+        user=request.user,
+        session_id=match.session_id,
+        is_active=True,
+        expires_at__gt=timezone.now()
+    ).exists()
+    
+    return access
+
+
+def _staff_or_redirect(request, match):
+    """Check scoring permission. Redirect if denied."""
+    if _can_score(request, match):
         return None
-    messages.error(request, "Only staff can score matches.")
+    
+    messages.error(request, "Only staff or authorized players can score matches.")
     return redirect('session_detail', session_id=match.session_id)
 
 
@@ -301,7 +323,7 @@ def _active_innings_or_404(request, innings_id):
 @login_required
 def score_ball_view(request, innings_id):
     innings = get_object_or_404(Innings, id=innings_id)
-    if not request.user.is_staff or request.method != 'POST':
+    if not _can_score(request, innings.match) or request.method != 'POST':
         return _render_console(request, innings)
     if innings.is_closed or innings.current_striker_id is None or innings.current_bowler_id is None:
         return _render_console(request, innings)
@@ -346,7 +368,7 @@ def score_ball_view(request, innings_id):
 @login_required
 def score_undo_view(request, innings_id):
     innings = get_object_or_404(Innings, id=innings_id)
-    if request.user.is_staff and request.method == 'POST':
+    if _can_score(request, innings.match) and request.method == 'POST':
         scoring.undo_last(innings)
         scoring.advance_after_delivery(innings)
     return _render_console(request, innings)
@@ -358,7 +380,7 @@ def score_set_batter_view(request, innings_id):
     picker); end=nonstriker is used by the pre-first-ball opener fix. Picking
     the player already at the other end swaps them instead of duplicating."""
     innings = get_object_or_404(Innings, id=innings_id)
-    if request.user.is_staff and request.method == 'POST':
+    if _can_score(request, innings.match) and request.method == 'POST':
         player = Player.objects.filter(pk=request.POST.get('player'), team=innings.batting_team).first()
         if player:
             if request.POST.get('end') == 'nonstriker':
@@ -378,7 +400,7 @@ def score_single_batting_view(request, innings_id):
     """Last man stands: let the surviving batter continue alone after the
     would-be-final wicket. The lone batter always takes strike."""
     innings = get_object_or_404(Innings, id=innings_id)
-    if request.user.is_staff and request.method == 'POST' and not innings.is_closed:
+    if _can_score(request, innings.match) and request.method == 'POST' and not innings.is_closed:
         innings.single_batting = True
         if innings.current_striker_id is None:
             innings.current_striker = innings.current_non_striker
@@ -392,7 +414,7 @@ def score_retire_batter_view(request, innings_id):
     """Retired hurt: vacate the chosen batter's end without a wicket. The
     batter stays eligible to resume later from the next-batter picker."""
     innings = get_object_or_404(Innings, id=innings_id)
-    if request.user.is_staff and request.method == 'POST' and not innings.is_closed:
+    if _can_score(request, innings.match) and request.method == 'POST' and not innings.is_closed:
         player = Player.objects.filter(pk=request.POST.get('player'), team=innings.batting_team).first()
         if player:
             scoring.retire_batter(innings, player)
@@ -402,7 +424,7 @@ def score_retire_batter_view(request, innings_id):
 @login_required
 def score_swap_strike_view(request, innings_id):
     innings = get_object_or_404(Innings, id=innings_id)
-    if (request.user.is_staff and request.method == 'POST' and not innings.is_closed
+    if (_can_score(request, innings.match) and request.method == 'POST' and not innings.is_closed
             and innings.current_striker_id and innings.current_non_striker_id):
         innings.current_striker, innings.current_non_striker = (
             innings.current_non_striker, innings.current_striker
@@ -416,7 +438,7 @@ def score_change_bowler_view(request, innings_id):
     """Clear the current bowler so the console shows the bowler picker — covers
     a mid-over replacement and fixing a mistaken opening pick."""
     innings = get_object_or_404(Innings, id=innings_id)
-    if request.user.is_staff and request.method == 'POST' and not innings.is_closed:
+    if _can_score(request, innings.match) and request.method == 'POST' and not innings.is_closed:
         innings.current_bowler = None
         innings.save(update_fields=['current_bowler'])
     return _render_console(request, innings)
@@ -426,7 +448,7 @@ def score_change_bowler_view(request, innings_id):
 def score_set_overs_view(request, innings_id):
     """Change the match overs cap mid-innings, floored at overs already begun."""
     innings = get_object_or_404(Innings, id=innings_id)
-    if request.user.is_staff and request.method == 'POST' and not innings.is_closed:
+    if _can_score(request, innings.match) and request.method == 'POST' and not innings.is_closed:
         try:
             new_limit = int(request.POST.get('overs', ''))
         except (TypeError, ValueError):
@@ -443,7 +465,7 @@ def score_set_overs_view(request, innings_id):
 @login_required
 def score_set_bowler_view(request, innings_id):
     innings = get_object_or_404(Innings, id=innings_id)
-    if request.user.is_staff and request.method == 'POST':
+    if _can_score(request, innings.match) and request.method == 'POST':
         player = Player.objects.filter(pk=request.POST.get('player'), team=innings.bowling_team).first()
         if player:
             innings.current_bowler = player
@@ -476,9 +498,101 @@ def reopen_scoring_view(request, match_id):
 @login_required
 def end_innings_view(request, innings_id):
     innings = get_object_or_404(Innings, id=innings_id)
-    if request.user.is_staff and request.method == 'POST':
+    if _can_score(request, innings.match) and request.method == 'POST':
         innings.is_closed = True
         innings.save(update_fields=['is_closed'])
         if innings.number >= 2:
             scoring.finalize_match_result(innings.match)
     return redirect('match_score', match_id=innings.match_id)
+
+
+@login_required
+def grant_scoring_access_view(request, session_id):
+    """Grant temporary scoring access to a player for a specific session.
+    
+    Staff only. Allows granting a player access to score all matches on a
+    specific day, with automatic expiration after a set duration.
+    """
+    from apps.sessions.models import Session
+    from .forms import TemporaryScoringAccessForm
+    
+    if not request.user.is_staff:
+        messages.error(request, 'Only staff can grant scoring access.')
+        return redirect('home')
+    
+    session = get_object_or_404(Session, id=session_id)
+    
+    if request.method == 'POST':
+        form = TemporaryScoringAccessForm(request.POST)
+        if form.is_valid():
+            access = form.save(commit=False, granted_by=request.user)
+            access.expires_at = form.cleaned_data['expires_at']
+            access.save()
+            
+            messages.success(
+                request,
+                f'✓ Granted {access.user.username} scoring access for {session.name} '
+                f'until {access.expires_at.strftime("%Y-%m-%d %H:%M:%S")}'
+            )
+            return redirect('session_detail', session_id=session.id)
+    else:
+        form = TemporaryScoringAccessForm(initial={'session': session.id})
+    
+    return render(request, 'cric/pages/grant_scoring_access.html', {
+        'form': form,
+        'session': session,
+    })
+
+
+@login_required
+def revoke_scoring_access_view(request, access_id):
+    """Revoke temporary scoring access.
+    
+    Staff only. Can only revoke access granted to the current or future time.
+    """
+    access = get_object_or_404(TemporaryScoringAccess, id=access_id)
+    
+    if not request.user.is_staff:
+        messages.error(request, 'Only staff can revoke scoring access.')
+        return redirect('home')
+    
+    if request.method == 'POST':
+        user_name = access.user.username
+        session_name = access.session.name
+        access.is_active = False
+        access.save(update_fields=['is_active'])
+        
+        messages.success(
+            request,
+            f'✓ Revoked {user_name}\'s scoring access for {session_name}'
+        )
+        return redirect('session_detail', session_id=access.session_id)
+    
+    return render(request, 'cric/pages/confirm_revoke_access.html', {
+        'access': access,
+    })
+
+
+@login_required
+def scoring_access_list_view(request, session_id):
+    """List all temporary scoring access for a session.
+    
+    Staff only. Shows active and expired access for audit trail.
+    """
+    from apps.sessions.models import Session
+    
+    if not request.user.is_staff:
+        messages.error(request, 'Only staff can view scoring access.')
+        return redirect('home')
+    
+    session = get_object_or_404(Session, id=session_id)
+    access_list = TemporaryScoringAccess.objects.filter(session=session).select_related(
+        'user', 'granted_by'
+    )
+    
+    return render(request, 'cric/pages/scoring_access_list.html', {
+        'session': session,
+        'access_list': access_list,
+        'now': timezone.now(),
+    })
+
