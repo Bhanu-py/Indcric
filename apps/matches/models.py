@@ -177,10 +177,16 @@ class TemporaryScoringAccess(models.Model):
     reason = models.TextField(blank=True, default='')
 
     class Meta:
-        unique_together = [('user', 'session')]
         ordering = ['-granted_at']
         verbose_name = 'Temporary Scoring Access'
         verbose_name_plural = 'Temporary Scoring Access'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'session'],
+                condition=models.Q(is_active=True),
+                name='unique_active_user_session_access',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.user.username} - {self.session.name} (expires: {self.expires_at.strftime('%Y-%m-%d %H:%M')})"

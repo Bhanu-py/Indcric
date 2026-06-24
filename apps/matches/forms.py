@@ -49,7 +49,7 @@ class TemporaryScoringAccessForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         
-        # Check for existing access
+        # Check for existing ACTIVE access
         user = cleaned_data.get('user')
         session = cleaned_data.get('session')
         
@@ -57,7 +57,7 @@ class TemporaryScoringAccessForm(forms.ModelForm):
             existing = TemporaryScoringAccess.objects.filter(
                 user=user,
                 session=session,
-                is_active=True
+                is_active=True  # Only check for ACTIVE access
             ).exists()
             
             if existing and not self.instance.pk:  # Only check for new objects
