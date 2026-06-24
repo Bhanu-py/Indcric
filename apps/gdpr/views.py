@@ -31,35 +31,44 @@ def consent_accept_view(request):
     """
     Accept GDPR consent terms.
     Called via AJAX from consent modal or signup flow.
-    """
-    form = ConsentForm(request.POST)
     
-    if form.is_valid():
-        # Get or create UserConsent record
-        user_consent, created = UserConsent.objects.get_or_create(
-            user=request.user
-        )
-        
-        # Update consent fields
-        user_consent.privacy_policy_accepted = form.cleaned_data['privacy_policy_accepted']
-        user_consent.terms_accepted = form.cleaned_data['terms_accepted']
-        user_consent.whatsapp_accepted = form.cleaned_data['whatsapp_accepted']
-        user_consent.ip_address = get_client_ip(request)
-        user_consent.save()
-        
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({'status': 'success', 'message': 'Consent accepted'})
-        else:
-            messages.success(request, 'Thank you for accepting our terms!')
-            return redirect(request.POST.get('next', 'home'))
-    else:
+    Note: HTML checkboxes that are unchecked don't appear in POST data.
+    We need to explicitly check for their presence.
+    """
+    # Get checkbox values - unchecked boxes won't be in POST
+    privacy_policy_accepted = 'privacy_policy_accepted' in request.POST
+    terms_accepted = 'terms_accepted' in request.POST
+    whatsapp_accepted = 'whatsapp_accepted' in request.POST
+    
+    # Validate that required fields are checked
+    if not privacy_policy_accepted or not terms_accepted:
+        error_msg = 'You must accept Privacy Policy and Terms of Service'
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'status': 'error',
-                'errors': form.errors
+                'message': error_msg
             }, status=400)
         else:
-            return render(request, 'gdpr/consent.html', {'form': form}, status=400)
+            messages.error(request, error_msg)
+            return redirect('gdpr:consent_form')
+    
+    # Create or update UserConsent record
+    user_consent, created = UserConsent.objects.get_or_create(
+        user=request.user
+    )
+    
+    # Update consent fields
+    user_consent.privacy_policy_accepted = privacy_policy_accepted
+    user_consent.terms_accepted = terms_accepted
+    user_consent.whatsapp_accepted = whatsapp_accepted
+    user_consent.ip_address = get_client_ip(request)
+    user_consent.save()
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'status': 'success', 'message': 'Consent accepted'})
+    else:
+        messages.success(request, 'Thank you for accepting our terms!')
+        return redirect(request.POST.get('next', 'home'))
 
 
 @login_required
