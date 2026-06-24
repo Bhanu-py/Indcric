@@ -5,7 +5,8 @@ from .models import UserConsent
 class ConsentForm(forms.ModelForm):
     """
     Form for collecting GDPR consent during signup and login.
-    All three consents are required.
+    Privacy Policy and Terms of Service are required.
+    WhatsApp consent is optional.
     """
     privacy_policy_accepted = forms.BooleanField(
         required=True,
@@ -18,9 +19,9 @@ class ConsentForm(forms.ModelForm):
         label="I accept the Terms of Service"
     )
     whatsapp_accepted = forms.BooleanField(
-        required=True,
+        required=False,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        label="I accept that WhatsApp is required for voting"
+        label="I accept that WhatsApp is required for voting (optional)"
     )
 
     class Meta:
