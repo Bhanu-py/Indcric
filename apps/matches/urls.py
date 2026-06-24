@@ -21,4 +21,9 @@ urlpatterns = [
     path('innings/<int:innings_id>/overs/', views.score_set_overs_view, name='score_set_overs'),
     path('innings/<int:innings_id>/end/', views.end_innings_view, name='end_innings'),
     path('match/<int:match_id>/reopen/', views.reopen_scoring_view, name='reopen_scoring'),
+    
+    # Temporary scoring access
+    path('session/<int:session_id>/grant-access/', views.grant_scoring_access_view, name='grant_scoring_access'),
+    path('access/<int:access_id>/revoke/', views.revoke_scoring_access_view, name='revoke_scoring_access'),
+    path('session/<int:session_id>/access-list/', views.scoring_access_list_view, name='scoring_access_list'),
 ]
