@@ -11,7 +11,7 @@ from django.utils import timezone
 from decimal import Decimal
 
 from .models import Session, SessionPlayer, Attendance
-from apps.matches.models import Match, Team, Player, Delivery
+from apps.matches.models import Match, Team, Player, Delivery, TemporaryScoringAccess
 from apps.polls.models import Poll, Vote
 from apps.payments.models import Payment, Wallet
 
@@ -410,7 +410,6 @@ def session_detail_view(request, session_id):
     user_has_scoring_access = False
     if request.user.is_authenticated:
         if not request.user.is_staff:
-            from apps.matches.models import TemporaryScoringAccess
             user_has_scoring_access = TemporaryScoringAccess.objects.filter(
                 user=request.user,
                 session=session,
@@ -558,7 +557,6 @@ def save_teams_view(request, session_id):
     # Check permission: staff OR player with valid scoring access for this session
     has_permission = request.user.is_staff
     if not has_permission:
-        from apps.matches.models import TemporaryScoringAccess
         has_permission = TemporaryScoringAccess.objects.filter(
             user=request.user,
             session=session,
@@ -703,7 +701,6 @@ def delete_match_view(request, match_id):
     # Check permission: staff OR player with valid scoring access for this session
     has_permission = request.user.is_staff
     if not has_permission and request.user.is_authenticated:
-        from apps.matches.models import TemporaryScoringAccess
         has_permission = TemporaryScoringAccess.objects.filter(
             user=request.user,
             session=match.session,
