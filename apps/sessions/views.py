@@ -551,11 +551,22 @@ def _sync_teams_in_place(match, teams, t1_name, t2_name, t1_ids, t2_ids, t1_cap_
 
 @login_required
 def save_teams_view(request, session_id):
-    if not request.user.is_staff:
+    session = get_object_or_404(Session, id=session_id)
+    
+    # Check permission: staff OR player with valid scoring access for this session
+    has_permission = request.user.is_staff
+    if not has_permission:
+        from apps.matches.models import TemporaryScoringAccess
+        has_permission = TemporaryScoringAccess.objects.filter(
+            user=request.user,
+            session=session,
+            is_active=True,
+            expires_at__gt=timezone.now()
+        ).exists()
+    
+    if not has_permission:
         messages.error(request, "You don't have permission to perform this action.")
         return redirect('session_detail', session_id=session_id)
-
-    session = get_object_or_404(Session, id=session_id)
 
     if request.method == 'POST':
         team1_name = request.POST.get('team1_name', 'Team 1')
@@ -684,12 +695,23 @@ def record_score_view(request, match_id):
 
 @login_required
 def delete_match_view(request, match_id):
-    if not request.user.is_staff:
-        messages.error(request, "You don't have permission to perform this action.")
-        return redirect('home')
-
     match = get_object_or_404(Match, id=match_id)
     session_id = match.session.id
+    
+    # Check permission: staff OR player with valid scoring access for this session
+    has_permission = request.user.is_staff
+    if not has_permission and request.user.is_authenticated:
+        from apps.matches.models import TemporaryScoringAccess
+        has_permission = TemporaryScoringAccess.objects.filter(
+            user=request.user,
+            session=match.session,
+            is_active=True,
+            expires_at__gt=timezone.now()
+        ).exists()
+    
+    if not has_permission:
+        messages.error(request, "You don't have permission to perform this action.")
+        return redirect('home')
 
     if request.method == 'POST':
         # Guard (issue #39): a played match was wiped by an accidental one-tap
