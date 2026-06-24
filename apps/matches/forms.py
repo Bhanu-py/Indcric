@@ -37,6 +37,7 @@ class TemporaryScoringAccessForm(forms.ModelForm):
         model = TemporaryScoringAccess
         fields = ['user', 'session', 'reason']
         widgets = {
+            'session': forms.HiddenInput(),
             'reason': forms.Textarea(attrs={'rows': 3, 'placeholder': 'e.g., Primary scorer unavailable'}),
         }
 

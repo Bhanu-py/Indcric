@@ -534,9 +534,9 @@ def grant_scoring_access_view(request, session_id):
                 f'✓ Granted {access.user.username} scoring access for {session.name} '
                 f'until {access.expires_at.strftime("%Y-%m-%d %H:%M:%S")}'
             )
-            return redirect('session_detail', session_id=session.id)
+            return redirect('scoring_access_list', session_id=session.id)
     else:
-        form = TemporaryScoringAccessForm(initial={'session': session.id})
+        form = TemporaryScoringAccessForm(initial={'session': session})
     
     return render(request, 'cric/pages/grant_scoring_access.html', {
         'form': form,
