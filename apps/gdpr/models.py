@@ -40,9 +40,12 @@ class UserConsent(models.Model):
 
     @property
     def all_consents_accepted(self):
-        """Check if all required consents have been given"""
+        """Check if all required consents have been given.
+        
+        Only Privacy Policy and Terms of Service are required.
+        WhatsApp consent is optional.
+        """
         return (
             self.privacy_policy_accepted and
-            self.terms_accepted and
-            self.whatsapp_accepted
+            self.terms_accepted
         )
