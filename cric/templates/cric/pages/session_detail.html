@@ -721,7 +721,8 @@
             {% endfor %}
 
             <!-- ── Add Match button (staff or authorized, matches exist, not in edit mode, session not past) ── -->
-            {% if (user.is_staff or user_has_scoring_access) and matches and not edit_match and not is_past %}
+            {% if user.is_staff or user_has_scoring_access %}
+            {% if matches and not edit_match and not is_past %}
             <form method="POST" action="{% url 'add_match' session.id %}" class="mb-4">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-secondary btn-md w-full justify-center">
@@ -729,6 +730,7 @@
                     Add Match {{ matches|length|add:"1" }}
                 </button>
             </form>
+            {% endif %}
             {% endif %}
 
             <!-- ═══════════════════════════════════
