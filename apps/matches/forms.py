@@ -88,6 +88,9 @@ class TemporaryScoringAccessForm(forms.ModelForm):
         instance = super().save(commit=False)
         if granted_by:
             instance.granted_by = granted_by
+        # Ensure expires_at is set from cleaned data
+        if 'expires_at' in self.cleaned_data:
+            instance.expires_at = self.cleaned_data['expires_at']
         if commit:
             instance.save()
         return instance

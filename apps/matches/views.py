@@ -526,7 +526,9 @@ def grant_scoring_access_view(request, session_id):
         form = TemporaryScoringAccessForm(request.POST)
         if form.is_valid():
             access = form.save(commit=False, granted_by=request.user)
-            access.expires_at = form.cleaned_data['expires_at']
+            # Ensure expires_at is set from form's clean method
+            if hasattr(form, 'cleaned_data') and 'expires_at' in form.cleaned_data:
+                access.expires_at = form.cleaned_data['expires_at']
             access.save()
             
             messages.success(
