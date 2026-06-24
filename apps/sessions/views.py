@@ -355,10 +355,11 @@ def session_detail_view(request, session_id):
     for voter in yes_voters:
         voter['team_assigned'] = voter['user'].id in assigned_ids
 
-    # Staff can add any active member to the draft pool (e.g. late arrivals who
-    # never voted) — everyone not already shown in the editor (pool + teams).
+    # Staff or authorized scoring access players can add any active member to the draft pool
+    # (e.g. late arrivals who never voted) — everyone not already shown in the editor (pool + teams).
     addable_pool = []
-    if request.user.is_staff:
+    can_add_players = request.user.is_staff or user_has_scoring_access
+    if can_add_players:
         editor_ids = {v['user'].id for v in yes_voters} | assigned_ids
         for u in User.objects.filter(is_active=True).exclude(id__in=editor_ids).order_by('first_name', 'username'):
             addable_pool.append({
