@@ -13,6 +13,9 @@ from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from .models import UserConsent
 from .forms import ConsentForm
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_client_ip(request):
@@ -35,14 +38,20 @@ def consent_accept_view(request):
     Note: HTML checkboxes that are unchecked don't appear in POST data.
     We need to explicitly check for their presence.
     """
+    logger.info(f"[CONSENT] Received POST data: {dict(request.POST)}")
+    logger.info(f"[CONSENT] User: {request.user.username}")
+    
     # Get checkbox values - unchecked boxes won't be in POST
     privacy_policy_accepted = 'privacy_policy_accepted' in request.POST
     terms_accepted = 'terms_accepted' in request.POST
     whatsapp_accepted = 'whatsapp_accepted' in request.POST
     
+    logger.info(f"[CONSENT] Checkbox values: privacy={privacy_policy_accepted}, terms={terms_accepted}, whatsapp={whatsapp_accepted}")
+    
     # Validate that required fields are checked
     if not privacy_policy_accepted or not terms_accepted:
         error_msg = 'You must accept Privacy Policy and Terms of Service'
+        logger.warning(f"[CONSENT] Validation failed: {error_msg}")
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'status': 'error',
@@ -63,6 +72,9 @@ def consent_accept_view(request):
     user_consent.whatsapp_accepted = whatsapp_accepted
     user_consent.ip_address = get_client_ip(request)
     user_consent.save()
+    
+    logger.info(f"[CONSENT] Successfully saved consent for {request.user.username}")
+    logger.info(f"[CONSENT] Database values: privacy={user_consent.privacy_policy_accepted}, terms={user_consent.terms_accepted}, whatsapp={user_consent.whatsapp_accepted}, all_accepted={user_consent.all_consents_accepted}")
     
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({'status': 'success', 'message': 'Consent accepted'})

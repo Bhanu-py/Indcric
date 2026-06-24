@@ -411,5 +411,13 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': True,
         },
+        'apps.gdpr': {
+            'handlers': [
+                'console',
+                # 'file'
+            ],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
