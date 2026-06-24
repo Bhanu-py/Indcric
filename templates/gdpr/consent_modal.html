@@ -1,0 +1,97 @@
+<!-- GDPR Consent Modal - Show on first login or if consent missing -->
+<div class="modal fade" id="consentModal" tabindex="-1" role="dialog" aria-labelledby="consentModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="consentModalLabel">
+          ⚖️ Legal Consent Required
+        </h5>
+      </div>
+      <div class="modal-body">
+        <form id="consentForm" method="post" action="{% url 'gdpr:consent_accept' %}">
+          {% csrf_token %}
+          <div class="mb-3">
+            <p class="text-muted small">
+              Please review and accept our terms to continue using Indcric.
+            </p>
+          </div>
+
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="privacy_policy_accepted" id="privacyCheck" required>
+            <label class="form-check-label" for="privacyCheck">
+              I accept the <a href="{% url 'gdpr:privacy_policy' %}" target="_blank">Privacy Policy</a>
+            </label>
+          </div>
+
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="terms_accepted" id="termsCheck" required>
+            <label class="form-check-label" for="termsCheck">
+              I accept the <a href="{% url 'gdpr:terms_of_service' %}" target="_blank">Terms of Service</a>
+            </label>
+          </div>
+
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="whatsapp_accepted" id="whatsappCheck" required>
+            <label class="form-check-label" for="whatsappCheck">
+              I understand that WhatsApp is required to vote on polls
+            </label>
+          </div>
+
+          <div class="alert alert-info small" role="alert">
+            <strong>Note:</strong> WhatsApp is optional for scoring but required to participate in voting. 
+            You can review our policies anytime in Account Settings.
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100">
+            Accept & Continue
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Show consent modal if user hasn't accepted terms
+document.addEventListener('DOMContentLoaded', function() {
+  // Check if user has accepted consent
+  const hasConsent = localStorage.getItem('consentAccepted');
+  if (!hasConsent || hasConsent !== 'true') {
+    const consentModal = new bootstrap.Modal(document.getElementById('consentModal'), {
+      backdrop: 'static',
+      keyboard: false
+    });
+    consentModal.show();
+  }
+
+  // Handle form submission
+  document.getElementById('consentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = this;
+    const formData = new FormData(form);
+    
+    fetch(form.action, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'success') {
+        localStorage.setItem('consentAccepted', 'true');
+        bootstrap.Modal.getInstance(document.getElementById('consentModal')).hide();
+        window.location.reload();
+      } else {
+        alert('Error accepting consent: ' + JSON.stringify(data.errors));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error accepting consent');
+    });
+  });
+});
+</script>

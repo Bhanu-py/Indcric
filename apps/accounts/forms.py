@@ -34,11 +34,13 @@ def _normalize_phone(raw):
 
 
 class CustomSignupForm(SignupForm):
-    """Allauth signup form extended with a required WhatsApp number.
+    """Allauth signup form extended with a required WhatsApp number and GDPR consent.
 
     Phone is required because the next-stage WhatsApp integration relies on
     reaching every member — see design_handoff/PROGRESS.md and the BotEvent
     model in apps/notifications/models.py.
+    
+    GDPR consent fields are required to comply with Belgian GDPR regulations.
     """
 
     phone = forms.CharField(
@@ -53,6 +55,24 @@ class CustomSignupForm(SignupForm):
         }),
     )
 
+    privacy_policy_accepted = forms.BooleanField(
+        required=True,
+        label="I accept the Privacy Policy",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
+
+    terms_accepted = forms.BooleanField(
+        required=True,
+        label="I accept the Terms of Service",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
+
+    whatsapp_accepted = forms.BooleanField(
+        required=True,
+        label="I accept that WhatsApp is required to vote on polls",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
+
     def clean_phone(self):
         phone = _normalize_phone(self.cleaned_data.get('phone'))
         if User.objects.filter(phone=phone).exists():
@@ -63,7 +83,27 @@ class CustomSignupForm(SignupForm):
         user = super().save(request)
         user.phone = self.cleaned_data['phone']
         user.save(update_fields=['phone'])
+        
+        # Create UserConsent record
+        from apps.gdpr.models import UserConsent
+        UserConsent.objects.create(
+            user=user,
+            privacy_policy_accepted=self.cleaned_data.get('privacy_policy_accepted', False),
+            terms_accepted=self.cleaned_data.get('terms_accepted', False),
+            whatsapp_accepted=self.cleaned_data.get('whatsapp_accepted', False),
+            ip_address=self._get_client_ip(request),
+        )
+        
         return user
+
+    def _get_client_ip(self, request):
+        """Extract client IP address from request"""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
 
 
 ROLE_CHOICES = (

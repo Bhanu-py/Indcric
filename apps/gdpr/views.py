@@ -1,0 +1,146 @@
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import logout
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.conf import settings
+from django.contrib import messages
+from django.views.decorators.http import require_http_methods
+from .models import UserConsent
+from .forms import ConsentForm
+
+
+def get_client_ip(request):
+    """Extract client IP address from request"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+
+@login_required
+@require_http_methods(["POST"])
+def consent_accept_view(request):
+    """
+    Accept GDPR consent terms.
+    Called via AJAX from consent modal or signup flow.
+    """
+    form = ConsentForm(request.POST)
+    
+    if form.is_valid():
+        # Get or create UserConsent record
+        user_consent, created = UserConsent.objects.get_or_create(
+            user=request.user
+        )
+        
+        # Update consent fields
+        user_consent.privacy_policy_accepted = form.cleaned_data['privacy_policy_accepted']
+        user_consent.terms_accepted = form.cleaned_data['terms_accepted']
+        user_consent.whatsapp_accepted = form.cleaned_data['whatsapp_accepted']
+        user_consent.ip_address = get_client_ip(request)
+        user_consent.save()
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'status': 'success', 'message': 'Consent accepted'})
+        else:
+            messages.success(request, 'Thank you for accepting our terms!')
+            return redirect(request.POST.get('next', 'home'))
+    else:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'error',
+                'errors': form.errors
+            }, status=400)
+        else:
+            return render(request, 'gdpr/consent.html', {'form': form}, status=400)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def delete_account_view(request):
+    """
+    Delete account - step 1: Show confirmation form.
+    User must confirm they want to delete and will receive email link.
+    """
+    if request.method == 'POST':
+        if request.POST.get('confirm_delete') == 'on':
+            # Generate deletion token and send email
+            uid = urlsafe_base64_encode(force_bytes(request.user.pk))
+            token = default_token_generator.make_token(request.user)
+            
+            # Build confirmation link
+            confirmation_url = request.build_absolute_uri(
+                f'/gdpr/account/delete/confirm/{uid}/{token}/'
+            )
+            
+            # Send confirmation email
+            subject = 'Confirm Account Deletion'
+            html_message = render_to_string('gdpr/deletion_email.html', {
+                'user': request.user,
+                'confirmation_url': confirmation_url,
+            })
+            
+            send_mail(
+                subject,
+                'Please confirm account deletion by clicking the link in the HTML version of this email.',
+                settings.DEFAULT_FROM_EMAIL,
+                [request.user.email],
+                html_message=html_message,
+            )
+            
+            messages.success(
+                request,
+                'Confirmation email sent. Please check your inbox to complete deletion.'
+            )
+            return redirect('home')
+        else:
+            messages.error(request, 'You must confirm account deletion.')
+    
+    return render(request, 'gdpr/delete_account.html')
+
+
+@require_http_methods(["GET", "POST"])
+def delete_account_confirm_view(request, uidb64, token):
+    """
+    Delete account - step 2: Confirm via email link.
+    User clicks link from email, account is permanently deleted.
+    """
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = request.user.__class__.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, request.user.__class__.DoesNotExist):
+        messages.error(request, 'Invalid deletion link.')
+        return redirect('home')
+    
+    if not default_token_generator.check_token(user, token):
+        messages.error(request, 'Invalid or expired deletion link.')
+        return redirect('home')
+    
+    if request.method == 'POST':
+        if request.POST.get('confirm_final_delete') == 'on':
+            # Permanently delete user account
+            user.delete()
+            messages.success(request, 'Your account has been permanently deleted.')
+            logout(request)
+            return redirect('home')
+        else:
+            messages.error(request, 'You must confirm final deletion.')
+    
+    return render(request, 'gdpr/delete_account_confirm.html', {'user': user})
+
+
+def privacy_policy_view(request):
+    """Display privacy policy"""
+    return render(request, 'gdpr/privacy_policy.html')
+
+
+def terms_of_service_view(request):
+    """Display terms of service"""
+    return render(request, 'gdpr/terms_of_service.html')

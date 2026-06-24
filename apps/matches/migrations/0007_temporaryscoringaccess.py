@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ("cric_sessions", "0003_alter_sessionplayer_team"),
+        ("sessions", "0001_initial"),
         ("matches", "0006_innings_single_batting"),
     ]
 
