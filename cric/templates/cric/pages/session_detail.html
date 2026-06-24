@@ -953,8 +953,8 @@
     {# Going card removed — yes-voters are now visible in the Team Balance pool below #}
 </div>
 
-<!-- ── Staff JavaScript ── -->
-{% if user.is_staff %}
+<!-- ── Staff and Authorized Players JavaScript ── -->
+{% if user.is_staff or user_has_scoring_access %}
 {% if edit_match or not matches %}
 <script>
     let team1Name = '{% if edit_team1 %}{{ edit_team1.name }}{% else %}Team 1{% endif %}';
