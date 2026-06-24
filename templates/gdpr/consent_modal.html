@@ -1,5 +1,5 @@
 <!-- GDPR Consent Modal - Show on first login or if consent missing -->
-<div class="modal fade" id="consentModal" tabindex="-1" role="dialog" aria-labelledby="consentModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+<div class="modal fade" id="consentModal" tabindex="-1" role="dialog" aria-labelledby="consentModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false" data-show-modal="{% if show_consent_modal %}true{% else %}false{% endif %}">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -52,46 +52,58 @@
 </div>
 
 <script>
-// Show consent modal if user hasn't accepted terms
+// Show consent modal based on backend flag
 document.addEventListener('DOMContentLoaded', function() {
-  // Check if user has accepted consent
-  const hasConsent = localStorage.getItem('consentAccepted');
-  if (!hasConsent || hasConsent !== 'true') {
-    const consentModal = new bootstrap.Modal(document.getElementById('consentModal'), {
+  const consentModal = document.getElementById('consentModal');
+  if (!consentModal) return;
+
+  // Check if backend set the show-modal flag
+  const shouldShowModal = consentModal.getAttribute('data-show-modal') === 'true';
+  
+  if (shouldShowModal) {
+    const modal = new bootstrap.Modal(consentModal, {
       backdrop: 'static',
       keyboard: false
     });
-    consentModal.show();
+    modal.show();
   }
 
   // Handle form submission
-  document.getElementById('consentForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const form = this;
-    const formData = new FormData(form);
-    
-    fetch(form.action, {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest'
-      }
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.status === 'success') {
-        localStorage.setItem('consentAccepted', 'true');
-        bootstrap.Modal.getInstance(document.getElementById('consentModal')).hide();
-        window.location.reload();
-      } else {
-        alert('Error accepting consent: ' + JSON.stringify(data.errors));
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      alert('Error accepting consent');
+  const consentForm = document.getElementById('consentForm');
+  if (consentForm) {
+    consentForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const form = this;
+      const formData = new FormData(form);
+      
+      fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success') {
+          // Close modal and redirect to dashboard
+          const modal = bootstrap.Modal.getInstance(consentModal);
+          modal.hide();
+          
+          // Redirect to dashboard/home
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 300);
+        } else {
+          alert('Error accepting consent: ' + JSON.stringify(data.errors));
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Error accepting consent');
+      });
     });
-  });
+  }
 });
 </script>
