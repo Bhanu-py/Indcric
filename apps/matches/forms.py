@@ -45,6 +45,10 @@ class TemporaryScoringAccessForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['user'].help_text = 'Select the player to grant scoring access'
         self.fields['session'].help_text = 'Select the session date'
+        # Only show session in the user's choices if needed (not hidden)
+        if 'session' in self.fields and isinstance(self.fields['session'].widget, forms.HiddenInput):
+            # Session is hidden, so don't modify its queryset
+            pass
 
     def clean(self):
         cleaned_data = super().clean()
