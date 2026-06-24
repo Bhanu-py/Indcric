@@ -273,6 +273,17 @@ def session_detail_view(request, session_id):
     session = get_object_or_404(Session, id=session_id)
     is_past = session.date < timezone.now().date()
 
+    # Check if user has valid temporary scoring access for this session (needed early)
+    user_has_scoring_access = False
+    if request.user.is_authenticated:
+        if not request.user.is_staff:
+            user_has_scoring_access = TemporaryScoringAccess.objects.filter(
+                user=request.user,
+                session=session,
+                is_active=True,
+                expires_at__gt=timezone.now()
+            ).exists()
+
     def _combined_rating(u):
         """Avg of batting/bowling/fielding ratings, rounded to 2dp. Defaults each None to 2.5."""
         bat  = u.batting_rating  if u.batting_rating  is not None else Decimal('2.5')
@@ -405,17 +416,6 @@ def session_detail_view(request, session_id):
         from apps.notifications.services import build_group_share_url
         base = request.build_absolute_uri('/')
         whatsapp_share_url = build_group_share_url(session.poll, base)
-
-    # Check if user has valid temporary scoring access for this session
-    user_has_scoring_access = False
-    if request.user.is_authenticated:
-        if not request.user.is_staff:
-            user_has_scoring_access = TemporaryScoringAccess.objects.filter(
-                user=request.user,
-                session=session,
-                is_active=True,
-                expires_at__gt=timezone.now()
-            ).exists()
 
     context = {
         'session': session,
