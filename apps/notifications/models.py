@@ -31,11 +31,56 @@ class BotEvent(models.Model):
         return f"{self.direction} {self.action} from {self.phone} at {self.created_at:%Y-%m-%d %H:%M}"
 
 
+class OutboundMessage(models.Model):
+    """Queue of messages the group-resident bot should post into a WhatsApp group.
+
+    Django is the source of truth and only enqueues; the always-on Node
+    (whatsapp-web.js) bot pulls `pending` rows, posts them, and acks. `BotEvent`
+    stays the audit log — it has no status/claim fields and can't be the queue.
+
+    `dedup_key` (e.g. ``poll_opened:{poll.id}``) is partial-unique so re-saves
+    enqueue at most once. ``claimed`` (distinct from a bare `claimed_at` stamp) is
+    what lets the drainer reclaim crashed-mid-send rows without double-posting.
+    See .claude/features/whatsapp-group-bot.md.
+    """
+    PENDING, CLAIMED, SENT, FAILED = 'pending', 'claimed', 'sent', 'failed'
+    STATUS_CHOICES = [
+        (PENDING, 'Pending'), (CLAIMED, 'Claimed'),
+        (SENT, 'Sent'), (FAILED, 'Failed'),
+    ]
+
+    body = models.TextField()
+    # Group JID or an alias the Node bot resolves to a JID ('community' default).
+    target = models.CharField(max_length=120, default='community')
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default=PENDING, db_index=True,
+    )
+    dedup_key = models.CharField(max_length=80, blank=True, default='')
+    claimed_at = models.DateTimeField(null=True, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    wa_message_id = models.CharField(max_length=100, blank=True, default='')
+    error = models.CharField(max_length=255, blank=True, default='')
+    attempts = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['dedup_key'],
+                condition=~models.Q(dedup_key=''),
+                name='uniq_outbound_dedup',
+            ),
+        ]
+
+    def __str__(self):
+        return f"[{self.status}] → {self.target}: {self.body[:40]}"
+
+
 class ActivityEvent(models.Model):
     """One entry in the club-wide activity feed (the design's Notifications /
     Activity screen). The feed is GLOBAL — every member sees the same timeline;
-    per-user read state lives in :class:`ActivityFeedState` and reactions in
-    :class:`Reaction`.
+    per-user read state lives in :class:`ActivityFeedState`.
 
     Events are emitted by signal receivers in ``signals.py`` when things happen
     elsewhere (a donation lands, a session is created/confirmed, a match
@@ -121,30 +166,6 @@ class ActivityEvent(models.Model):
         if u.startswith('/') or u.startswith('https://') or u.startswith('http://'):
             return u
         return ''
-
-
-class Reaction(models.Model):
-    """A member's emoji reaction on an activity row. One row per (event, user,
-    emoji) — tapping the same emoji again toggles it off."""
-    activity = models.ForeignKey(
-        ActivityEvent, on_delete=models.CASCADE, related_name='reactions'
-    )
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='activity_reactions'
-    )
-    emoji = models.CharField(max_length=8)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['created_at']
-        constraints = [
-            models.UniqueConstraint(
-                fields=['activity', 'user', 'emoji'], name='uniq_reaction_per_user_emoji'
-            ),
-        ]
-
-    def __str__(self):
-        return f"{self.user} {self.emoji} on {self.activity_id}"
 
 
 class ActivityFeedState(models.Model):

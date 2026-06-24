@@ -73,6 +73,9 @@ const client = new Client({
     // one is fine, so leave CHROMIUM_PATH unset locally.
     executablePath: process.env.CHROMIUM_PATH || undefined,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    // Give the WhatsApp Web inject more headroom on a cold/slow start so we don't
+    // hit "Runtime.callFunctionOn timed out" before READY.
+    protocolTimeout: 120000,
   },
 });
 
@@ -102,6 +105,10 @@ client.on('ready', async () => {
   } catch (e) {
     console.error('[READY] getChats failed:', e.message);
   }
+  try {
+    const me = client.info && client.info.wid && client.info.wid._serialized;
+    console.log('[ME] bot is logged in as:', toE164(me), '— do NOT send test messages from this number.');
+  } catch (_) {}
   console.log('========================================================\n');
 
   if (TARGET_GROUP_JID && SEND_HELLO) {
@@ -179,6 +186,17 @@ client.on('message', async (msg) => {
 
   // Anything else: in production a command (HELP/STATUS/…) would get a text reply.
   console.log('        (not an RSVP — a command/other; Phase 1 routes this to the dispatcher)');
+});
+
+// DIAGNOSTIC (Phase 0 debug): fires for EVERY group message incl. the bot's own.
+// If !ping shows up here with fromMe=true but NOT under [GROUP MSG], you're
+// sending from the bot's own number — test from a DIFFERENT person's WhatsApp.
+// If NOTHING logs here either, the bot isn't receiving the group at all.
+client.on('message_create', (msg) => {
+  const isGroup = msg.from && msg.from.endsWith('@g.us');
+  if (!isGroup) return;
+  const author = msg.author || msg.from;
+  console.log(`[MSG_CREATE] author=${toE164(author)} fromMe=${msg.fromMe} body=${JSON.stringify((msg.body || '').trim())}`);
 });
 
 // ── INPUT MODE 2: reactions (👍 yes / 👎 no on our RSVP message) ──

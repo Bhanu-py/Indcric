@@ -1,7 +1,6 @@
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 
-
 class Match(models.Model):
     # Deleting a match removes its activity-feed rows (e.g. the result entry).
     feed_events = GenericRelation('notifications.ActivityEvent')
@@ -42,7 +41,18 @@ class Match(models.Model):
 
     def __str__(self):
         return f"{self.name} in {self.session.name}"
+from django.db import connections
+from decimal import Decimal
 
+class Session(models.Model):
+    # assuming cric_sessions.Session already exists, add this for previous session
+    matches = models.ManyToManyField('Match', related_name='previous_sessions')
+
+    def get_previous_session(self):
+        try:
+            return self.matches.filter(is_completed=True)[0]
+        except IndexError:
+            return None
 
 class Team(models.Model):
     match = models.ForeignKey(Match, on_delete=models.CASCADE, related_name='teams')
@@ -72,6 +82,8 @@ class Player(models.Model):
 
     def __str__(self):
         return self.user.username
+
+
 
 
 class Innings(models.Model):

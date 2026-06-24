@@ -15,13 +15,22 @@ def _round_to_half(value):
 
 
 def _normalize_phone(raw):
-    """Strip whitespace, enforce leading '+', return canonical form."""
+    """Canonicalise to '+<digits>' E.164: strip spaces/dashes/parens, enforce '+'.
+
+    The inbound WhatsApp webhook stores '+'-prefixed, digits-only numbers, and
+    the wa.me deep links the group share builds are digits-only — so a member who
+    typed '+32 471 12 34 56' must be stored as '+32471123456' or those lookups
+    miss them. We keep only the leading '+' and the digits.
+    """
     phone = (raw or '').strip()
     if not phone:
         raise forms.ValidationError('WhatsApp number is required.')
     if not phone.startswith('+'):
         raise forms.ValidationError('Phone must start with + and country code, e.g. +32471123456')
-    return phone
+    digits = ''.join(ch for ch in phone if ch.isdigit())
+    if not digits:
+        raise forms.ValidationError('Phone must include digits, e.g. +32471123456')
+    return '+' + digits
 
 
 class CustomSignupForm(SignupForm):

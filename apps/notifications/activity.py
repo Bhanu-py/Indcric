@@ -3,8 +3,7 @@
 `emit()` is the single entry point signal receivers (and any future caller) use
 to drop a row into the club-wide feed. `KIND_STYLE` maps each event kind to its
 row icon + colour and the tab it belongs to, mirroring the design's ROW_CFG in
-design_handoff/ui_kits/indcric_web/NotificationsScreen.jsx. `REACTION_EMOJIS` is
-the fixed tap-to-react palette.
+design_handoff/ui_kits/indcric_web/NotificationsScreen.jsx.
 """
 import logging
 
@@ -14,9 +13,6 @@ from django.db import transaction
 from .models import ActivityEvent
 
 logger = logging.getLogger(__name__)
-
-# Fixed reaction palette — tap to toggle. Kept short so the bar stays mobile-tidy.
-REACTION_EMOJIS = ['👍', '❤️', '🔥', '🏏']
 
 # kind -> row presentation. `tab` is which filter tab the row falls under
 # (None = only ever shows under "All"). Colours are Tailwind utility classes;

@@ -108,7 +108,7 @@ from django.utils import timezone
 
 from apps.donations.models import Donation, DonationCampaign
 from apps.notifications.models import (
-    ActivityEvent, ActivityFeedState, Reaction, unread_count_for,
+    ActivityEvent, ActivityFeedState, unread_count_for,
 )
 from apps.payments.models import Payment
 from apps.polls.models import Poll, Vote
@@ -305,19 +305,6 @@ class ActivityViewTests(TestCase):
         self.assertContains(resp, "Riya donated")
         self.assertNotContains(resp, "Sam paid")
 
-    def test_react_toggles(self):
-        self.client.force_login(self.user)
-        url = reverse('activity_react', args=[self.donation_ev.id])
-        self.client.post(url, {'emoji': '👍'})
-        self.assertEqual(Reaction.objects.filter(activity=self.donation_ev, emoji='👍').count(), 1)
-        self.client.post(url, {'emoji': '👍'})   # tap again → toggle off
-        self.assertEqual(Reaction.objects.filter(activity=self.donation_ev, emoji='👍').count(), 0)
-
-    def test_react_rejects_unknown_emoji(self):
-        self.client.force_login(self.user)
-        self.client.post(reverse('activity_react', args=[self.donation_ev.id]), {'emoji': '💩'})
-        self.assertEqual(Reaction.objects.filter(activity=self.donation_ev).count(), 0)
-
     def test_mark_all_read_view_resets_and_oob_bell(self):
         self.client.force_login(self.user)
         resp = self.client.post(reverse('activity_read_all'), {'tab': 'all'}, HTTP_HX_REQUEST='true')
@@ -325,3 +312,120 @@ class ActivityViewTests(TestCase):
         self.assertContains(resp, 'hx-swap-oob="true"')      # bell OOB update
         self.assertTrue(ActivityFeedState.objects.filter(user=self.user).exists())
         self.assertEqual(unread_count_for(self.user), 0)
+
+
+# ─────────────────────── Group-bot Phase 1 (inbound) ───────────────────────
+
+import json
+
+from django.test import override_settings
+
+from apps.notifications.models import OutboundMessage
+
+
+@override_settings(WHATSAPP_APP_SECRET='')
+class MetaPathCharacterizationTests(TestCase):
+    """Lock the EXISTING Meta Cloud-API DM behaviour before/after the
+    dispatch_inbound refactor: a webhook RSVP records a Vote AND sends a DM
+    confirmation via send_text_message. If this breaks, the refactor regressed.
+
+    WHATSAPP_APP_SECRET='' runs the webhook in dev mode (signature check skipped)
+    — this test exercises dispatch, not signature verification."""
+
+    def setUp(self):
+        self.member = User.objects.create_user(username="rohan", first_name="Rohan", password="x")
+        self.member.phone = "+32470000001"
+        self.member.save()
+        self.session = Session.objects.create(
+            name="Sunday Nets", duration=Decimal("2"),
+            date=date(2026, 6, 21), time=time(18, 0), location="Hall",
+        )
+        self.poll = Poll.objects.create(session=self.session)
+
+    @patch("apps.notifications.services.send_text_message")
+    def test_meta_webhook_rsvp_records_vote_and_dms(self, mock_send):
+        payload = {'entry': [{'changes': [{'value': {'messages': [
+            {'id': 'm1', 'from': '32470000001', 'type': 'text', 'text': {'body': 'YES'}}
+        ]}}]}]}
+        resp = self.client.post(
+            reverse('bot_whatsapp'), data=json.dumps(payload),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(
+            Vote.objects.filter(poll=self.poll, user=self.member, choice='yes').exists()
+        )
+        mock_send.assert_called_once()  # DM confirmation — Meta path unchanged
+
+
+@override_settings(BOT_INBOUND_TOKEN='tok', WHATSAPP_BOT_NUMBER='+32465110367')
+class GroupInboundTests(TestCase):
+    """The new /api/bot/inbound/ endpoint: records group votes, reacts ✅/❌,
+    queues command replies, and makes ZERO Cloud-API calls for group traffic."""
+
+    def setUp(self):
+        self.member = User.objects.create_user(username="rohan", first_name="Rohan", password="x")
+        self.member.phone = "+32470000001"
+        self.member.save()
+        self.session = Session.objects.create(
+            name="Sunday Nets", duration=Decimal("2"),
+            date=date(2026, 6, 21), time=time(18, 0), location="Hall",
+        )
+        self.poll = Poll.objects.create(session=self.session)
+        self.url = reverse('bot_inbound')
+
+    def _post(self, payload, token='tok'):
+        return self.client.post(
+            f"{self.url}?token={token}",
+            data=json.dumps(payload), content_type='application/json',
+        )
+
+    def test_requires_token(self):
+        resp = self._post({'from': '32470000001', 'wa_message_id': 'g1', 'text': 'YES'}, token='wrong')
+        self.assertEqual(resp.status_code, 401)
+        self.assertFalse(Vote.objects.exists())
+
+    @patch("apps.notifications.services.send_text_message")
+    def test_group_text_yes_records_vote_reacts_and_no_cloud_calls(self, mock_send):
+        resp = self._post({'from': '32470000001', 'wa_message_id': 'g2', 'text': 'YES', 'kind': 'text'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(
+            Vote.objects.filter(poll=self.poll, user=self.member, choice='yes').exists()
+        )
+        self.assertEqual(resp.json()['actions'][0]['emoji'], '✅')
+        mock_send.assert_not_called()
+
+    @patch("apps.notifications.services.send_text_message")
+    def test_skin_tone_reaction_records_yes(self, mock_send):
+        # 👍🏾 — the skin-tone modifier must not defeat the match (Phase 0 bug).
+        self._post({'from': '32470000001', 'wa_message_id': 'g3', 'kind': 'reaction', 'emoji': '👍🏾'})
+        self.assertTrue(
+            Vote.objects.filter(poll=self.poll, user=self.member, choice='yes').exists()
+        )
+        mock_send.assert_not_called()
+
+    def test_poll_vote_records_no(self):
+        self._post({'from': '32470000001', 'wa_message_id': 'g4', 'kind': 'poll_vote', 'selected': ['No ❌']})
+        self.assertTrue(
+            Vote.objects.filter(poll=self.poll, user=self.member, choice='no').exists()
+        )
+
+    @patch("apps.notifications.services.send_text_message")
+    def test_group_help_from_unknown_queues_text_no_cloud_calls(self, mock_send):
+        resp = self._post({'from': '32499999999', 'wa_message_id': 'g5', 'text': 'HELP'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(OutboundMessage.objects.filter(target='community').exists())
+        mock_send.assert_not_called()  # critical: no paid DM to a closed window
+
+    def test_self_activity_ignored(self):
+        resp = self._post({'from': '32465110367', 'wa_message_id': 'g6', 'kind': 'reaction', 'emoji': '✅'})
+        self.assertEqual(resp.json().get('ignored'), 'self')
+        self.assertFalse(Vote.objects.exists())
+
+    def test_duplicate_inbound_is_idempotent(self):
+        p = {'from': '32470000001', 'wa_message_id': 'g7', 'text': 'NO'}
+        self._post(p)
+        self._post(p)  # same wa_message_id → BotEvent unique swallows it
+        self.assertEqual(
+            Vote.objects.filter(poll=self.poll, user=self.member).count(), 1
+        )

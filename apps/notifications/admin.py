@@ -1,5 +1,13 @@
 from django.contrib import admin
-from .models import ActivityEvent, ActivityFeedState, BotEvent, Reaction
+from .models import ActivityEvent, ActivityFeedState, BotEvent, OutboundMessage
+
+
+@admin.register(OutboundMessage)
+class OutboundMessageAdmin(admin.ModelAdmin):
+    list_display = ('created_at', 'status', 'target', 'body', 'attempts', 'sent_at')
+    list_filter = ('status', 'target')
+    search_fields = ('body', 'dedup_key', 'wa_message_id')
+    readonly_fields = ('created_at', 'claimed_at', 'sent_at')
 
 
 @admin.register(BotEvent)
@@ -16,12 +24,6 @@ class ActivityEventAdmin(admin.ModelAdmin):
     list_filter = ('kind',)
     search_fields = ('body', 'context', 'actor__username')
     readonly_fields = ('created_at',)
-
-
-@admin.register(Reaction)
-class ReactionAdmin(admin.ModelAdmin):
-    list_display = ('created_at', 'activity', 'user', 'emoji')
-    search_fields = ('user__username', 'emoji')
 
 
 @admin.register(ActivityFeedState)

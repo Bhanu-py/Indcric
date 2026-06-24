@@ -7,7 +7,6 @@ from django.contrib import messages
 from .models import Match, Team, Player, Innings
 from . import scoring
 
-
 @login_required
 def scorecard_view(request, match_id):
     """Read-only scorecard for everyone — both innings, batting/bowling cards,
