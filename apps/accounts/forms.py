@@ -86,18 +86,25 @@ class CustomSignupForm(SignupForm):
         
         # Create UserConsent record
         from apps.gdpr.models import UserConsent
+        try:
+            ip_address = self._get_client_ip(request) if request else None
+        except Exception:
+            ip_address = None
+        
         UserConsent.objects.create(
             user=user,
             privacy_policy_accepted=self.cleaned_data.get('privacy_policy_accepted', False),
             terms_accepted=self.cleaned_data.get('terms_accepted', False),
             whatsapp_accepted=self.cleaned_data.get('whatsapp_accepted', False),
-            ip_address=self._get_client_ip(request),
+            ip_address=ip_address,
         )
         
         return user
 
     def _get_client_ip(self, request):
         """Extract client IP address from request"""
+        if not request:
+            return None
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
             ip = x_forwarded_for.split(',')[0]

@@ -1,48 +1,52 @@
 <!-- GDPR Consent Modal - Show on first login or if consent missing -->
+<!-- This modal uses Bootstrap 5 and displays as a fullscreen overlay -->
 <div class="modal fade" id="consentModal" tabindex="-1" role="dialog" aria-labelledby="consentModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false" data-show-modal="{% if show_consent_modal %}true{% else %}false{% endif %}">
-  <div class="modal-dialog modal-dialog-centered" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="consentModalLabel">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content" style="border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+      <div class="modal-header" style="border-bottom: 1px solid #e5e7eb; padding: 24px;">
+        <h5 class="modal-title" id="consentModalLabel" style="font-size: 1.5rem; font-weight: 700;">
           ⚖️ Legal Consent Required
         </h5>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="padding: 32px;">
         <form id="consentForm" method="post" action="{% url 'gdpr:consent_accept' %}">
           {% csrf_token %}
-          <div class="mb-3">
-            <p class="text-muted small">
+          <div class="mb-4">
+            <p class="text-muted" style="font-size: 1rem; line-height: 1.5;">
               Please review and accept our terms to continue using Indcric.
             </p>
           </div>
 
-          <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" name="privacy_policy_accepted" id="privacyCheck" required>
-            <label class="form-check-label" for="privacyCheck">
-              I accept the <a href="{% url 'gdpr:privacy_policy' %}" target="_blank">Privacy Policy</a>
-            </label>
+          <div style="background-color: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" name="privacy_policy_accepted" id="privacyCheck" required style="width: 20px; height: 20px; margin-top: 4px;">
+              <label class="form-check-label" for="privacyCheck" style="margin-left: 12px; font-size: 1rem;">
+                I accept the <a href="{% url 'gdpr:privacy_policy' %}" target="_blank" style="color: #2563eb; text-decoration: none;">Privacy Policy</a>
+              </label>
+            </div>
+
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" name="terms_accepted" id="termsCheck" required style="width: 20px; height: 20px; margin-top: 4px;">
+              <label class="form-check-label" for="termsCheck" style="margin-left: 12px; font-size: 1rem;">
+                I accept the <a href="{% url 'gdpr:terms_of_service' %}" target="_blank" style="color: #2563eb; text-decoration: none;">Terms of Service</a>
+              </label>
+            </div>
+
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="whatsapp_accepted" id="whatsappCheck" required style="width: 20px; height: 20px; margin-top: 4px;">
+              <label class="form-check-label" for="whatsappCheck" style="margin-left: 12px; font-size: 1rem;">
+                I understand that WhatsApp is required to vote on polls
+              </label>
+            </div>
           </div>
 
-          <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" name="terms_accepted" id="termsCheck" required>
-            <label class="form-check-label" for="termsCheck">
-              I accept the <a href="{% url 'gdpr:terms_of_service' %}" target="_blank">Terms of Service</a>
-            </label>
+          <div style="background-color: #e0f2fe; border-left: 4px solid #0284c7; padding: 16px; border-radius: 6px; margin-bottom: 24px;">
+            <p style="margin: 0; font-size: 0.95rem; color: #0c4a6e;">
+              <strong>Note:</strong> WhatsApp is optional for scoring but required to participate in voting. You can review our policies anytime in Account Settings.
+            </p>
           </div>
 
-          <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" name="whatsapp_accepted" id="whatsappCheck" required>
-            <label class="form-check-label" for="whatsappCheck">
-              I understand that WhatsApp is required to vote on polls
-            </label>
-          </div>
-
-          <div class="alert alert-info small" role="alert">
-            <strong>Note:</strong> WhatsApp is optional for scoring but required to participate in voting. 
-            You can review our policies anytime in Account Settings.
-          </div>
-
-          <button type="submit" class="btn btn-primary w-100">
+          <button type="submit" class="btn btn-primary w-100" style="padding: 12px 24px; font-size: 1rem; font-weight: 600; border-radius: 8px;">
             Accept & Continue
           </button>
         </form>
@@ -61,6 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const shouldShowModal = consentModal.getAttribute('data-show-modal') === 'true';
   
   if (shouldShowModal) {
+    // Use Bootstrap 5 modal
     const modal = new bootstrap.Modal(consentModal, {
       backdrop: 'static',
       keyboard: false
@@ -88,13 +93,15 @@ document.addEventListener('DOMContentLoaded', function() {
       .then(data => {
         if (data.status === 'success') {
           // Close modal and redirect to dashboard
-          const modal = bootstrap.Modal.getInstance(consentModal);
-          modal.hide();
+          try {
+            const modal = bootstrap.Modal.getInstance(consentModal);
+            if (modal) modal.hide();
+          } catch (e) {}
           
           // Redirect to dashboard/home
           setTimeout(() => {
             window.location.href = '/';
-          }, 300);
+          }, 500);
         } else {
           alert('Error accepting consent: ' + JSON.stringify(data.errors));
         }
