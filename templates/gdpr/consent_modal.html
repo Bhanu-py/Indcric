@@ -1,53 +1,90 @@
-<!-- GDPR Consent Modal - Show on first login or if consent missing -->
-<!-- This modal uses Bootstrap 5 and displays as a fullscreen overlay -->
-<div class="modal fade" id="consentModal" tabindex="-1" role="dialog" aria-labelledby="consentModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false" data-show-modal="{% if show_consent_modal %}true{% else %}false{% endif %}">
-  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-    <div class="modal-content" style="border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-      <div class="modal-header" style="border-bottom: 1px solid #e5e7eb; padding: 24px;">
-        <h5 class="modal-title" id="consentModalLabel" style="font-size: 1.5rem; font-weight: 700;">
-          ⚖️ Legal Consent Required
-        </h5>
+<!-- GDPR Consent Modal - Alpine.js Modal for Tailwind CSS -->
+<div x-data="consentModal()" @keydown.escape="open = false" x-cloak
+     id="consentModal" data-show-modal="{% if show_consent_modal %}true{% else %}false{% endif %}">
+  <!-- Backdrop -->
+  <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300"
+       :class="{ 'opacity-0 pointer-events-none': !open, 'opacity-100': open }"
+       @click="open = false">
+  </div>
+
+  <!-- Modal -->
+  <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
+       :class="{ 'opacity-0 pointer-events-none': !open, 'opacity-100': open }"
+       style="transition: opacity 0.3s ease-in-out;">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <!-- Header -->
+      <div class="px-8 py-6 border-b border-stone-200 bg-gradient-to-r from-stone-50 to-white">
+        <h2 class="text-2xl font-bold text-stone-900">⚖️ Legal Consent Required</h2>
+        <p class="text-sm text-stone-600 mt-1">Please review and accept our terms to continue</p>
       </div>
-      <div class="modal-body" style="padding: 32px;">
-        <form id="consentForm" method="post" action="{% url 'gdpr:consent_accept' %}">
+
+      <!-- Body -->
+      <div class="px-8 py-6">
+        <form @submit.prevent="handleSubmit" id="consentForm">
           {% csrf_token %}
-          <div class="mb-4">
-            <p class="text-muted" style="font-size: 1rem; line-height: 1.5;">
-              Please review and accept our terms to continue using Indcric.
-            </p>
+          
+          <!-- Consent Checkboxes -->
+          <div class="space-y-4 mb-6">
+            <!-- Privacy Policy -->
+            <label class="flex items-start gap-3 p-4 bg-stone-50 rounded-lg hover:bg-stone-100 transition cursor-pointer">
+              <input type="checkbox" name="privacy_policy_accepted" 
+                     class="mt-1 w-5 h-5 rounded border-stone-300 text-blue-600 focus:ring-blue-500"
+                     required @change="checkAllFilled">
+              <div class="flex-1">
+                <span class="font-medium text-stone-900">Privacy Policy</span>
+                <p class="text-sm text-stone-600 mt-0.5">
+                  I accept the <a href="{% url 'gdpr:privacy_policy' %}" target="_blank" class="text-blue-600 hover:underline">Privacy Policy</a>
+                </p>
+              </div>
+            </label>
+
+            <!-- Terms of Service -->
+            <label class="flex items-start gap-3 p-4 bg-stone-50 rounded-lg hover:bg-stone-100 transition cursor-pointer">
+              <input type="checkbox" name="terms_accepted" 
+                     class="mt-1 w-5 h-5 rounded border-stone-300 text-blue-600 focus:ring-blue-500"
+                     required @change="checkAllFilled">
+              <div class="flex-1">
+                <span class="font-medium text-stone-900">Terms of Service</span>
+                <p class="text-sm text-stone-600 mt-0.5">
+                  I accept the <a href="{% url 'gdpr:terms_of_service' %}" target="_blank" class="text-blue-600 hover:underline">Terms of Service</a>
+                </p>
+              </div>
+            </label>
+
+            <!-- WhatsApp Consent -->
+            <label class="flex items-start gap-3 p-4 bg-stone-50 rounded-lg hover:bg-stone-100 transition cursor-pointer">
+              <input type="checkbox" name="whatsapp_accepted" 
+                     class="mt-1 w-5 h-5 rounded border-stone-300 text-blue-600 focus:ring-blue-500"
+                     required @change="checkAllFilled">
+              <div class="flex-1">
+                <span class="font-medium text-stone-900">WhatsApp for Voting</span>
+                <p class="text-sm text-stone-600 mt-0.5">
+                  I understand that WhatsApp is required to vote on polls
+                </p>
+              </div>
+            </label>
           </div>
 
-          <div style="background-color: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
-            <div class="form-check mb-3">
-              <input class="form-check-input" type="checkbox" name="privacy_policy_accepted" id="privacyCheck" required style="width: 20px; height: 20px; margin-top: 4px;">
-              <label class="form-check-label" for="privacyCheck" style="margin-left: 12px; font-size: 1rem;">
-                I accept the <a href="{% url 'gdpr:privacy_policy' %}" target="_blank" style="color: #2563eb; text-decoration: none;">Privacy Policy</a>
-              </label>
-            </div>
-
-            <div class="form-check mb-3">
-              <input class="form-check-input" type="checkbox" name="terms_accepted" id="termsCheck" required style="width: 20px; height: 20px; margin-top: 4px;">
-              <label class="form-check-label" for="termsCheck" style="margin-left: 12px; font-size: 1rem;">
-                I accept the <a href="{% url 'gdpr:terms_of_service' %}" target="_blank" style="color: #2563eb; text-decoration: none;">Terms of Service</a>
-              </label>
-            </div>
-
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="whatsapp_accepted" id="whatsappCheck" required style="width: 20px; height: 20px; margin-top: 4px;">
-              <label class="form-check-label" for="whatsappCheck" style="margin-left: 12px; font-size: 1rem;">
-                I understand that WhatsApp is required to vote on polls
-              </label>
-            </div>
-          </div>
-
-          <div style="background-color: #e0f2fe; border-left: 4px solid #0284c7; padding: 16px; border-radius: 6px; margin-bottom: 24px;">
-            <p style="margin: 0; font-size: 0.95rem; color: #0c4a6e;">
+          <!-- Info Message -->
+          <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
+            <p class="text-sm text-blue-900">
               <strong>Note:</strong> WhatsApp is optional for scoring but required to participate in voting. You can review our policies anytime in Account Settings.
             </p>
           </div>
 
-          <button type="submit" class="btn btn-primary w-100" style="padding: 12px 24px; font-size: 1rem; font-weight: 600; border-radius: 8px;">
-            Accept & Continue
+          <!-- Submit Button -->
+          <button type="submit"
+                  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200"
+                  :disabled="!allFilled"
+                  :class="{ 'opacity-50 cursor-not-allowed': !allFilled }">
+            <span x-show="!submitting">Accept & Continue</span>
+            <span x-show="submitting" class="flex items-center justify-center gap-2">
+              <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Processing...
+            </span>
           </button>
         </form>
       </div>
@@ -56,61 +93,68 @@
 </div>
 
 <script>
-// Show consent modal based on backend flag
-document.addEventListener('DOMContentLoaded', function() {
-  const consentModal = document.getElementById('consentModal');
-  if (!consentModal) return;
+function consentModal() {
+  return {
+    open: false,
+    allFilled: false,
+    submitting: false,
+    
+    init() {
+      // Check if we should show modal on page load
+      const shouldShow = document.getElementById('consentModal')?.getAttribute('data-show-modal') === 'true';
+      if (shouldShow) {
+        this.open = true;
+      }
+    },
 
-  // Check if backend set the show-modal flag
-  const shouldShowModal = consentModal.getAttribute('data-show-modal') === 'true';
-  
-  if (shouldShowModal) {
-    // Use Bootstrap 5 modal
-    const modal = new bootstrap.Modal(consentModal, {
-      backdrop: 'static',
-      keyboard: false
-    });
-    modal.show();
-  }
-
-  // Handle form submission
-  const consentForm = document.getElementById('consentForm');
-  if (consentForm) {
-    consentForm.addEventListener('submit', function(e) {
-      e.preventDefault();
+    checkAllFilled() {
+      const form = document.getElementById('consentForm');
+      if (!form) {
+        this.allFilled = false;
+        return;
+      }
       
-      const form = this;
+      const privacy = form.querySelector('input[name="privacy_policy_accepted"]').checked;
+      const terms = form.querySelector('input[name="terms_accepted"]').checked;
+      const whatsapp = form.querySelector('input[name="whatsapp_accepted"]').checked;
+      
+      this.allFilled = privacy && terms && whatsapp;
+    },
+
+    async handleSubmit() {
+      if (this.submitting) return;
+      this.submitting = true;
+
+      const form = document.getElementById('consentForm');
       const formData = new FormData(form);
-      
-      fetch(form.action, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest'
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
+
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+          }
+        });
+
+        const data = await response.json();
+
         if (data.status === 'success') {
-          // Close modal and redirect to dashboard
-          try {
-            const modal = bootstrap.Modal.getInstance(consentModal);
-            if (modal) modal.hide();
-          } catch (e) {}
-          
-          // Redirect to dashboard/home
+          // Close modal and redirect
+          this.open = false;
           setTimeout(() => {
             window.location.href = '/';
           }, 500);
         } else {
-          alert('Error accepting consent: ' + JSON.stringify(data.errors));
+          alert('Error: ' + (data.message || 'Failed to accept consent'));
+          this.submitting = false;
         }
-      })
-      .catch(error => {
+      } catch (error) {
         console.error('Error:', error);
         alert('Error accepting consent');
-      });
-    });
+        this.submitting = false;
+      }
+    }
   }
-});
+}
 </script>
