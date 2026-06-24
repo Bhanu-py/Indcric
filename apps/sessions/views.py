@@ -639,7 +639,7 @@ def add_match_view(request, session_id):
     
     # Check permission: staff OR player with valid scoring access for this session
     has_permission = request.user.is_staff
-    if not has_permission and request.user.is_authenticated:
+    if not has_permission:
         has_permission = TemporaryScoringAccess.objects.filter(
             user=request.user,
             session=session,
