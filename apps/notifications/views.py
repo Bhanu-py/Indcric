@@ -191,7 +191,8 @@ def _dm_sink(phone):
     return _send
 
 
-def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None):
+def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None,
+                     allow_text_rsvp=True, reply_unknown=True, lid='', wa_name=''):
     """Shared inbound parser + dispatcher for BOTH the Meta Cloud-API webhook
     and the group-resident bot's /api/bot/inbound/ endpoint.
 
@@ -200,6 +201,15 @@ def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None
     payload stored verbatim in the BotEvent audit row. Returns a small result
     dict describing what happened so the group endpoint can translate an RSVP
     into an emoji reaction (✅/❌) instead of a text post.
+
+    `allow_text_rsvp`: when False, typed 'yes'/'no' is NOT counted as a vote.
+    Used for GROUP text — members say "yes"/"no" in normal conversation, so free
+    text must not record RSVPs. Group votes come ONLY from native poll votes and
+    reactions on the bot's own message (the endpoint forwards those as a vote
+    with allow_text_rsvp=True). DMs to the bot keep text RSVP (the deep link
+    sends 'YES <session_id>').
+    `reply_unknown`: when False, an unrecognised message is ignored silently — so
+    the bot doesn't reply to every non-command line typed in the group.
     """
     if reply is None:
         reply = _dm_sink(phone)
@@ -209,16 +219,18 @@ def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None
     if not text:
         return {'kind': 'empty'}
 
-    rsvp = RSVP_PATTERN.match(text)
-    if rsvp:
-        token = rsvp.group(1).lower()
-        session_id = int(rsvp.group(2)) if rsvp.group(2) else None
-        choice = 'yes' if token in ('yes', 'y', '✅', '1') else 'no'
-        result = _handle_rsvp(
-            wa_message_id, phone, choice, raw,
-            session_id=session_id, reply=reply, chat=chat,
-        )
-        return {'kind': 'rsvp', **(result or {})}
+    if allow_text_rsvp:
+        rsvp = RSVP_PATTERN.match(text)
+        if rsvp:
+            token = rsvp.group(1).lower()
+            session_id = int(rsvp.group(2)) if rsvp.group(2) else None
+            choice = 'yes' if token in ('yes', 'y', '✅', '1') else 'no'
+            result = _handle_rsvp(
+                wa_message_id, phone, choice, raw,
+                session_id=session_id, reply=reply, chat=chat,
+                lid=lid, wa_name=wa_name,
+            )
+            return {'kind': 'rsvp', **(result or {})}
 
     text_lower = text.lower()
     if text_lower in ('balance', 'bal', '/balance', 'wallet'):
@@ -237,9 +249,12 @@ def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None
         _handle_help(wa_message_id, phone, raw, reply=reply)
         return {'kind': 'command', 'command': 'help'}
     else:
-        logger.info('Unrecognised WhatsApp message from %s: %s', phone, text)
-        _handle_unknown(wa_message_id, phone, text, raw, reply=reply)
-        return {'kind': 'unknown'}
+        if reply_unknown:
+            logger.info('Unrecognised WhatsApp message from %s: %s', phone, text)
+            _handle_unknown(wa_message_id, phone, text, raw, reply=reply)
+            return {'kind': 'unknown'}
+        logger.info('Ignored group message from %s: %s', phone, text)
+        return {'kind': 'ignored'}
 
 
 def _process_message(msg, value):
@@ -254,29 +269,48 @@ def _process_message(msg, value):
     dispatch_inbound(wa_message_id, phone, text, chat='dm', raw=msg)
 
 
-def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None, reply=None, chat='dm'):
+def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None, reply=None,
+                 chat='dm', lid='', wa_name=''):
     """Record an inbound RSVP. Confirms via the reply sink on the DM path; on the
     group path stays silent here (the /api/bot/inbound/ endpoint reacts ✅/❌ to
     the member's message — per-vote text would flood the group).
 
-    If session_id is given (from a wa.me deep link), target that specific
-    session's poll; otherwise fall back to the latest open poll. Returns a result
-    dict: {'recorded': bool, 'choice': str, 'reason': str?}.
+    Identity: match on phone (DM / wa.me path) first, then on `lid` (group path —
+    Community/privacy groups expose only a WhatsApp LID, never the number). An
+    unknown LID is logged WITH the member's `wa_name` so an admin can map it to a
+    user (set User.wa_lid). Returns {'recorded': bool, 'choice': str, 'reason'?}.
     """
     from apps.polls.models import Poll, Vote
     if reply is None:
         reply = _dm_sink(phone)
 
+    # Identity match, in order of confidence:
+    #   1. phone        — DM / wa.me path, or a group that exposes @c.us numbers
+    #   2. wa_lid       — already-learned LID for this group member
+    #   3. wa_name      — the WhatsApp display name (from the roster), used the
+    #                     first time a member votes; we then LEARN their wa_lid.
     user = User.objects.filter(phone=phone).first()
+    if user is None and lid:
+        user = User.objects.filter(wa_lid=lid).first()
+    if user is None and wa_name:
+        named = list(User.objects.filter(wa_name__iexact=wa_name)[:2])
+        if len(named) == 1:                      # unique name → confident match
+            user = named[0]
 
-    payload = {'raw': raw, 'requested_session_id': session_id, 'choice': choice}
+    # Learn the LID for next time, so future votes match directly (tier 2).
+    if user is not None and lid and user.wa_lid != lid:
+        User.objects.filter(pk=user.pk).update(wa_lid=lid)
+
+    payload = {'raw': raw, 'requested_session_id': session_id, 'choice': choice,
+               'lid': lid, 'wa_name': wa_name}
     if not _log_inbound(wa_message_id, phone, user, 'rsvp', payload):
         return {'recorded': False, 'reason': 'duplicate', 'choice': choice}
 
     if user is None:
-        logger.warning('WhatsApp RSVP from unknown phone %s', phone)
+        logger.warning('WhatsApp RSVP from unknown identity phone=%s lid=%s name=%r',
+                       phone, lid, wa_name)
         reply(bot_messages.not_recognised())
-        return {'recorded': False, 'reason': 'unknown_phone', 'choice': choice}
+        return {'recorded': False, 'reason': 'unknown_identity', 'choice': choice}
 
     poll_obj = None
     if session_id is not None:

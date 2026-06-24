@@ -122,6 +122,9 @@ BOT_WEBHOOK_TOKEN = os.getenv("BOT_WEBHOOK_TOKEN", "")
 # That endpoint WRITES Vote rows from group messages, so it must not share the
 # read-only reminder/keepalive token above. See whatsapp-group-bot.md.
 BOT_INBOUND_TOKEN = os.getenv("BOT_INBOUND_TOKEN", "")
+# Master switch for auto-posting club updates into the WhatsApp group. Off until
+# the Node group bot is deployed, so OutboundMessage rows don't pile up undrained.
+WHATSAPP_GROUP_BOT_ENABLED = os.getenv("WHATSAPP_GROUP_BOT_ENABLED", "") == "1"
 
 # WhatsApp Cloud API
 WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")

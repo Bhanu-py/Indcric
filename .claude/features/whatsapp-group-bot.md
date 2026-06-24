@@ -297,8 +297,29 @@ Django: `OutboundMessage` model + migration; `_check_bot_token` helper; **`clean
 
 **NOT yet built:** the Node side (poll `WA_GROUP_JID`, strip author→E.164, POST `/api/bot/inbound/`, perform the returned `react` action) — that's wired in Phase 2 alongside the outbound drain. **RSVP confirmation is emoji-react (returned as an action); command replies queue as text** — matches the locked decision.
 
-### Phase 2 — Post (Django → group)
+### Phase 2 — Post (Django → group) — 🟡 QUEUE API BUILT 2026-06-19
 Django: `outbound_drain` (with claimed-status + reclaim window) + `outbound_ack`; new `build_group_rsvp_text` composer; enqueue from `on_poll`/`on_session`(confirmed)/`on_match`/gated `on_donation`/`save_teams_view`; admin `list_filter`. Node: poll loop → send → ack, Gaussian jitter; local re-send guard. **Exit:** creating a poll auto-posts the invite within ~30s; dedupe prevents reposts; crash-after-claim doesn't double-post.
+
+**Built (Django, on `feature/whatsapp-group-bot`):**
+- `GET /api/bot/outbound/` (`outbound_drain`) — token-auth (`BOT_WEBHOOK_TOKEN`); claims up to `limit` rows in one `select_for_update(skip_locked=True)` atomic batch; flips PENDING→CLAIMED with `claimed_at`; **reclaims** CLAIMED rows older than `CLAIM_RECLAIM_SECONDS=90` (crash-after-claim safety); returns `[{id,body,target}]`.
+- `POST /api/bot/outbound/ack/` (`outbound_ack`) — `{id,status:'sent',wa_message_id}` → SENT + outbound `BotEvent` audit; `{id,status:'failed',error}` → FAILED, `attempts+=1`.
+- 6 queue tests (auth, claim, skip-fresh-claimed, reclaim-stale, ack sent+audit, ack failed). Suite now 39/39 green.
+
+**Composers + signal enqueue — BUILT 2026-06-19:**
+- `OutboundMessage` extended with `kind` (`text`|`poll`) + `poll_options` (migration `0006`); `outbound_drain` returns them so the Node bot knows whether to post a native poll or text.
+- Composers in `services.py`: `build_group_rsvp_poll(poll)` → `(question, ['Yes ✅','No ❌'])` (the RSVP post is a **native poll**, per the locked vote-input decision — NOT "reply YES/NO" text); `build_group_cost_split_text`, `build_group_match_result_text` (read-only).
+- `enqueue_group_post(...)` — savepoint-wrapped, deduped on `dedup_key`, **no-ops unless `WHATSAPP_GROUP_BOT_ENABLED`** (so the queue doesn't fill before the bot is deployed).
+- Wired into signals: `on_poll`(created, upcoming only) → poll; `on_session`(confirmed, paid) → cost split; `on_match`(completed) → result. Deduped (`poll_opened:{id}`, `session_confirmed:{id}`, `match_result:{id}`). 5 enqueue tests; suite 44/44 green.
+
+**Identity — LID, not phone (MAJOR finding, BUILT 2026-06-19):**
+- Live testing proved this group addresses members by an opaque WhatsApp **LID** (`<digits>@lid`), and `getContactById` does NOT reveal the phone (privacy). So the original `<number>@c.us → User.phone` assumption is **dead for Community/privacy groups** — votes must be matched by LID.
+- `User.wa_lid` added (migration `accounts/0005`); `_handle_rsvp` matches phone → then `wa_lid`. The bot resolves `{phone, lid, name}` and forwards `lid` + `author_name`.
+- `WhatsAppIdentity` model (`notifications/0008`) stages discovered `(lid, name)`; saving with a `user` mirrors `lid → user.wa_lid`. Admin page `/admin/notifications/whatsappidentity/` with an Unmapped filter + inline user dropdown.
+- Harvest: `node bot.js roster` enumerates the group → `POST /api/bot/roster/`; plus passive capture on every group inbound. Admin onboarding runbook = **issue #48**.
+- `BotEvent.wa_message_id` / `OutboundMessage.wa_message_id` widened 100→255 (migration `0007`) — `@lid` ids + composite vote keys overflow 100.
+
+**NOT yet built (the only remaining Phase 2 piece):**
+- **The Node production client** (`bot/`): poll `GET /api/bot/outbound/` → post text or a native `Poll(body, poll_options)` via whatsapp-web.js → `POST /api/bot/outbound/ack/`; record each posted RSVP-poll's message id; forward group reactions-on-the-bot-message + poll votes to `POST /api/bot/inbound/` (`kind=reaction|poll_vote`) and apply the returned `react` action. RemoteAuth + PM2 + hosting = Phase 3. This is the deployment-coupled piece that can't be unit-tested here.
 
 ### Phase 3 — Production hardening
 Provision Oracle A1; install Chromium; PM2 + `startup`/`save`. Switch to `RemoteAuth` + Mongo Atlas; confirm `'remote_session_saved'`; reboot VM → verify **no re-scan**. LOGOUT-vs-crash split handling + admin re-scan runbook. Dead-man's-switch heartbeat + external alerting. Failed-`OutboundMessage` sweep (`attempts<3`). Scheduled single reminder (reuse `run_reminders` cron). 7-day warmup. **Exit:** survives redeploy + VM reboot with zero manual re-scan; failures alert + retry.
@@ -309,6 +330,9 @@ Provision Oracle A1; install Chromium; PM2 + `startup`/`save`. Switch to `Remote
 - ✅ **Bot IP:** accept Oracle A1's datacenter IP — low real risk at our volume. No residential proxy.
 - ✅ **Group-reply style:** **emoji-react only** (bot reacts ✅/❌ to the member's RSVP message). Quietest; no per-RSVP message clutter. This means the `reply_sink` for group RSVPs is a *reaction*, not a queued text post — text posts are reserved for command replies (HELP/STATUS/etc.) and the auto-posts.
 - ✅ **Kickoff:** Phase 0 spike first (see [bot/](../../bot/)).
+
+**Locked (2026-06-19):**
+- ✅ **Group vote inputs = native poll + 👍/👎 reactions on the bot's own message ONLY.** Typed `yes`/`no` in the group is **NOT** counted as a vote — members say yes/no in normal conversation, which produced false RSVPs. Implemented via `dispatch_inbound(allow_text_rsvp=False)` for group text; the group also never gets an "I didn't understand" reply (`reply_unknown=False`). Group text is only ever a *command* (HELP/STATUS/…). DMs to the bot still accept typed `YES <session_id>` (the deep-link path is unambiguous). The Node client must therefore only forward `kind='reaction'` for reactions on the bot's RSVP message and `kind='poll_vote'` for its poll — not arbitrary group text as votes.
 
 **Still open (revisit before the phase they gate):**
 - **Session store** (Phase 3): Mongo Atlas M0 (recommended) vs S3 vs Neon Postgres custom store.

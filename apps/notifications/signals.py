@@ -10,6 +10,7 @@ State-change events (session confirmed, match result, payment received) detect
 the transition and dedupe on the source object (update_or_create) so a re-save
 refreshes rather than double-posts.
 """
+from django.conf import settings
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.urls import reverse
@@ -23,6 +24,12 @@ from apps.sessions.models import Session
 
 from .activity import safe_emit
 from .models import ActivityEvent
+from .services import (
+    build_group_cost_split_text,
+    build_group_match_result_text,
+    build_group_rsvp_poll,
+    enqueue_group_post,
+)
 
 
 @receiver(post_save, sender=Donation)
@@ -86,6 +93,11 @@ def on_session(sender, instance, created, **kwargs):
             context=instance.location,
             target=instance,
         )
+        # Auto-post the cost split into the WhatsApp group (read-only).
+        enqueue_group_post(
+            build_group_cost_split_text(instance, settings.SITE_URL),
+            dedup_key=f'session_confirmed:{instance.id}',
+        )
 
 
 @receiver(post_save, sender=Poll)
@@ -101,6 +113,14 @@ def on_poll(sender, instance, created, **kwargs):
         context=session.name,
         target=instance,
     )
+    # Auto-post a native RSVP poll into the WhatsApp group — but only for an
+    # upcoming session (no point asking RSVP for a back-filled past game).
+    if session.date >= timezone.localdate():
+        question, options = build_group_rsvp_poll(instance)
+        enqueue_group_post(
+            question, kind='poll', poll_options=options,
+            dedup_key=f'poll_opened:{instance.id}',
+        )
 
 
 @receiver(post_save, sender=Vote)
@@ -148,6 +168,11 @@ def on_match(sender, instance, **kwargs):
         context=instance.session.name if instance.session_id else '',
         target=instance,
         dedup=True,
+    )
+    # Auto-post the result into the WhatsApp group (read-only).
+    enqueue_group_post(
+        build_group_match_result_text(instance, settings.SITE_URL),
+        dedup_key=f'match_result:{instance.id}',
     )
 
 
