@@ -427,6 +427,7 @@ def session_detail_view(request, session_id):
         'edit_team2_players': edit_team2_players,
         'whatsapp_share_url': whatsapp_share_url,
         'addable_users': addable_users,
+        'now': timezone.now(),
     }
     return render(request, 'cric/pages/session_detail.html', context)
 

@@ -28,36 +28,8 @@ class TemporaryScoringAccessAdmin(admin.ModelAdmin):
     list_display = ('user', 'session', 'granted_by', 'expires_at', 'is_active', 'is_valid_display')
     list_filter = ('is_active', 'session__date', 'granted_at')
     search_fields = ('user__username', 'user__first_name', 'session__name')
-    readonly_fields = ('granted_at', 'granted_by')
-    
-    def get_fieldsets(self, request, obj=None):
-        """Show is_valid only when editing existing object."""
-        if obj is None:  # Creating new object
-            return (
-                ('Grant Information', {
-                    'fields': ('user', 'session', 'granted_by', 'granted_at')
-                }),
-                ('Duration', {
-                    'fields': ('expires_at', 'is_active')
-                }),
-                ('Details', {
-                    'fields': ('reason',),
-                    'classes': ('collapse',)
-                }),
-            )
-        else:  # Editing existing object
-            return (
-                ('Grant Information', {
-                    'fields': ('user', 'session', 'granted_by', 'granted_at')
-                }),
-                ('Duration', {
-                    'fields': ('expires_at', 'is_active')
-                }),
-                ('Details', {
-                    'fields': ('reason', 'is_valid'),
-                    'classes': ('collapse',)
-                }),
-            )
+    readonly_fields = ('granted_at',)
+    fields = ('user', 'session', 'granted_by', 'granted_at', 'expires_at', 'is_active', 'reason')
 
     def is_valid_display(self, obj):
         """Display validity status in the list view."""
