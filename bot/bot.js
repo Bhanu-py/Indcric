@@ -20,7 +20,7 @@
 'use strict';
 
 require('dotenv').config();
-const { Client, LocalAuth, Poll } = require('whatsapp-web.js');
+const { Client, LocalAuth, RemoteAuth, Poll } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 
 const BASE = (process.env.INDCRIC_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
@@ -87,8 +87,24 @@ async function api(path, token, body) {
   }
 }
 
+// LocalAuth (disk) for local dev; RemoteAuth (Mongo) in production so the WA
+// session survives restarts/redeploys with NO QR re-scan. MongoStore holds the
+// mongoose ref lazily — we connect before initialize() (bottom) — and the deps
+// are required lazily so local dev needn't install them.
+function buildAuthStrategy() {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) return new LocalAuth({ clientId: CLIENT_ID });
+  const mongoose = require('mongoose');
+  const { MongoStore } = require('wwebjs-mongo');
+  return new RemoteAuth({
+    clientId: CLIENT_ID,
+    store: new MongoStore({ mongoose }),
+    backupSyncIntervalMs: 300000,   // 5-min session backup
+  });
+}
+
 const client = new Client({
-  authStrategy: new LocalAuth({ clientId: CLIENT_ID }),
+  authStrategy: buildAuthStrategy(),
   // No webVersionCache — npm 1.34.7 is broken on WA Web 2.3000.x; this project
   // installs whatsapp-web.js from git main (see package.json), which fixes it.
   puppeteer: {
@@ -105,7 +121,13 @@ client.on('qr', (qr) => {
 });
 client.on('authenticated', () => console.log('[AUTH] authenticated'));
 client.on('auth_failure', (m) => console.error('[AUTH_FAILURE]', m));
-client.on('disconnected', (r) => console.warn('[DISCONNECTED]', r));
+client.on('remote_session_saved', () => console.log('[AUTH] remote session saved to Mongo (survives restart)'));
+client.on('disconnected', (r) => {
+  console.warn('[DISCONNECTED]', r);
+  if (r === 'LOGOUT') {
+    console.error('[AUTH] session was LOGGED OUT — a human must re-scan the QR with the bot SIM. A PM2 restart will NOT fix this.');
+  }
+});
 
 client.on('ready', async () => {
   console.log('\n===================== BOT READY =====================');
@@ -256,4 +278,15 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 console.log('Starting IndCric group bot…');
-client.initialize();
+(async () => {
+  if (process.env.MONGODB_URI) {
+    try {
+      await require('mongoose').connect(process.env.MONGODB_URI);
+      console.log('[AUTH] Mongo connected — RemoteAuth session store ready');
+    } catch (e) {
+      console.error('[FATAL] Mongo connect failed:', e.message);
+      process.exit(1);
+    }
+  }
+  client.initialize();
+})();

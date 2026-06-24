@@ -12,7 +12,9 @@
   },
   "dependencies": {
     "dotenv": "^16.4.5",
+    "mongoose": "^9.7.2",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js#main"
+    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js#main",
+    "wwebjs-mongo": "^1.1.0"
   }
 }
