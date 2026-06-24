@@ -28,15 +28,24 @@ def check_consent_on_login(sender, request, user, **kwargs):
     Check if user has accepted GDPR consent on login.
     Sets a flag to show consent modal if consent is incomplete.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
         consent = UserConsent.objects.get(user=user)
         # Flag for template: show consent modal if not all consents accepted
         if not consent.all_consents_accepted:
             request.session['show_consent_modal'] = True
+            request.session.modified = True
+            logger.info(f"[CONSENT] User {user.id} needs to accept consent - showing modal")
+        else:
+            logger.info(f"[CONSENT] User {user.id} has accepted all consents - no modal")
     except UserConsent.DoesNotExist:
         # User doesn't have consent record - will be created by signal above
         # Force modal to show
         request.session['show_consent_modal'] = True
+        request.session.modified = True
+        logger.warning(f"[CONSENT] User {user.id} has no consent record - showing modal")
 
 
 def ready():

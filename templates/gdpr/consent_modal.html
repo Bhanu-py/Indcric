@@ -104,7 +104,14 @@ function consentModal() {
       const shouldShow = document.getElementById('consentModal')?.getAttribute('data-show-modal') === 'true';
       if (shouldShow) {
         this.open = true;
+        console.log('[GDPR Modal] Opening consent modal on page load');
+      } else {
+        console.log('[GDPR Modal] Consent already accepted or not required');
       }
+      // Check form validation state
+      this.$nextTick(() => {
+        this.checkAllFilled();
+      });
     },
 
     checkAllFilled() {

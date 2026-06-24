@@ -219,13 +219,13 @@
                         </label>
                     </div>
 
-                    <!-- WhatsApp Consent -->
+                    <!-- WhatsApp Consent (Optional) -->
                     <div class="flex items-start gap-3">
                         <input class="form-checkbox mt-1 {% if form.whatsapp_accepted.errors %}!border-red-400{% endif %}"
                                type="checkbox" id="id_whatsapp_accepted" name="whatsapp_accepted"
-                               {% if form.whatsapp_accepted.value %}checked{% endif %} required>
+                               {% if form.whatsapp_accepted.value %}checked{% endif %}>
                         <label class="flex-1" for="id_whatsapp_accepted">
-                            <span class="text-sm text-stone-700">I accept that WhatsApp is required to vote on polls <span class="text-red-500">*</span></span>
+                            <span class="text-sm text-stone-700">I accept that WhatsApp is required to vote on polls <span class="text-stone-400">(optional)</span></span>
                             {% if form.whatsapp_accepted.errors %}
                                 {% for error in form.whatsapp_accepted.errors %}
                                 <p class="mt-1 text-xs text-red-600">{{ error }}</p>
