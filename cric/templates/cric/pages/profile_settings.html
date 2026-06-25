@@ -134,7 +134,7 @@
                 </a>
             </div>
             <button type="button" class="mt-3 btn btn-secondary btn-md w-full"
-                    onclick="document.querySelectorAll('[x-data]').forEach(el => { if(el.id === 'consentModal' && el.__x) { el.__x.$data.openModal(); } })">
+                    onclick="window.openGDPRModal ? window.openGDPRModal() : console.error('GDPR Modal function not available')">
                 {% if request.user|has_consent %}Re-accept{% else %}Accept{% endif %} Terms
             </button>
         </div>

@@ -140,7 +140,10 @@ function consentModal() {
         console.log('[GDPR Modal] [NEXTTICK] checkAllFilled completed, this.allFilled:', this.allFilled);
       });
       
-      console.log('[GDPR Modal] ===== INIT COMPLETE =====');
+      // Expose to window for external access
+      window.gdprModal = this;
+      window.openGDPRModal = () => this.openModal();
+      console.log('[GDPR Modal] ===== INIT COMPLETE (exposed as window.gdprModal and window.openGDPRModal) =====');
     },
 
     closeModal() {
