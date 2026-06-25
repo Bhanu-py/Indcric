@@ -67,6 +67,82 @@
         </div>
     </div>
 
+    {# ── Awards: player of the match + caps (completed matches only) ── #}
+    {% if completed and awards %}
+    <div class="card overflow-hidden mb-4">
+        <div class="card-header flex items-center gap-2">
+            {% include "_components/trophy_icon.html" with cls="w-4 h-4 text-amber-500" %}
+            <h2 class="font-mono text-[10px] font-medium text-stone-500 uppercase tracking-[0.08em]">Awards</h2>
+        </div>
+
+        {# Player of the Match #}
+        {% if awards.mom_player %}
+        <div class="flex items-center gap-3 px-4 py-3.5 border-b border-stone-100 bg-amber-50/40">
+            {% include "_components/avatar.html" with user=awards.mom_player.user size=44 ring="ring-2 ring-amber-300" %}
+            <div class="min-w-0 flex-1">
+                <p class="font-mono text-[10px] text-amber-700 uppercase tracking-[0.08em]">Player of the Match</p>
+                <p class="text-[15px] font-semibold text-stone-900 truncate">{{ awards.mom_player.user.first_name|default:awards.mom_player.user.username }}</p>
+                {% if awards.mom_stats %}
+                <p class="font-mono text-[11px] text-stone-500 mt-0.5">
+                    {% if awards.mom_stats.balls %}{{ awards.mom_stats.runs }} ({{ awards.mom_stats.balls }}){% endif %}
+                    {% if awards.mom_stats.wickets %}{% if awards.mom_stats.balls %} · {% endif %}{{ awards.mom_stats.wickets }} wkt{{ awards.mom_stats.wickets|pluralize }}{% endif %}
+                    {% if awards.mom_stats.catches or awards.mom_stats.stumpings or awards.mom_stats.runouts %} · {{ awards.mom_stats.catches|add:awards.mom_stats.stumpings|add:awards.mom_stats.runouts }} in field{% endif %}
+                </p>
+                {% endif %}
+            </div>
+            {% if not awards.mom_is_override %}
+            <span class="font-mono text-[9px] text-stone-400 uppercase tracking-[0.06em] shrink-0">auto</span>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {# Orange + Purple caps #}
+        <div class="grid grid-cols-1 sm:grid-cols-2">
+            {% if awards.orange %}
+            <div class="flex items-center gap-2.5 px-4 py-3 border-b sm:border-r border-stone-100">
+                {% include "_components/cap_icon.html" with cls="w-6 h-6 text-orange-500 shrink-0" %}
+                <div class="min-w-0 flex-1">
+                    <p class="font-mono text-[10px] text-orange-600 uppercase tracking-[0.06em]">Orange Cap · most runs</p>
+                    <p class="text-[13px] font-medium text-stone-900 truncate">{{ awards.orange.player.user.first_name|default:awards.orange.player.user.username }}</p>
+                </div>
+                <span class="font-mono text-base font-semibold text-stone-900 tabular-nums shrink-0">{{ awards.orange.runs }}</span>
+            </div>
+            {% endif %}
+            {% if awards.purple %}
+            <div class="flex items-center gap-2.5 px-4 py-3 border-b border-stone-100">
+                {% include "_components/cap_icon.html" with cls="w-6 h-6 text-purple-600 shrink-0" %}
+                <div class="min-w-0 flex-1">
+                    <p class="font-mono text-[10px] text-purple-700 uppercase tracking-[0.06em]">Purple Cap · most wickets</p>
+                    <p class="text-[13px] font-medium text-stone-900 truncate">{{ awards.purple.player.user.first_name|default:awards.purple.player.user.username }}</p>
+                </div>
+                <span class="font-mono text-base font-semibold text-stone-900 tabular-nums shrink-0">{{ awards.purple.wickets }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        {# Staff / scorer override for Player of the Match #}
+        {% if award_teams %}
+        <details class="px-4 py-3 border-t border-stone-100">
+            <summary class="cursor-pointer text-xs font-medium text-stone-500 hover:text-stone-800 select-none">Change Player of the Match</summary>
+            <form method="post" action="{% url 'set_man_of_match' match.id %}" class="mt-3 flex flex-col sm:flex-row gap-2">
+                {% csrf_token %}
+                <select name="player" class="form-select flex-1">
+                    <option value="auto" {% if not awards.mom_is_override %}selected{% endif %}>Auto (highest impact)</option>
+                    {% for t in award_teams %}
+                    <optgroup label="{{ t.team.name }}">
+                        {% for p in t.players %}
+                        <option value="{{ p.id }}" {% if awards.mom_is_override and awards.mom_player.id == p.id %}selected{% endif %}>{{ p.user.first_name|default:p.user.username }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary btn-md sm:btn-sm">Save</button>
+            </form>
+        </details>
+        {% endif %}
+    </div>
+    {% endif %}
+
     {# ── Per-innings cards ── #}
     {% for c in cards %}
     <div class="card overflow-hidden mb-4">

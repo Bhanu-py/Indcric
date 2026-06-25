@@ -323,12 +323,25 @@ def session_detail_view(request, session_id):
     )
     # Per-match live flag: scoring started (≥1 innings) but not concluded
     # (a result is declared only once both innings exist and are closed).
+    from apps.matches import scoring as match_scoring
+    any_completed = False
     for match in matches:
         innings = list(match.innings.all())
-        match.is_live = bool(innings) and not (
-            len(innings) >= 2 and all(i.is_closed for i in innings)
-        )
+        completed = len(innings) >= 2 and all(i.is_closed for i in innings)
+        match.is_live = bool(innings) and not completed
         match.has_scorecard = match.id in scored_match_ids
+        # Cap holders, tagged on the player chips once the match has a result.
+        match.orange_cap_user_id = match.purple_cap_user_id = None
+        if completed:
+            any_completed = True
+            awards = match_scoring.match_awards(match)
+            if awards['orange']:
+                match.orange_cap_user_id = awards['orange']['player'].user_id
+            if awards['purple']:
+                match.purple_cap_user_id = awards['purple']['player'].user_id
+
+    # Player of the Session — shown once at least one match has a result.
+    session_award = match_scoring.session_awards(session) if any_completed else None
 
     edit_match_id = request.GET.get('edit_match')
     edit_match = edit_team1 = edit_team2 = None
@@ -441,6 +454,7 @@ def session_detail_view(request, session_id):
         'addable_users': addable_users,
         'now': timezone.now(),
         'user_has_scoring_access': user_has_scoring_access,
+        'session_award': session_award,
     }
     return render(request, 'cric/pages/session_detail.html', context)
 
