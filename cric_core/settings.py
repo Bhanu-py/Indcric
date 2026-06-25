@@ -171,6 +171,7 @@ ACCOUNT_SIGNUP_FIELDS = ["username*", "email*", "password1*", "password2*"]
 # Custom signup form adds the required WhatsApp phone field (used by the
 # WhatsApp bot integration in apps/notifications).
 ACCOUNT_FORMS = {"signup": "apps.accounts.forms.CustomSignupForm"}
+ACCOUNT_ADAPTER = "apps.accounts.adapter.CustomAccountAdapter"
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http" if DEBUG else "https"
 ACCOUNT_EMAIL_SUBJECT_PREFIX = "[IndCric] "
 
@@ -412,6 +413,30 @@ LOGGING = {
             'propagate': True,
         },
         'apps.gdpr': {
+            'handlers': [
+                'console',
+                # 'file'
+            ],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'apps.accounts': {
+            'handlers': [
+                'console',
+                # 'file'
+            ],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.core.mail': {
+            'handlers': [
+                'console',
+                # 'file'
+            ],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'allauth': {
             'handlers': [
                 'console',
                 # 'file'

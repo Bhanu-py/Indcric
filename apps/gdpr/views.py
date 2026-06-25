@@ -116,18 +116,28 @@ def delete_account_view(request):
                 'confirmation_url': confirmation_url,
             })
             
-            send_mail(
-                subject,
-                'Please confirm account deletion by clicking the link in the HTML version of this email.',
-                settings.DEFAULT_FROM_EMAIL,
-                [request.user.email],
-                html_message=html_message,
-            )
+            try:
+                send_mail(
+                    subject,
+                    'Please confirm account deletion by clicking the link in the HTML version of this email.',
+                    settings.DEFAULT_FROM_EMAIL,
+                    [request.user.email],
+                    html_message=html_message,
+                )
+                logger.info(f"[DELETE_ACCOUNT] Confirmation email sent to {request.user.email}")
+                
+                messages.success(
+                    request,
+                    'Confirmation email sent. Please check your inbox to complete deletion.'
+                )
+            except Exception as e:
+                logger.error(f"[DELETE_ACCOUNT] Failed to send confirmation email to {request.user.email}: {str(e)}")
+                messages.error(
+                    request,
+                    'Failed to send confirmation email. Please try again later.'
+                )
+                return render(request, 'gdpr/delete_account.html')
             
-            messages.success(
-                request,
-                'Confirmation email sent. Please check your inbox to complete deletion.'
-            )
             return redirect('home')
         else:
             messages.error(request, 'You must confirm account deletion.')
