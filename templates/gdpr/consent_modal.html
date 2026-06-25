@@ -147,6 +147,11 @@ function consentModal() {
       this.open = false;
     },
 
+    openModal() {
+      console.log('[GDPR Modal] openModal() called - opening modal');
+      this.open = true;
+    },
+
     checkAllFilled() {
       console.log('[GDPR Modal] [checkAllFilled] Starting...');
       const form = document.getElementById('consentForm');
