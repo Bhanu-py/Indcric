@@ -29,14 +29,6 @@ class CustomAccountAdapter(DefaultAccountAdapter):
             logger.info(f"[SIGNUP_EMAIL] Email backend: {settings.EMAIL_BACKEND}")
             logger.debug(f"[SIGNUP_EMAIL] Template: {template_prefix}, Context keys: {list(context.keys())}")
             
-            # Get the rendered email subject and body
-            subject_line = self.get_subject_line(template_prefix, context)
-            body_text = self.get_message_body(template_prefix, context)
-            html_body = self.get_message_html(template_prefix, context)
-            
-            logger.debug(f"[SIGNUP_EMAIL] Subject: {subject_line}")
-            logger.debug(f"[SIGNUP_EMAIL] Has HTML: {bool(html_body)}")
-            
             # Call parent to send email via django-allauth's mechanism
             result = super().send_mail(template_prefix, email, context)
             
