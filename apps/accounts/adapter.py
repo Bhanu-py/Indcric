@@ -27,12 +27,19 @@ class CustomAccountAdapter(DefaultAccountAdapter):
         try:
             logger.info(f"[SIGNUP_EMAIL] Attempting to send {template_prefix} email to {email}")
             logger.info(f"[SIGNUP_EMAIL] Email backend: {settings.EMAIL_BACKEND}")
+            logger.info(f"[SIGNUP_EMAIL] Sender: {settings.DEFAULT_FROM_EMAIL}")
             logger.debug(f"[SIGNUP_EMAIL] Template: {template_prefix}, Context keys: {list(context.keys())}")
             
             # Call parent to send email via django-allauth's mechanism
             result = super().send_mail(template_prefix, email, context)
             
-            logger.info(f"[SIGNUP_EMAIL] Successfully sent {template_prefix} email to {email} (result={result})")
+            if result is None:
+                logger.warning(f"[SIGNUP_EMAIL] WARNING: send_mail returned None for {email} - email may not have been sent!")
+                logger.warning(f"[SIGNUP_EMAIL] This usually means the sender email is not verified in Brevo")
+                logger.warning(f"[SIGNUP_EMAIL] Sender: {settings.DEFAULT_FROM_EMAIL}")
+            else:
+                logger.info(f"[SIGNUP_EMAIL] Successfully sent {template_prefix} email to {email} (result={result})")
+            
             return result
             
         except Exception as e:
