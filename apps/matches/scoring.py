@@ -182,6 +182,142 @@ def extras_breakdown(innings):
     return out
 
 
+# ── Awards: caps + player of the match / session ─────────────────────────────
+
+# Impact weights for the auto-pick. Runs count 1-for-1; wickets and dismissals
+# in the field are scaled so a match-winning bowling/fielding spell can out-rank
+# a big batting score. Tunable in one place — every award reads these.
+_WICKET_PTS = 20
+_CATCH_PTS = 10
+_STUMP_PTS = 10
+_RUNOUT_PTS = 8
+
+
+def _impact(a):
+    """Single comparable number for an aggregate row — the auto Player-of-the-X."""
+    return (a['runs']
+            + a['wickets'] * _WICKET_PTS
+            + a['catches'] * _CATCH_PTS
+            + a['stumpings'] * _STUMP_PTS
+            + a['runouts'] * _RUNOUT_PTS)
+
+
+def _award_rows(deliveries, by='player'):
+    """Per-contributor batting/bowling/fielding tallies across `deliveries`.
+
+    `by='player'` keys on Player.id — right for a single match, where each user
+    has exactly one Player row. `by='user'` keys on User.id so a user's lines
+    across several matches in a session collapse into one row (their Player
+    differs per match). Returns {key: {player, user, runs, balls, wickets,
+    conceded, catches, runouts, stumpings}}.
+    """
+    rows = {}
+
+    def slot(player):
+        key = player.id if by == 'player' else player.user_id
+        if key not in rows:
+            rows[key] = {
+                'player': player, 'user': player.user,
+                'runs': 0, 'balls': 0, 'wickets': 0, 'conceded': 0,
+                'catches': 0, 'runouts': 0, 'stumpings': 0,
+            }
+        return rows[key]
+
+    for d in deliveries:
+        s = slot(d.striker)
+        s['runs'] += d.runs_off_bat
+        if d.extra_type != Delivery.EXTRA_WIDE:  # wide isn't a ball faced
+            s['balls'] += 1
+        b = slot(d.bowler)
+        b['conceded'] += d.runs_conceded
+        if d.is_wicket and d.dismissal_type in Delivery.BOWLER_DISMISSALS:
+            b['wickets'] += 1
+        if d.is_wicket and d.fielder_id:
+            f = slot(d.fielder)
+            if d.dismissal_type == 'caught':
+                f['catches'] += 1
+            elif d.dismissal_type == 'runout':
+                f['runouts'] += 1
+            elif d.dismissal_type == 'stumped':
+                f['stumpings'] += 1
+    return rows
+
+
+def _match_deliveries(match):
+    return list(
+        Delivery.objects.filter(innings__match=match).select_related(
+            'striker__user', 'bowler__user', 'fielder__user',
+        )
+    )
+
+
+def match_awards(match):
+    """Orange cap (most runs), purple cap (most wickets) and Player of the Match
+    for a single match, derived from its ledger.
+
+    `mom_player` resolves the staff override first, falling back to the auto
+    pick (highest impact); `mom_is_override` says which. All keys may be None
+    before any ball is bowled. `mom_stats` is the aggregate row for the chosen
+    player (None if an override player never took the field)."""
+    agg = _award_rows(_match_deliveries(match), by='player')
+    vals = list(agg.values())
+
+    # Most runs — tie broken by fewer balls (the brisker knock).
+    orange = max(
+        (v for v in vals if v['runs'] > 0),
+        key=lambda v: (v['runs'], -v['balls']), default=None,
+    )
+    # Most wickets — tie broken by fewer runs conceded.
+    purple = max(
+        (v for v in vals if v['wickets'] > 0),
+        key=lambda v: (v['wickets'], -v['conceded']), default=None,
+    )
+    auto = max(vals, key=_impact, default=None)
+    if auto is not None and _impact(auto) == 0:
+        auto = None  # nobody scored, bowled a wicket, or held a catch yet
+
+    override = match.man_of_match
+    if override is not None:
+        mom_player, mom_stats = override, agg.get(override.id)
+    elif auto is not None:
+        mom_player, mom_stats = auto['player'], auto
+    else:
+        mom_player, mom_stats = None, None
+
+    return {
+        'orange': orange,
+        'purple': purple,
+        'mom_player': mom_player,
+        'mom_stats': mom_stats,
+        'mom_auto_player': auto['player'] if auto else None,
+        'mom_is_override': override is not None,
+    }
+
+
+def session_awards(session):
+    """Player of the Session — highest combined impact across every match in the
+    session. Aggregated by user (one user, many Player rows across matches).
+    Returns None until at least one contribution exists."""
+    rows = list(
+        Delivery.objects.filter(innings__match__session=session).select_related(
+            'striker__user', 'bowler__user', 'fielder__user',
+        )
+    )
+    if not rows:
+        return None
+    agg = _award_rows(rows, by='user')
+    best = max(agg.values(), key=_impact, default=None)
+    if best is None or _impact(best) == 0:
+        return None
+    return {
+        'user': best['user'],
+        'runs': best['runs'],
+        'wickets': best['wickets'],
+        'fielding': best['catches'] + best['stumpings'] + best['runouts'],
+        'impact': _impact(best),
+    }
+
+
 def career_stats(user):
     """Lifelong batting / bowling / fielding aggregates for a user, derived from
     every delivery they were involved in. Returns dicts ready for the profile."""
