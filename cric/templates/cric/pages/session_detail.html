@@ -125,6 +125,15 @@
                         </a>
                         {% endif %}
 
+                        <a href="{% url 'scoring_access_list' session.id %}"
+                           class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors text-left">
+                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M12 4.354a4 4 0 110 5.292M15 12h.01M11 20H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v13a2 2 0 01-2 2h-4z"/>
+                            </svg>
+                            <span>Manage Scoring Access</span>
+                        </a>
+
                         <div class="my-1 border-t border-stone-100"></div>
 
                         <form method="POST" action="{% url 'delete_session' session.id %}"
@@ -580,7 +589,7 @@
                         {% include "_components/live_badge.html" %}
                         {% endif %}
                     </button>
-                    {% if user.is_staff %}
+                    {% if user.is_staff or user_has_scoring_access %}
                     {% with locked=match.innings.exists %}
                     <div class="flex items-center gap-2 shrink-0 flex-wrap w-full sm:w-auto sm:justify-end">
                         {% if match.teams.all|length >= 2 %}
@@ -711,8 +720,9 @@
             {% endwith %}
             {% endfor %}
 
-            <!-- ── Add Match button (staff, matches exist, not in edit mode, session not past) ── -->
-            {% if user.is_staff and matches and not edit_match and not is_past %}
+            <!-- ── Add Match button (staff or authorized, matches exist, not in edit mode, session not past) ── -->
+            {% if user.is_staff or user_has_scoring_access %}
+            {% if matches and not edit_match and not is_past %}
             <form method="POST" action="{% url 'add_match' session.id %}" class="mb-4">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-secondary btn-md w-full justify-center">
@@ -721,13 +731,14 @@
                 </button>
             </form>
             {% endif %}
+            {% endif %}
 
             <!-- ═══════════════════════════════════
                  TEAM BALANCE — staff drafts, members see read-only
                  Per SessionDetailScreen.jsx + DESIGN_SYSTEM.md audience gating.
                  New-match creation (no matches yet) hidden for past sessions.
             ═══════════════════════════════════ -->
-            {% if user.is_staff %}
+            {% if user.is_staff or user_has_scoring_access %}
             {% if edit_match or not matches and not is_past %}
             <div class="card overflow-hidden" id="team-editor">
                 <div class="h-1 bg-pitch-500"></div>
@@ -927,7 +938,7 @@
             {% endif %}
 
             {% else %}
-            <!-- Non-staff: if no matches, show placeholder -->
+            <!-- Non-staff and no scoring access: if no matches, show placeholder -->
             {% if not matches %}
             <div class="card">
                 <div class="card-body">
@@ -944,8 +955,8 @@
     {# Going card removed — yes-voters are now visible in the Team Balance pool below #}
 </div>
 
-<!-- ── Staff JavaScript ── -->
-{% if user.is_staff %}
+<!-- ── Staff and Authorized Players JavaScript ── -->
+{% if user.is_staff or user_has_scoring_access %}
 {% if edit_match or not matches %}
 <script>
     let team1Name = '{% if edit_team1 %}{{ edit_team1.name }}{% else %}Team 1{% endif %}';

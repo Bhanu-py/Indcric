@@ -1,6 +1,9 @@
 from django import template
+from django.contrib.auth import get_user_model
 
 register = template.Library()
+
+User = get_user_model()
 
 
 @register.filter
@@ -54,3 +57,17 @@ def sort_by_role(players):
             (getattr(p.user, 'username', '') or '').lower(),
         ),
     )
+
+
+@register.filter(name="has_consent")
+def has_consent(user):
+    """Check if user has accepted all GDPR consent requirements."""
+    if not user or not user.is_authenticated:
+        return False
+    try:
+        from apps.gdpr.models import UserConsent
+        consent = UserConsent.objects.get(user=user)
+        return consent.all_consents_accepted
+    except Exception:
+        return False
+

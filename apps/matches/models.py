@@ -147,6 +147,59 @@ class Retirement(models.Model):
         return f"{self.player} retired hurt — {self.innings}"
 
 
+class TemporaryScoringAccess(models.Model):
+    """Temporary scoring access grant for a player on a specific session date.
+    
+    Admin/Staff can grant a player access to score all matches on a specific day,
+    with automatic revocation after a set time period. Manual revocation is also
+    supported via the is_active flag.
+    """
+    user = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.CASCADE,
+        related_name='temporary_scoring_access'
+    )
+    session = models.ForeignKey(
+        'cric_sessions.Session',
+        on_delete=models.CASCADE,
+        related_name='temporary_scoring_access'
+    )
+    granted_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='granted_scoring_access'
+    )
+    granted_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+    reason = models.TextField(blank=True, default='')
+
+    class Meta:
+        ordering = ['-granted_at']
+        verbose_name = 'Temporary Scoring Access'
+        verbose_name_plural = 'Temporary Scoring Access'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'session'],
+                condition=models.Q(is_active=True),
+                name='unique_active_user_session_access',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.session.name} (expires: {self.expires_at.strftime('%Y-%m-%d %H:%M')})"
+
+    @property
+    def is_valid(self):
+        """Check if access is currently valid (active and not expired)."""
+        from django.utils import timezone
+        if self.expires_at is None:
+            return False
+        return self.is_active and self.expires_at > timezone.now()
+
+
 class Delivery(models.Model):
     """One ball. Immutable append-only ledger — the source of truth for scoring.
 

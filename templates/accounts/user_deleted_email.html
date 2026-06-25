@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body style="font-family: Arial, sans-serif; color: #333;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2>Your Indcric Account Has Been Deleted</h2>
+    
+    <p>Hello {{ deleted_user.username }},</p>
+    
+    <p>
+      We are writing to confirm that your Indcric account has been permanently deleted from our system.
+    </p>
+    
+    <div style="background-color: #f9f9f9; border-left: 4px solid #0066cc; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-weight: bold;">Account Deletion Summary:</p>
+      <ul style="margin: 10px 0 0 20px;">
+        <li><strong>Username:</strong> {{ deleted_user.username }}</li>
+        <li><strong>Email:</strong> {{ deleted_user.email }}</li>
+        <li><strong>Deletion Date:</strong> {{ deletion_date }}</li>
+      </ul>
+    </div>
+    
+    <p>
+      Your account and all associated data (profile, voting history, preferences) have been removed from our database.
+    </p>
+    
+    <p>
+      If you believe this deletion was made in error or have any questions, please contact our support team.
+    </p>
+    
+    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+    
+    <p style="color: #999; font-size: 12px;">
+      © {% now "Y" %} Indcric. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>

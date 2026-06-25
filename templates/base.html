@@ -390,5 +390,10 @@
             });
         })();
     </script>
+
+    {# GDPR Consent Modal — shows on first login if user hasn't accepted terms #}
+    {% if user.is_authenticated %}
+        {% include 'gdpr/consent_modal.html' with show_consent_modal=show_consent_modal %}
+    {% endif %}
 </body>
 </html>

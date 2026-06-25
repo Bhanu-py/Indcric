@@ -446,3 +446,246 @@ class ScoreAdjustViewTests(MatchFixtureMixin, TestCase):
         self.client.post(reverse('score_set_overs', args=[self.inn.id]), {'overs': '5'})
         self.match.refresh_from_db()
         self.assertEqual(self.match.overs_limit, 5)
+
+
+class TemporaryScoringAccessTests(MatchFixtureMixin, TestCase):
+    """Tests for temporary scoring access feature."""
+    
+    def setUp(self):
+        super().setUp()
+        self.staff_user = User.objects.create_user(username="staff", password="x", is_staff=True)
+        self.player_user = User.objects.create_user(username="player", password="x")
+        self.player_with_access = User.objects.create_user(username="player_access", password="x")
+        
+        from .models import TemporaryScoringAccess
+        
+        self.access = TemporaryScoringAccess.objects.create(
+            user=self.player_with_access,
+            session=self.session,
+            granted_by=self.staff_user,
+            expires_at=timezone.now() + timezone.timedelta(hours=1),
+            is_active=True,
+            reason="Testing"
+        )
+
+    def test_staff_can_score(self):
+        """Staff users can always score."""
+        from .views import _can_score
+        from unittest.mock import Mock
+        
+        request = Mock()
+        request.user = self.staff_user
+        self.assertTrue(_can_score(request, self.match))
+
+    def test_regular_player_cannot_score_without_access(self):
+        """Players without access cannot score."""
+        from .views import _can_score
+        from unittest.mock import Mock
+        
+        request = Mock()
+        request.user = self.player_user
+        self.assertFalse(_can_score(request, self.match))
+
+    def test_player_with_valid_access_can_score(self):
+        """Players with valid access can score."""
+        from .views import _can_score
+        from unittest.mock import Mock
+        
+        request = Mock()
+        request.user = self.player_with_access
+        self.assertTrue(_can_score(request, self.match))
+
+    def test_player_with_expired_access_cannot_score(self):
+        """Players with expired access cannot score."""
+        from .models import TemporaryScoringAccess
+        from .views import _can_score
+        from unittest.mock import Mock
+        
+        expired_access = TemporaryScoringAccess.objects.create(
+            user=self.player_user,
+            session=self.session,
+            granted_by=self.staff_user,
+            expires_at=timezone.now() - timezone.timedelta(minutes=1),
+            is_active=True
+        )
+        
+        request = Mock()
+        request.user = self.player_user
+        self.assertFalse(_can_score(request, self.match))
+
+    def test_player_with_inactive_access_cannot_score(self):
+        """Players with revoked access cannot score."""
+        from .models import TemporaryScoringAccess
+        from .views import _can_score
+        from unittest.mock import Mock
+        
+        inactive_access = TemporaryScoringAccess.objects.create(
+            user=self.player_user,
+            session=self.session,
+            granted_by=self.staff_user,
+            expires_at=timezone.now() + timezone.timedelta(hours=1),
+            is_active=False
+        )
+        
+        request = Mock()
+        request.user = self.player_user
+        self.assertFalse(_can_score(request, self.match))
+
+    def test_access_unique_constraint(self):
+        """Cannot create duplicate access."""
+        from .models import TemporaryScoringAccess
+        from django.db import IntegrityError
+        
+        with self.assertRaises(IntegrityError):
+            TemporaryScoringAccess.objects.create(
+                user=self.player_with_access,
+                session=self.session,
+                granted_by=self.staff_user,
+                expires_at=timezone.now() + timezone.timedelta(hours=1),
+                is_active=True
+            )
+
+    def test_access_is_valid_property(self):
+        """is_valid property works correctly."""
+        # Valid
+        self.assertTrue(self.access.is_valid)
+        
+        # Expired
+        self.access.expires_at = timezone.now() - timezone.timedelta(minutes=1)
+        self.access.save()
+        self.assertFalse(self.access.is_valid)
+        
+        # Inactive
+        self.access.expires_at = timezone.now() + timezone.timedelta(hours=1)
+        self.access.is_active = False
+        self.access.save()
+        self.assertFalse(self.access.is_valid)
+
+    def test_access_str_representation(self):
+        """String representation is readable."""
+        access_str = str(self.access)
+        self.assertIn(self.player_with_access.username, access_str)
+        self.assertIn(self.session.name, access_str)
+
+
+# ── Temporary Scoring Access Tests ──────────────────────────────────────────
+
+class TemporaryScoringAccessTests(MatchFixtureMixin, TestCase):
+    """Tests for temporary scoring access functionality."""
+
+    def setUp(self):
+        super().setUp()
+        self.staff_user = User.objects.create_user(username="staff", password="x", is_staff=True)
+        self.player_user = User.objects.create_user(username="player", password="x")
+        self.player_with_access = User.objects.create_user(username="player_access", password="x")
+        
+        # Create temporary access for player_with_access
+        from .models import TemporaryScoringAccess
+        self.access = TemporaryScoringAccess.objects.create(
+            user=self.player_with_access,
+            session=self.session,
+            granted_by=self.staff_user,
+            expires_at=timezone.now() + timezone.timedelta(hours=1),
+            is_active=True
+        )
+
+    def test_staff_can_score(self):
+        """Staff users can always score."""
+        from .views import _can_score
+        from unittest.mock import Mock
+        
+        request = Mock()
+        request.user = self.staff_user
+        self.assertTrue(_can_score(request, self.match))
+
+    def test_regular_player_cannot_score_without_access(self):
+        """Players without access cannot score."""
+        from .views import _can_score
+        from unittest.mock import Mock
+        
+        request = Mock()
+        request.user = self.player_user
+        self.assertFalse(_can_score(request, self.match))
+
+    def test_player_with_valid_access_can_score(self):
+        """Players with valid access can score."""
+        from .views import _can_score
+        from unittest.mock import Mock
+        
+        request = Mock()
+        request.user = self.player_with_access
+        self.assertTrue(_can_score(request, self.match))
+
+    def test_player_with_expired_access_cannot_score(self):
+        """Players with expired access cannot score."""
+        from .models import TemporaryScoringAccess
+        from .views import _can_score
+        from unittest.mock import Mock
+        
+        expired_access = TemporaryScoringAccess.objects.create(
+            user=self.player_user,
+            session=self.session,
+            granted_by=self.staff_user,
+            expires_at=timezone.now() - timezone.timedelta(minutes=1),
+            is_active=True
+        )
+        
+        request = Mock()
+        request.user = self.player_user
+        self.assertFalse(_can_score(request, self.match))
+
+    def test_player_with_inactive_access_cannot_score(self):
+        """Players with revoked access cannot score."""
+        from .models import TemporaryScoringAccess
+        from .views import _can_score
+        from unittest.mock import Mock
+        
+        inactive_access = TemporaryScoringAccess.objects.create(
+            user=self.player_user,
+            session=self.session,
+            granted_by=self.staff_user,
+            expires_at=timezone.now() + timezone.timedelta(hours=1),
+            is_active=False
+        )
+        
+        request = Mock()
+        request.user = self.player_user
+        self.assertFalse(_can_score(request, self.match))
+
+    def test_access_unique_constraint(self):
+        """Cannot create duplicate access."""
+        from .models import TemporaryScoringAccess
+        from django.db import IntegrityError
+        
+        with self.assertRaises(IntegrityError):
+            TemporaryScoringAccess.objects.create(
+                user=self.player_with_access,
+                session=self.session,
+                granted_by=self.staff_user,
+                expires_at=timezone.now() + timezone.timedelta(hours=1),
+                is_active=True
+            )
+
+    def test_access_is_valid_property(self):
+        """is_valid property works correctly."""
+        # Valid
+        self.assertTrue(self.access.is_valid)
+        
+        # Expired
+        self.access.expires_at = timezone.now() - timezone.timedelta(minutes=1)
+        self.access.save()
+        self.assertFalse(self.access.is_valid)
+        
+        # Inactive
+        self.access.expires_at = timezone.now() + timezone.timedelta(hours=1)
+        self.access.is_active = False
+        self.access.save()
+        self.assertFalse(self.access.is_valid)
+
+    def test_access_str_representation(self):
+        """String representation is readable."""
+        access_str = str(self.access)
+        self.assertIn(self.player_with_access.username, access_str)
+        self.assertIn(self.session.name, access_str)
+        self.assertIn(self.player_with_access.username, access_str)
+        self.assertIn(self.session.name, access_str)

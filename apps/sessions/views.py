@@ -11,7 +11,7 @@ from django.utils import timezone
 from decimal import Decimal
 
 from .models import Session, SessionPlayer, Attendance
-from apps.matches.models import Match, Team, Player, Delivery
+from apps.matches.models import Match, Team, Player, Delivery, TemporaryScoringAccess
 from apps.polls.models import Poll, Vote
 from apps.payments.models import Payment, Wallet
 
@@ -355,10 +355,22 @@ def session_detail_view(request, session_id):
     for voter in yes_voters:
         voter['team_assigned'] = voter['user'].id in assigned_ids
 
-    # Staff can add any active member to the draft pool (e.g. late arrivals who
-    # never voted) — everyone not already shown in the editor (pool + teams).
+    # Check if user has valid temporary scoring access for this session
+    user_has_scoring_access = False
+    if request.user.is_authenticated:
+        if not request.user.is_staff:
+            user_has_scoring_access = TemporaryScoringAccess.objects.filter(
+                user=request.user,
+                session=session,
+                is_active=True,
+                expires_at__gt=timezone.now()
+            ).exists()
+
+    # Staff or authorized scoring access players can add any active member to the draft pool
+    # (e.g. late arrivals who never voted) — everyone not already shown in the editor (pool + teams).
     addable_pool = []
-    if request.user.is_staff:
+    can_add_players = request.user.is_staff or user_has_scoring_access
+    if can_add_players:
         editor_ids = {v['user'].id for v in yes_voters} | assigned_ids
         for u in User.objects.filter(is_active=True).exclude(id__in=editor_ids).order_by('first_name', 'username'):
             addable_pool.append({
@@ -427,6 +439,8 @@ def session_detail_view(request, session_id):
         'edit_team2_players': edit_team2_players,
         'whatsapp_share_url': whatsapp_share_url,
         'addable_users': addable_users,
+        'now': timezone.now(),
+        'user_has_scoring_access': user_has_scoring_access,
     }
     return render(request, 'cric/pages/session_detail.html', context)
 
@@ -538,11 +552,21 @@ def _sync_teams_in_place(match, teams, t1_name, t2_name, t1_ids, t2_ids, t1_cap_
 
 @login_required
 def save_teams_view(request, session_id):
-    if not request.user.is_staff:
+    session = get_object_or_404(Session, id=session_id)
+    
+    # Check permission: staff OR player with valid scoring access for this session
+    has_permission = request.user.is_staff
+    if not has_permission:
+        has_permission = TemporaryScoringAccess.objects.filter(
+            user=request.user,
+            session=session,
+            is_active=True,
+            expires_at__gt=timezone.now()
+        ).exists()
+    
+    if not has_permission:
         messages.error(request, "You don't have permission to perform this action.")
         return redirect('session_detail', session_id=session_id)
-
-    session = get_object_or_404(Session, id=session_id)
 
     if request.method == 'POST':
         team1_name = request.POST.get('team1_name', 'Team 1')
@@ -611,11 +635,21 @@ def save_teams_view(request, session_id):
 
 @login_required
 def add_match_view(request, session_id):
-    if not request.user.is_staff:
+    session = get_object_or_404(Session, id=session_id)
+    
+    # Check permission: staff OR player with valid scoring access for this session
+    has_permission = request.user.is_staff
+    if not has_permission:
+        has_permission = TemporaryScoringAccess.objects.filter(
+            user=request.user,
+            session=session,
+            is_active=True,
+            expires_at__gt=timezone.now()
+        ).exists()
+    
+    if not has_permission:
         messages.error(request, "You don't have permission to perform this action.")
         return redirect('session_detail', session_id=session_id)
-
-    session = get_object_or_404(Session, id=session_id)
 
     if session.date < timezone.now().date():
         messages.error(request, "This session has already ended — new matches can't be added.")
@@ -671,12 +705,22 @@ def record_score_view(request, match_id):
 
 @login_required
 def delete_match_view(request, match_id):
-    if not request.user.is_staff:
-        messages.error(request, "You don't have permission to perform this action.")
-        return redirect('home')
-
     match = get_object_or_404(Match, id=match_id)
     session_id = match.session.id
+    
+    # Check permission: staff OR player with valid scoring access for this session
+    has_permission = request.user.is_staff
+    if not has_permission and request.user.is_authenticated:
+        has_permission = TemporaryScoringAccess.objects.filter(
+            user=request.user,
+            session=match.session,
+            is_active=True,
+            expires_at__gt=timezone.now()
+        ).exists()
+    
+    if not has_permission:
+        messages.error(request, "You don't have permission to perform this action.")
+        return redirect('home')
 
     if request.method == 'POST':
         # Guard (issue #39): a played match was wiped by an accidental one-tap

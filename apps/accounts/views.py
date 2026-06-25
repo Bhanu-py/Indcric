@@ -10,6 +10,10 @@ from django.db.models import Sum, Q
 from django.db.models.functions import Coalesce
 from django.http import HttpResponseForbidden
 from django.urls import reverse
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.conf import settings
+from django.utils import timezone
 from decimal import Decimal, InvalidOperation
 
 from django_tables2 import SingleTableMixin
@@ -21,6 +25,32 @@ from .tables import UserHTMxTable
 from .filters import UserFilter
 
 User = get_user_model()
+
+
+def send_user_deleted_email(user):
+    """Send a confirmation email to the user that their account has been deleted by admin."""
+    try:
+        subject = 'Your Indcric Account Has Been Deleted'
+        html_message = render_to_string('accounts/user_deleted_email.html', {
+            'deleted_user': user,
+            'deletion_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+        })
+        
+        send_mail(
+            subject,
+            'Your Indcric account has been permanently deleted. Please see the HTML version of this email for details.',
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            html_message=html_message,
+            fail_silently=True,  # Don't raise errors if email fails
+        )
+        return True
+    except Exception as e:
+        # Log error but don't fail the deletion process
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Failed to send deletion email to {user.email}: {str(e)}")
+        return False
 
 
 @method_decorator(staff_member_required, name='dispatch')
@@ -461,8 +491,15 @@ def delete_user_view(request, user_id):
                 messages.error(request, "Cannot delete admin accounts.")
             else:
                 username = user.get_full_name() or user.username
+                user_email = user.email
+                
+                # Send deletion notification email before deleting the user
+                if user_email:
+                    send_user_deleted_email(user)
+                
+                # Delete the user
                 user.delete()
-                messages.success(request, f"User '{username}' deleted successfully.")
+                messages.success(request, f"User '{username}' deleted successfully. Deletion notification email sent.")
         except User.DoesNotExist:
             messages.error(request, "User not found.")
     return redirect('manage-users')

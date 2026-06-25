@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Scoring Access - {{ session.name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-6">
+        <a href="{% url 'session_detail' session.id %}" class="text-blue-600 hover:text-blue-800">
+            ← Back to {{ session.name }}
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold">Temporary Scoring Access</h1>
+            <a href="{% url 'grant_scoring_access' session.id %}" class="px-4 py-2 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700">
+                + Grant Access
+            </a>
+        </div>
+
+        <p class="text-gray-600 mb-6">
+            View and manage temporary scoring access for <strong>{{ session.name }}</strong>
+        </p>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-4 p-4 rounded-lg {% if message.tags %}{{ message.tags }}{% endif %}"
+                     style="{% if 'error' in message.tags %}background-color: #fee; color: #c33;{% elif 'success' in message.tags %}background-color: #efe; color: #3c3;{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% if access_list %}
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 border-b-2 border-gray-300">
+                            <th class="px-4 py-3 text-left font-semibold">Player</th>
+                            <th class="px-4 py-3 text-left font-semibold">Granted By</th>
+                            <th class="px-4 py-3 text-left font-semibold">Granted At</th>
+                            <th class="px-4 py-3 text-left font-semibold">Expires At</th>
+                            <th class="px-4 py-3 text-left font-semibold">Status</th>
+                            <th class="px-4 py-3 text-center font-semibold">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for access in access_list %}
+                            <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                <td class="px-4 py-3">
+                                    <strong>{{ access.user.get_full_name|default:access.user.username }}</strong>
+                                </td>
+                                <td class="px-4 py-3">
+                                    {{ access.granted_by.get_full_name|default:access.granted_by.username }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {{ access.granted_at|date:"Y-m-d H:i" }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {{ access.expires_at|date:"Y-m-d H:i" }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    {% if access.is_valid %}
+                                        <span class="px-3 py-1 bg-green-100 text-green-800 font-semibold rounded-full text-sm">
+                                            ✓ Valid
+                                        </span>
+                                    {% elif not access.is_active %}
+                                        <span class="px-3 py-1 bg-red-100 text-red-800 font-semibold rounded-full text-sm">
+                                            ✗ Revoked
+                                        </span>
+                                    {% else %}
+                                        <span class="px-3 py-1 bg-gray-100 text-gray-800 font-semibold rounded-full text-sm">
+                                            ✗ Expired
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    {% if access.is_active %}
+                                        <a href="{% url 'revoke_scoring_access' access.id %}" class="text-red-600 hover:text-red-800 font-semibold">
+                                            Revoke
+                                        </a>
+                                    {% else %}
+                                        <span class="text-gray-400">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if access.reason %}
+                                <tr class="border-b border-gray-200 bg-gray-50">
+                                    <td colspan="6" class="px-4 py-2 text-sm text-gray-600">
+                                        <strong>Reason:</strong> {{ access.reason }}
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="bg-gray-100 rounded-lg p-6 text-center text-gray-600">
+                <p>No temporary scoring access has been granted for this session.</p>
+                <a href="{% url 'grant_scoring_access' session.id %}" class="text-blue-600 hover:text-blue-800 font-semibold mt-2 inline-block">
+                    Grant access now →
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    table {
+        background-color: white;
+    }
+</style>
+{% endblock %}

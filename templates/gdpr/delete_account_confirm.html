@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Confirm Account Deletion - Indcric{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card border-danger">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0">⚠️ Confirm Account Deletion</h5>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-danger" role="alert">
+            <strong>Final confirmation required!</strong>
+            <p class="mb-0 mt-2">
+              This is your final chance to prevent permanent deletion of your account.
+              After clicking the button below, your account and all data will be permanently deleted.
+            </p>
+          </div>
+
+          <div class="card bg-light mb-3">
+            <div class="card-body">
+              <h6>Account to be deleted:</h6>
+              <p class="mb-1"><strong>Username:</strong> {{ user.username }}</p>
+              <p class="mb-1"><strong>Email:</strong> {{ user.email }}</p>
+              <p class="mb-0 small text-muted">
+                This link will expire in 24 hours.
+              </p>
+            </div>
+          </div>
+
+          <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" name="confirm_final_delete" id="confirmFinalDelete" required>
+              <label class="form-check-label" for="confirmFinalDelete">
+                Yes, I want to permanently delete my account and all data
+              </label>
+            </div>
+
+            <div class="d-grid gap-2 d-sm-flex justify-content-sm-end">
+              <a href="{% url 'home' %}" class="btn btn-secondary btn-lg">
+                Cancel & Keep Account
+              </a>
+              <button type="submit" class="btn btn-danger btn-lg">
+                Permanently Delete
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

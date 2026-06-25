@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Delete Account - Indcric{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card border-danger">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0">⚠️ Delete Account</h5>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-danger" role="alert">
+            <strong>This action cannot be undone!</strong>
+            Deleting your account will:
+            <ul class="mb-0 mt-2">
+              <li>Permanently delete all your personal data</li>
+              <li>Remove your voting history</li>
+              <li>Disable access to all features</li>
+              <li>This includes data from all cricket sessions you participated in</li>
+            </ul>
+          </div>
+
+          <form method="post">
+            {% csrf_token %}
+            
+            <div class="mb-3">
+              <h6>Before you go...</h6>
+              <p class="text-muted">
+                We'll send a confirmation link to <strong>{{ user.email }}</strong>.
+                You must click that link to permanently delete your account.
+              </p>
+            </div>
+
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" name="confirm_delete" id="confirmDelete" required>
+              <label class="form-check-label" for="confirmDelete">
+                I understand this will permanently delete my account and all associated data
+              </label>
+            </div>
+
+            <div class="d-grid gap-2 d-sm-flex justify-content-sm-end">
+              <a href="{% url 'home' %}" class="btn btn-secondary btn-lg">
+                Cancel
+              </a>
+              <button type="submit" class="btn btn-danger btn-lg">
+                Delete My Account
+              </button>
+            </div>
+          </form>
+
+          <hr class="my-4">
+
+          <h6>Need help?</h6>
+          <p class="small text-muted">
+            If you have questions or concerns, please contact us before deleting your account.
+            We're happy to help address any issues.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

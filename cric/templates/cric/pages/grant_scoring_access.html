@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Grant Scoring Access - {{ session.name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-2xl">
+    <div class="mb-6">
+        <a href="{% url 'session_detail' session.id %}" class="text-blue-600 hover:text-blue-800">
+            ← Back to {{ session.name }}
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h1 class="text-3xl font-bold mb-2">Grant Scoring Access</h1>
+        <p class="text-gray-600 mb-6">
+            Temporarily grant a player access to score all matches on <strong>{{ session.name }}</strong>
+        </p>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-4 p-4 rounded-lg {% if message.tags %}{{ message.tags }}{% endif %}"
+                     style="{% if 'error' in message.tags %}background-color: #fee; color: #c33;{% elif 'success' in message.tags %}background-color: #efe; color: #3c3;{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="POST" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- User Selection -->
+            <div>
+                <label for="{{ form.user.id_for_label }}" class="block text-sm font-semibold mb-2">
+                    Player <span class="text-red-500">*</span>
+                </label>
+                {{ form.user }}
+                {% if form.user.help_text %}
+                    <p class="text-xs text-gray-600 mt-1">{{ form.user.help_text }}</p>
+                {% endif %}
+                {% if form.user.errors %}
+                    <div class="text-red-600 text-sm mt-1">
+                        {% for error in form.user.errors %}{{ error }}<br>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Session (hidden, already selected) -->
+            {{ form.session }}
+
+            <!-- Duration Selection -->
+            <div>
+                <label for="{{ form.duration_minutes.id_for_label }}" class="block text-sm font-semibold mb-2">
+                    Duration <span class="text-red-500">*</span>
+                </label>
+                {{ form.duration_minutes }}
+                {% if form.duration_minutes.help_text %}
+                    <p class="text-xs text-gray-600 mt-1">{{ form.duration_minutes.help_text }}</p>
+                {% endif %}
+                {% if form.duration_minutes.errors %}
+                    <div class="text-red-600 text-sm mt-1">
+                        {% for error in form.duration_minutes.errors %}{{ error }}<br>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Custom Duration (shown only if selected) -->
+            <div id="custom-duration-field" style="display: none;">
+                <label for="{{ form.custom_duration_minutes.id_for_label }}" class="block text-sm font-semibold mb-2">
+                    Custom Duration (minutes)
+                </label>
+                {{ form.custom_duration_minutes }}
+                {% if form.custom_duration_minutes.help_text %}
+                    <p class="text-xs text-gray-600 mt-1">{{ form.custom_duration_minutes.help_text }}</p>
+                {% endif %}
+                {% if form.custom_duration_minutes.errors %}
+                    <div class="text-red-600 text-sm mt-1">
+                        {% for error in form.custom_duration_minutes.errors %}{{ error }}<br>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Reason (optional) -->
+            <div>
+                <label for="{{ form.reason.id_for_label }}" class="block text-sm font-semibold mb-2">
+                    Reason (Optional)
+                </label>
+                {{ form.reason }}
+                {% if form.reason.help_text %}
+                    <p class="text-xs text-gray-600 mt-1">{{ form.reason.help_text }}</p>
+                {% endif %}
+                {% if form.reason.errors %}
+                    <div class="text-red-600 text-sm mt-1">
+                        {% for error in form.reason.errors %}{{ error }}<br>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Non-field errors -->
+            {% if form.non_field_errors %}
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                    {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- Buttons -->
+            <div class="flex gap-4 pt-4">
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700">
+                    ✓ Grant Access
+                </button>
+                <a href="{% url 'session_detail' session.id %}" class="px-6 py-2 bg-gray-300 text-gray-800 font-semibold rounded hover:bg-gray-400">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    select, textarea, input[type="text"], input[type="number"] {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 0.375rem;
+        font-size: 1rem;
+    }
+    
+    select:focus, textarea:focus, input[type="text"]:focus, input[type="number"]:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const durationSelect = document.getElementById('{{ form.duration_minutes.id_for_label }}');
+        const customDurationField = document.getElementById('custom-duration-field');
+
+        function toggleCustomDuration() {
+            if (durationSelect.value === '0') {
+                customDurationField.style.display = 'block';
+            } else {
+                customDurationField.style.display = 'none';
+            }
+        }
+
+        durationSelect.addEventListener('change', toggleCustomDuration);
+        toggleCustomDuration();  // Run on page load
+    });
+</script>
+{% endblock %}

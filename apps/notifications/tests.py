@@ -318,9 +318,11 @@ class ActivityViewTests(TestCase):
 
 import json
 
+from datetime import timedelta
+
 from django.test import override_settings
 
-from apps.notifications.models import OutboundMessage
+from apps.notifications.models import BotEvent, OutboundMessage, WhatsAppIdentity
 
 
 @override_settings(WHATSAPP_APP_SECRET='')
@@ -358,7 +360,8 @@ class MetaPathCharacterizationTests(TestCase):
         mock_send.assert_called_once()  # DM confirmation — Meta path unchanged
 
 
-@override_settings(BOT_INBOUND_TOKEN='tok', WHATSAPP_BOT_NUMBER='+32465110367')
+@override_settings(BOT_INBOUND_TOKEN='tok', WHATSAPP_BOT_NUMBER='+32465110367',
+                   WHATSAPP_GROUP_BOT_ENABLED=False)
 class GroupInboundTests(TestCase):
     """The new /api/bot/inbound/ endpoint: records group votes, reacts ✅/❌,
     queues command replies, and makes ZERO Cloud-API calls for group traffic."""
@@ -386,8 +389,26 @@ class GroupInboundTests(TestCase):
         self.assertFalse(Vote.objects.exists())
 
     @patch("apps.notifications.services.send_text_message")
-    def test_group_text_yes_records_vote_reacts_and_no_cloud_calls(self, mock_send):
+    def test_group_typed_yes_is_not_a_vote(self, mock_send):
+        # Typed 'yes' in the group is conversation, not an RSVP — must NOT record
+        # (members say yes/no all the time). Votes come from poll + reactions only.
         resp = self._post({'from': '32470000001', 'wa_message_id': 'g2', 'text': 'YES', 'kind': 'text'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Vote.objects.filter(poll=self.poll, user=self.member).exists())
+        self.assertEqual(resp.json()['actions'], [])
+        mock_send.assert_not_called()
+
+    @patch("apps.notifications.services.send_text_message")
+    def test_group_random_text_ignored_silently(self, mock_send):
+        resp = self._post({'from': '32470000001', 'wa_message_id': 'g2b', 'text': 'see you there!'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Vote.objects.exists())
+        self.assertFalse(OutboundMessage.objects.exists())  # no "didn't understand" spam
+        mock_send.assert_not_called()
+
+    @patch("apps.notifications.services.send_text_message")
+    def test_reaction_on_bot_message_records_yes_and_reacts(self, mock_send):
+        resp = self._post({'from': '32470000001', 'wa_message_id': 'g2c', 'kind': 'reaction', 'emoji': '👍'})
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(
             Vote.objects.filter(poll=self.poll, user=self.member, choice='yes').exists()
@@ -410,6 +431,39 @@ class GroupInboundTests(TestCase):
             Vote.objects.filter(poll=self.poll, user=self.member, choice='no').exists()
         )
 
+    def test_group_vote_matched_by_wa_name_learns_lid(self):
+        # First-ever vote from a member: no wa_lid yet, but the roster set their
+        # wa_name. Match by name, record the vote, and LEARN their LID.
+        self.member.wa_name = 'Bhanu Angam'
+        self.member.wa_lid = ''
+        self.member.save()
+        resp = self._post({
+            'from': '+267418135986186', 'lid': '267418135986186',
+            'author_name': 'Bhanu Angam', 'wa_message_id': 'gname1',
+            'kind': 'poll_vote', 'selected': ['Yes ✅'],
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(
+            Vote.objects.filter(poll=self.poll, user=self.member, choice='yes').exists()
+        )
+        self.member.refresh_from_db()
+        self.assertEqual(self.member.wa_lid, '267418135986186')  # learned
+
+    def test_group_vote_matched_by_lid_when_phone_hidden(self):
+        # Community/privacy groups expose only a LID, never the phone — match on
+        # User.wa_lid. The 'from' here is the opaque LID-derived value (no phone
+        # match); the lid links it to the member.
+        self.member.wa_lid = '267418135986186'
+        self.member.save()
+        resp = self._post({
+            'from': '+267418135986186', 'lid': '267418135986186',
+            'wa_message_id': 'glid1', 'kind': 'poll_vote', 'selected': ['Yes ✅'],
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(
+            Vote.objects.filter(poll=self.poll, user=self.member, choice='yes').exists()
+        )
+
     @patch("apps.notifications.services.send_text_message")
     def test_group_help_from_unknown_queues_text_no_cloud_calls(self, mock_send):
         resp = self._post({'from': '32499999999', 'wa_message_id': 'g5', 'text': 'HELP'})
@@ -423,9 +477,183 @@ class GroupInboundTests(TestCase):
         self.assertFalse(Vote.objects.exists())
 
     def test_duplicate_inbound_is_idempotent(self):
-        p = {'from': '32470000001', 'wa_message_id': 'g7', 'text': 'NO'}
+        p = {'from': '32470000001', 'wa_message_id': 'g7', 'kind': 'reaction', 'emoji': '👎'}
         self._post(p)
         self._post(p)  # same wa_message_id → BotEvent unique swallows it
         self.assertEqual(
             Vote.objects.filter(poll=self.poll, user=self.member).count(), 1
         )
+
+
+@override_settings(BOT_WEBHOOK_TOKEN='wtok')
+class OutboundQueueTests(TestCase):
+    """The group-post queue the Node bot drains: claim, reclaim-stale, ack."""
+
+    def setUp(self):
+        self.drain = reverse('bot_outbound')
+        self.ack = reverse('bot_outbound_ack')
+
+    def test_drain_requires_token(self):
+        OutboundMessage.objects.create(body='hi', target='community')
+        self.assertEqual(self.client.get(f"{self.drain}?token=wrong").status_code, 401)
+
+    def test_drain_claims_pending(self):
+        m = OutboundMessage.objects.create(body='RSVP please', target='community')
+        resp = self.client.get(f"{self.drain}?token=wtok")
+        self.assertEqual(resp.status_code, 200)
+        msgs = resp.json()['messages']
+        self.assertEqual(len(msgs), 1)
+        self.assertEqual(msgs[0]['body'], 'RSVP please')
+        m.refresh_from_db()
+        self.assertEqual(m.status, OutboundMessage.CLAIMED)
+        self.assertIsNotNone(m.claimed_at)
+
+    def test_drain_skips_freshly_claimed(self):
+        OutboundMessage.objects.create(
+            body='x', status=OutboundMessage.CLAIMED, claimed_at=timezone.now(),
+        )
+        self.assertEqual(self.client.get(f"{self.drain}?token=wtok").json()['messages'], [])
+
+    def test_drain_reclaims_stale_claimed(self):
+        stale = OutboundMessage.objects.create(
+            body='stuck', status=OutboundMessage.CLAIMED,
+            claimed_at=timezone.now() - timedelta(seconds=200),
+        )
+        ids = [m['id'] for m in self.client.get(f"{self.drain}?token=wtok").json()['messages']]
+        self.assertIn(stale.id, ids)
+
+    def test_ack_sent_marks_sent_and_audits(self):
+        m = OutboundMessage.objects.create(
+            body='x', status=OutboundMessage.CLAIMED, claimed_at=timezone.now(),
+        )
+        resp = self.client.post(
+            f"{self.ack}?token=wtok",
+            data=json.dumps({'id': m.id, 'status': 'sent', 'wa_message_id': 'wamid.out1'}),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        m.refresh_from_db()
+        self.assertEqual(m.status, OutboundMessage.SENT)
+        self.assertIsNotNone(m.sent_at)
+        self.assertTrue(
+            BotEvent.objects.filter(action='group_post', direction=BotEvent.OUTBOUND).exists()
+        )
+
+    def test_ack_failed_increments_attempts(self):
+        m = OutboundMessage.objects.create(
+            body='x', status=OutboundMessage.CLAIMED, claimed_at=timezone.now(),
+        )
+        resp = self.client.post(
+            f"{self.ack}?token=wtok",
+            data=json.dumps({'id': m.id, 'status': 'failed', 'error': 'boom'}),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        m.refresh_from_db()
+        self.assertEqual(m.status, OutboundMessage.FAILED)
+        self.assertEqual(m.attempts, 1)
+        self.assertEqual(m.error, 'boom')
+
+
+@override_settings(WHATSAPP_GROUP_BOT_ENABLED=True)
+class AutoPostEnqueueTests(TestCase):
+    """Domain events auto-queue group posts (gated on WHATSAPP_GROUP_BOT_ENABLED)."""
+
+    def _session(self, **kw):
+        # Future date so the poll counts as 'upcoming' (the group RSVP poll only
+        # auto-posts for upcoming sessions). Relative to today, not hardcoded.
+        defaults = dict(
+            name="Sunday Nets", duration=Decimal("2"),
+            date=timezone.localdate() + timedelta(days=7), time=time(18, 0),
+            location="Hall",
+        )
+        defaults.update(kw)
+        return Session.objects.create(**defaults)
+
+    def test_poll_open_enqueues_native_poll(self):
+        s = self._session()
+        Poll.objects.create(session=s)
+        m = OutboundMessage.objects.filter(dedup_key=f'poll_opened:{s.poll.id}').first()
+        self.assertIsNotNone(m)
+        self.assertEqual(m.kind, OutboundMessage.POLL)
+        self.assertEqual(m.poll_options, ['Yes ✅', 'No ❌'])
+        self.assertIn("Sunday Nets", m.body)
+
+    def test_past_session_poll_does_not_enqueue(self):
+        s = self._session(date=date(2020, 1, 1))
+        Poll.objects.create(session=s)
+        self.assertFalse(OutboundMessage.objects.exists())
+
+    def test_session_confirmed_enqueues_cost_split_text(self):
+        s = self._session(cost=Decimal("20"))
+        s.cost_per_person = Decimal("5.00")
+        s.attendance_confirmed = True
+        s.save()
+        m = OutboundMessage.objects.filter(dedup_key=f'session_confirmed:{s.id}').first()
+        self.assertIsNotNone(m)
+        self.assertEqual(m.kind, OutboundMessage.TEXT)
+        self.assertIn("€5.00 per player", m.body)
+
+    def test_confirm_twice_does_not_double_post(self):
+        s = self._session(cost=Decimal("20"))
+        s.cost_per_person = Decimal("5.00")
+        s.attendance_confirmed = True
+        s.save()
+        s.save()  # re-save while confirmed
+        self.assertEqual(
+            OutboundMessage.objects.filter(dedup_key=f'session_confirmed:{s.id}').count(), 1
+        )
+
+    @override_settings(WHATSAPP_GROUP_BOT_ENABLED=False)
+    def test_disabled_enqueues_nothing(self):
+        s = self._session()
+        Poll.objects.create(session=s)
+        self.assertFalse(OutboundMessage.objects.exists())
+
+
+@override_settings(BOT_WEBHOOK_TOKEN='wtok')
+class RosterAndIdentityTests(TestCase):
+    """LID onboarding: bulk roster import + mapping an identity to a user."""
+
+    def test_roster_requires_token(self):
+        resp = self.client.post(
+            reverse('bot_roster') + '?token=bad',
+            data=json.dumps({'members': []}), content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 401)
+
+    def test_roster_stages_lids(self):
+        resp = self.client.post(
+            reverse('bot_roster') + '?token=wtok',
+            data=json.dumps({'members': [
+                {'lid': '267418135986186', 'name': 'Bhanu'},
+                {'lid': '8826174587110', 'name': 'Sam'},
+            ]}), content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['staged'], 2)
+        self.assertTrue(
+            WhatsAppIdentity.objects.filter(lid='267418135986186', name='Bhanu').exists()
+        )
+
+    def test_roster_links_wa_name_by_phone(self):
+        u = User.objects.create_user(username='bhanu', password='x')
+        u.phone = '+32470756917'
+        u.save()
+        resp = self.client.post(
+            reverse('bot_roster') + '?token=wtok',
+            data=json.dumps({'members': [
+                {'phone': '+32470756917', 'name': 'Bhanu Angam'},
+            ]}), content_type='application/json',
+        )
+        self.assertEqual(resp.json()['linked'], 1)
+        u.refresh_from_db()
+        self.assertEqual(u.wa_name, 'Bhanu Angam')
+
+    def test_mapping_identity_sets_user_wa_lid(self):
+        u = User.objects.create_user(username='bhanu', password='x')
+        ident = WhatsAppIdentity.objects.create(lid='267418135986186', name='Bhanu')
+        ident.user = u
+        ident.save()
+        u.refresh_from_db()
+        self.assertEqual(u.wa_lid, '267418135986186')  # mirrored for vote matching

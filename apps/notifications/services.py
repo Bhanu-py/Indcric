@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import requests
 from django.conf import settings
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.urls import reverse
 from django.utils import timezone
 
@@ -416,6 +416,71 @@ def build_group_invite_text(poll, base_url):
     lines.append("")
     lines.append(f"Details: {session_url}")
     return "\n".join(lines)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Auto-post composers + queue enqueue (group-resident bot, Phase 2). Django drops
+# OutboundMessage rows; the Node bot drains and posts them. Gated on
+# WHATSAPP_GROUP_BOT_ENABLED so nothing queues before the bot is deployed.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_group_rsvp_poll(poll):
+    """(question, options) for the native WhatsApp poll the bot posts when a poll
+    opens. One-tap Yes/No is the vote surface — typed replies in the group do NOT
+    count (see whatsapp-group-bot.md 'Group vote inputs'). Detail/links stay in
+    the app; the poll is deliberately minimal."""
+    session = poll.session
+    date_str = session.date.strftime("%a %d %b")
+    time_str = session.time.strftime("%H:%M") if session.time else ''
+    when = date_str + (f" {time_str}" if time_str else '')
+    return f"🏏 {session.name} ({when}) — are you in?", ['Yes ✅', 'No ❌']
+
+
+def build_group_cost_split_text(session, base_url):
+    """Read-only settlement post when a session's attendance is confirmed."""
+    date_str = session.date.strftime("%a %d %b")
+    session_url = base_url.rstrip('/') + reverse('session_detail', args=[session.id])
+    return (
+        f"💰 {session.name} is settled — €{session.cost_per_person:.2f} per player.\n"
+        f"📅 played {date_str}\n\n"
+        f"Check your share + pay: DM me *BALANCE*, or open {session_url}"
+    )
+
+
+def build_group_match_result_text(match, base_url):
+    """Read-only result post when a match completes."""
+    if match.winner_id:
+        head = f"🏆 {match.winner.name} won {match.name}!"
+    else:
+        head = f"🤝 {match.name} ended in a tie."
+    match_url = base_url.rstrip('/') + reverse('match_detail', args=[match.id])
+    return f"{head}\n📋 Scorecard: {match_url}"
+
+
+def enqueue_group_post(body, *, kind='text', poll_options=None, dedup_key='', target='community'):
+    """Queue a group post for the Node bot to drain. No-op unless
+    WHATSAPP_GROUP_BOT_ENABLED. Deduped on dedup_key (post at most once per event);
+    wrapped in a savepoint + broad except so a feed/queue failure never rolls back
+    the domain save that triggered it. Returns the row, or None (disabled/dup/error).
+    """
+    if not getattr(settings, 'WHATSAPP_GROUP_BOT_ENABLED', False):
+        return None
+    from .models import OutboundMessage
+    try:
+        with transaction.atomic():
+            if dedup_key:
+                obj, created = OutboundMessage.objects.get_or_create(
+                    dedup_key=dedup_key,
+                    defaults={'body': body, 'kind': kind,
+                              'poll_options': poll_options or [], 'target': target},
+                )
+                return obj if created else None
+            return OutboundMessage.objects.create(
+                body=body, kind=kind, poll_options=poll_options or [], target=target,
+            )
+    except Exception:
+        logger.exception('Failed to enqueue group post (dedup_key=%s)', dedup_key)
+        return None
 
 
 def build_group_share_url(poll, base_url):

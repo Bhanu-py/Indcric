@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm Revoke Access{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-2xl">
+    <div class="mb-6">
+        <a href="{% url 'session_detail' access.session.id %}" class="text-blue-600 hover:text-blue-800">
+            ← Back to {{ access.session.name }}
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h1 class="text-3xl font-bold mb-6">Revoke Scoring Access</h1>
+
+        <div class="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded mb-6">
+            <strong>⚠️ Warning:</strong> You are about to revoke scoring access. This action will immediately prevent the player from scoring.
+        </div>
+
+        <div class="bg-gray-100 rounded-lg p-4 mb-6 space-y-3">
+            <div>
+                <span class="font-semibold text-gray-700">Player:</span>
+                <span class="text-gray-900">{{ access.user.get_full_name|default:access.user.username }}</span>
+            </div>
+            <div>
+                <span class="font-semibold text-gray-700">Session:</span>
+                <span class="text-gray-900">{{ access.session.name }}</span>
+            </div>
+            <div>
+                <span class="font-semibold text-gray-700">Granted By:</span>
+                <span class="text-gray-900">{{ access.granted_by.get_full_name|default:access.granted_by.username }}</span>
+            </div>
+            <div>
+                <span class="font-semibold text-gray-700">Granted At:</span>
+                <span class="text-gray-900">{{ access.granted_at|date:"Y-m-d H:i" }}</span>
+            </div>
+            <div>
+                <span class="font-semibold text-gray-700">Expires At:</span>
+                <span class="text-gray-900">{{ access.expires_at|date:"Y-m-d H:i" }}</span>
+            </div>
+            {% if access.reason %}
+                <div>
+                    <span class="font-semibold text-gray-700">Reason:</span>
+                    <span class="text-gray-900">{{ access.reason }}</span>
+                </div>
+            {% endif %}
+        </div>
+
+        <form method="POST" class="space-y-4">
+            {% csrf_token %}
+
+            <div class="flex gap-4">
+                <button type="submit" class="px-6 py-2 bg-red-600 text-white font-semibold rounded hover:bg-red-700">
+                    ✓ Revoke Access
+                </button>
+                <a href="{% url 'session_detail' access.session.id %}" class="px-6 py-2 bg-gray-300 text-gray-800 font-semibold rounded hover:bg-gray-400">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
