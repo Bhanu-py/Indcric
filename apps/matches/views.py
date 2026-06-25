@@ -61,7 +61,20 @@ def match_detail_view(request, match_id):
 # ── Live scoring ─────────────────────────────────────────────────────────────
 
 def _ball_token(d):
-    """Short label for a delivery in the current-over timeline."""
+    """Short label for a delivery in the current-over timeline.
+    
+    Handles combined extras + wickets:
+    - Wide + Stumped: batsman crossed crease during wide, then stumped
+    - No-ball + Run out: batsman running during no-ball, then run out
+    """
+    # Handle combined extras + wickets (wide+stumped, no-ball+run-out)
+    if d.extra_type == d.EXTRA_WIDE and d.is_wicket:
+        extra = d.extra_runs - 1
+        return ('wicket-wide', f"Wd+W{('+' + str(extra)) if extra else ''}")
+    if d.extra_type == d.EXTRA_NOBALL and d.is_wicket:
+        return ('wicket-noball', f"NB+W{('+' + str(d.runs_off_bat)) if d.runs_off_bat else ''}")
+    
+    # Handle standard cases (single extra or single wicket)
     if d.extra_type == d.EXTRA_WIDE:
         extra = d.extra_runs - 1
         return ('wide', f"wd{('+' + str(extra)) if extra else ''}")
@@ -333,12 +346,15 @@ def score_ball_view(request, innings_id):
     client_uuid = request.POST.get('uuid', '')
 
     kwargs = {'client_uuid': client_uuid}
+    
+    # Handle wickets (can now be combined with wide or no-ball)
+    wicket_info = {}
     if request.POST.get('wicket'):
         dismissal = request.POST.get('dismissal', 'bowled')
         # Runs completed before the dismissal (run out going for the 2nd/3rd) —
         # the wicket panel posts its own field so the run buttons can't collide.
         wicket_runs = max(0, min(7, int(request.POST.get('wicket_runs') or 0)))
-        kwargs.update(is_wicket=True, dismissal_type=dismissal, runs_off_bat=wicket_runs)
+        wicket_info.update(is_wicket=True, dismissal_type=dismissal, runs_off_bat=wicket_runs)
         fielder = None
         fielder_id = request.POST.get('fielder')
         if fielder_id:
@@ -346,10 +362,29 @@ def score_ball_view(request, innings_id):
         # Fielding dismissals must name who did it — bounce invalid submits.
         if dismissal in ('caught', 'runout', 'stumped') and fielder is None:
             return _render_console(request, innings)
-        kwargs['fielder'] = fielder
+        wicket_info['fielder'] = fielder
         # Run-out can dismiss either batter — honour the chosen end.
         if request.POST.get('out_end') == 'nonstriker' and innings.current_non_striker_id:
-            kwargs['out_player'] = innings.current_non_striker
+            wicket_info['out_player'] = innings.current_non_striker
+    
+    # Handle extras (can now be combined with wickets in specific cases)
+    # Check for combined wide + stumped or no-ball + run-out
+    if wicket_info:
+        # Only allow wide + stumped or no-ball + run-out combinations
+        if mode == 'wide' and wicket_info.get('dismissal_type') == 'stumped':
+            kwargs.update(extra_type='wide', extra_runs=1 + runs)
+            kwargs.update(wicket_info)
+        elif mode == 'noball' and wicket_info.get('dismissal_type') == 'runout':
+            kwargs.update(extra_type='noball', extra_runs=1)
+            # For no-ball + run-out, wicket_runs is the dismissal runs, runs is any additional
+            wicket_info['runs_off_bat'] = runs
+            kwargs.update(wicket_info)
+        elif mode == 'runs':
+            # Regular wicket without extra
+            kwargs.update(wicket_info)
+        else:
+            # Invalid combination - just record the wicket
+            kwargs.update(wicket_info)
     elif mode == 'wide':
         kwargs.update(extra_type='wide', extra_runs=1 + runs)
     elif mode == 'noball':

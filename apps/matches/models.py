@@ -288,5 +288,36 @@ class Delivery(models.Model):
         penalty = self.extra_runs if self.extra_type in (self.EXTRA_WIDE, self.EXTRA_NOBALL) else 0
         return self.runs_off_bat + penalty
 
+    def is_valid_delivery(self):
+        """Validate that extras and wickets are only combined in allowed cases.
+        
+        Cricket rules allow:
+        - Wide + Stumped: Ball is wide, but batsman crossed crease and was stumped
+        - No-ball + Run out: Ball is no-ball, but batsman was run out while running
+        
+        Other combinations (wide+run-out, no-ball+stumped, etc.) are invalid.
+        """
+        # If there's both an extra AND a wicket, validate the combination
+        if self.extra_type != self.EXTRA_NONE and self.is_wicket:
+            # Wide + Stumped is allowed
+            if self.extra_type == self.EXTRA_WIDE and self.dismissal_type == 'stumped':
+                return True
+            # No-ball + Run out is allowed
+            if self.extra_type == self.EXTRA_NOBALL and self.dismissal_type == 'runout':
+                return True
+            # Any other combination is invalid
+            return False
+        # All single cases (just extra OR just wicket) are valid
+        return True
+
+    def clean(self):
+        """Validate the delivery before saving to database."""
+        from django.core.exceptions import ValidationError
+        if not self.is_valid_delivery():
+            raise ValidationError(
+                f"Invalid combination: {self.get_extra_type_display()} + {self.dismissal_type}. "
+                "Only wide+stumped and no-ball+run-out are allowed."
+            )
+
     def __str__(self):
         return f"{self.innings} — ball {self.sequence}"
