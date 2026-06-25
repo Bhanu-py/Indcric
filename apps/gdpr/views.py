@@ -153,8 +153,11 @@ def delete_account_confirm_view(request, uidb64, token):
     """
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
-        user = request.user.__class__.objects.get(pk=uid)
-    except (TypeError, ValueError, OverflowError, request.user.__class__.DoesNotExist):
+        # Use the User model directly, don't rely on request.user
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         messages.error(request, 'Invalid deletion link.')
         return redirect('home')
     
