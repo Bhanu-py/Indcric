@@ -30,11 +30,23 @@ def scorecard_view(request, match_id):
             'extras': scoring.extras_breakdown(inn),
         })
 
+    completed = match.is_completed
+    awards = scoring.match_awards(match) if completed else None
+    # Players for the staff Man-of-the-Match override dropdown, grouped by team.
+    award_teams = [
+        {'team': t, 'players': list(t.players.select_related('user').order_by('id'))}
+        for t in match.teams.order_by('id')
+    ] if completed and _can_score(request, match) else []
+
     return render(request, 'cric/pages/scorecard.html', {
         'match': match,
         'cards': cards,
         'result_line': scoring.result_line(match),
         'in_progress': bool(innings_list) and not all(i.is_closed for i in innings_list),
+        'completed': completed,
+        'awards': awards,
+        'award_teams': award_teams,
+        'can_score': _can_score(request, match),
     })
 
 
@@ -527,6 +539,24 @@ def reopen_scoring_view(request, match_id):
                 match.winner = None
                 match.save(update_fields=['winner'])
         return redirect('match_score', match_id=match.id)
+    return redirect('scorecard', match_id=match.id)
+
+
+@login_required
+def set_man_of_match_view(request, match_id):
+    """Staff/scorer override for Player of the Match. An empty/`auto` value
+    clears the override so the auto-computed pick is used again."""
+    match = get_object_or_404(Match, id=match_id)
+    redirect_resp = _staff_or_redirect(request, match)
+    if redirect_resp:
+        return redirect_resp
+    if request.method == 'POST':
+        pid = request.POST.get('player', '')
+        if pid in ('', 'auto'):
+            match.man_of_match = None
+        else:
+            match.man_of_match = Player.objects.filter(pk=pid, team__match=match).first()
+        match.save(update_fields=['man_of_match'])
     return redirect('scorecard', match_id=match.id)
 
 

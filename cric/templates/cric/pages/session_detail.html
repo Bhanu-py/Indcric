@@ -566,6 +566,28 @@
         ═══════════════════════════════════ -->
         <div class="lg:col-span-2" id="team-management">
 
+            <!-- ── Player of the Session ── -->
+            {% if session_award %}
+            <div class="card mb-4 overflow-hidden">
+                <div class="h-1 bg-gradient-to-r from-amber-400 to-orange-500"></div>
+                <div class="flex items-center gap-3 px-4 py-3.5">
+                    {% include "_components/avatar.html" with user=session_award.user size=48 ring="ring-2 ring-amber-300" %}
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5">
+                            {% include "_components/trophy_icon.html" with cls="w-3.5 h-3.5 text-amber-500" %}
+                            <p class="font-mono text-[10px] text-amber-700 uppercase tracking-[0.08em]">Player of the Session</p>
+                        </div>
+                        <p class="text-[15px] font-semibold text-stone-900 truncate">{{ session_award.user.first_name|default:session_award.user.username }}</p>
+                        <p class="font-mono text-[11px] text-stone-500 mt-0.5">
+                            {% if session_award.runs %}{{ session_award.runs }} run{{ session_award.runs|pluralize }}{% endif %}
+                            {% if session_award.wickets %}{% if session_award.runs %} · {% endif %}{{ session_award.wickets }} wkt{{ session_award.wickets|pluralize }}{% endif %}
+                            {% if session_award.fielding %} · {{ session_award.fielding }} in field{% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- ── Match summary cards ── -->
             {% for match in matches %}
             {% with mteams=match.teams.all %}
@@ -673,11 +695,7 @@
                             </div>
                             <div class="{% if forloop.first %}bg-pitch-50 border-pitch-100{% else %}bg-amber-50 border-amber-100{% endif %} rounded-xl px-1.5 py-2 sm:p-2 space-y-1 border">
                                 {% for player in team.players.all|sort_by_role %}
-                                    {% if team.captain and player.user.id == team.captain.id %}
-                                        {% include "_components/player_chip.html" with user=player.user is_captain=True show_role=True %}
-                                    {% else %}
-                                        {% include "_components/player_chip.html" with user=player.user show_role=True %}
-                                    {% endif %}
+                                    {% include "_components/player_chip.html" with user=player.user show_role=True captain_id=team.captain.id orange_cap_id=match.orange_cap_user_id purple_cap_id=match.purple_cap_user_id %}
                                 {% empty %}
                                 <p class="text-xs text-stone-400 text-center py-1">No players</p>
                                 {% endfor %}

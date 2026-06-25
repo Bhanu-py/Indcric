@@ -5,9 +5,15 @@ Usage:
   {% include "_components/player_chip.html" with user=player is_captain=True show_role=True %}
 
 Args:
-  user        User object (uses username, get_full_name, role)
-  is_captain  if True, shows amber captain pip inline with name
-  show_role   if True, shows trailing SVG role glyph (tinted by role)
+  user          User object (uses username, get_full_name, role)
+  is_captain    if True, shows amber captain pip inline with name
+  captain_id    alt to is_captain — shows the pip when it equals user.id
+  show_role     if True, shows trailing SVG role glyph (tinted by role)
+  orange_cap_id shows the Orange Cap (most runs) glyph when it equals user.id
+  purple_cap_id shows the Purple Cap (most wickets) glyph when it equals user.id
+
+`*_id` args take the cap/captain holder's user id so the comparison happens
+here ({% include with %} can't evaluate `==`). Pass None to show nothing.
 
 Role icons (Heroicons-outline 24x24, 1.75 stroke, currentColor) come from
 design_handoff/ui_kits/indcric_web/Icons.jsx (Bat / Ball / AllRounder).
@@ -17,8 +23,14 @@ design_handoff/ui_kits/indcric_web/Icons.jsx (Bat / Ball / AllRounder).
 <div class="player-chip">
     {% include "_components/avatar.html" with user=user size=24 ring="ring-1 ring-stone-200" %}
     <span class="truncate">{{ user.first_name|default:user.username }}</span>
-    {% if is_captain %}
+    {% if is_captain or captain_id and captain_id == user.id %}
         <span class="captain-badge" title="Captain">C</span>
+    {% endif %}
+    {% if orange_cap_id and orange_cap_id == user.id %}
+        <span class="shrink-0" title="Orange Cap · most runs">{% include "_components/cap_icon.html" with cls="w-4 h-4 text-orange-500" %}</span>
+    {% endif %}
+    {% if purple_cap_id and purple_cap_id == user.id %}
+        <span class="shrink-0" title="Purple Cap · most wickets">{% include "_components/cap_icon.html" with cls="w-4 h-4 text-purple-600" %}</span>
     {% endif %}
     {% if show_role and role %}
         <span class="shrink-0 ml-auto" title="{{ role|capfirst }}">

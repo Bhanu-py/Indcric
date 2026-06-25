@@ -26,6 +26,11 @@ class Match(models.Model):
         'Team', on_delete=models.SET_NULL, related_name='+', null=True, blank=True
     )
     toss_decision = models.CharField(max_length=4, blank=True)  # 'bat' | 'bowl'
+    # Player of the Match. NULL means "use the auto-computed pick" (top impact
+    # score from the ledger); staff can override to any player in the match.
+    man_of_match = models.ForeignKey(
+        'Player', on_delete=models.SET_NULL, related_name='+', null=True, blank=True
+    )
 
     @property
     def is_completed(self):

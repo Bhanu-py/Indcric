@@ -1,0 +1,20 @@
+{% comment %}
+Cricket cap — the Orange Cap (most runs) / Purple Cap (most wickets) award glyph.
+Colour comes entirely from the caller via `cls` (text-* utility), so one shape
+serves both caps.
+
+Usage:
+  {% include "_components/cap_icon.html" with cls="w-4 h-4 text-orange-500" %}
+  {% include "_components/cap_icon.html" with cls="w-5 h-5 text-purple-600" %}
+
+Args:
+  cls   Tailwind size + colour classes (default "w-4 h-4")
+{% endcomment %}
+<svg class="{{ cls|default:'w-4 h-4' }}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+  {# crown #}
+  <path d="M18 13.2H6c0-4.2 2.7-6.7 6-6.7s6 2.5 6 6.7z"/>
+  {# peak / brim #}
+  <path d="M7 13c-3 0-5 1-5 2 0 .85 1.5 1.05 3.5.65L7.2 15c.85-.2.65-2-.2-2z"/>
+  {# top button #}
+  <circle cx="12" cy="6.7" r="1.15"/>
+</svg>
