@@ -115,7 +115,13 @@ else:
         raise Exception("BREVO_API_KEY environment variable is not set")
     ANYMAIL = {"BREVO_API_KEY": _brevo_key}
 
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "IndCric <indiancricket.ghent@gmail.com>")
+# Email sender: use verified Brevo sender for the environment
+# Stage: akhilbelgium08@gmail.com (test/verified sender)
+# Master: indiancricket.ghent@gmail.com (production sender)
+if DEBUG:
+    DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Indcric <akhilbelgium08@gmail.com>")
+else:
+    DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "IndCric <indiancricket.ghent@gmail.com>")
 
 BOT_WEBHOOK_TOKEN = os.getenv("BOT_WEBHOOK_TOKEN", "")
 # Separate, higher-trust token for the group-bot inbound endpoint (/api/bot/inbound/).
