@@ -154,7 +154,7 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
     {# ── State: ready — the tap grid ── #}
     {% else %}
     <form hx-post="{% url 'score_ball' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
-          x-data="{ mode: 'runs', wicket: false, dismissal: '', fielder: '', outEnd: 'striker', wktRuns: 0 }"
+          x-data="{ mode: 'runs', wicket: false, dismissal: '', fielder: '', outEnd: 'striker', wktRuns: 0, extraRuns: 0 }"
           class="card p-3 sm:p-4 flex flex-col gap-3 sticky bottom-0 safe-bottom md:static z-10 shadow-md md:shadow-sm">
         {% csrf_token %}
         <input type="hidden" name="mode" x-model="mode">
@@ -211,7 +211,7 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
 
         {# wicket + undo #}
         <div class="flex gap-2" x-show="!wicket">
-            <button type="button" @click="wicket = true; mode='runs'; dismissal=''; fielder=''; outEnd='striker'; wktRuns=0"
+            <button type="button" @click="wicket = true; dismissal=''; fielder=''; outEnd='striker'; wktRuns=0"
                     class="btn btn-danger btn-md flex-1 justify-center">Wicket</button>
             <button type="button"
                     hx-post="{% url 'score_undo' innings.id %}" hx-target="#score-console" hx-swap="outerHTML"
@@ -236,6 +236,35 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                         class="btn btn-md justify-center text-sm">{{ lbl }}</button>
                 {% endfor %}
             </div>
+
+            {# Wide + Stumped option (Issue #49) #}
+            <template x-if="dismissal === 'stumped'">
+                <div class="border-t border-stone-200 pt-2.5">
+                    <p class="text-xs font-semibold text-stone-600 uppercase tracking-wide mb-2">Was it a wide?</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" @click="mode = mode === 'wide' ? 'runs' : 'wide'"
+                                :class="mode === 'wide' ? 'bg-amber-500 text-white' : 'bg-white text-stone-700 border border-stone-300'"
+                                class="btn btn-sm text-sm font-medium transition-colors">Yes (Wd)</button>
+                        <button type="button" @click="mode = 'runs'"
+                                :class="mode === 'runs' ? 'bg-stone-600 text-white' : 'bg-white text-stone-700 border border-stone-300'"
+                                class="btn btn-sm text-sm font-medium transition-colors">No</button>
+                    </div>
+                    {# Extra runs selector when wide is selected #}
+                    <template x-if="mode === 'wide'">
+                        <div class="mt-2.5">
+                            <p class="form-label">Additional runs (beyond the wide)</p>
+                            <div class="grid grid-cols-4 gap-2 mt-1">
+                                {% for r in "0123" %}
+                                <button type="button" @click="extraRuns = {{ r }}"
+                                        :class="extraRuns === {{ r }} ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-stone-700 border border-stone-300'"
+                                        class="btn btn-secondary btn-sm text-base font-semibold tabular-nums transition-colors">{{ r }}</button>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" name="runs" :value="extraRuns">
+                        </div>
+                    </template>
+                </div>
+            </template>
 
             {# run out can dismiss either batter, after any number of completed runs #}
             <template x-if="dismissal === 'runout'">
