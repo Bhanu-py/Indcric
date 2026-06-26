@@ -75,13 +75,18 @@ def match_detail_view(request, match_id):
 def _ball_token(d):
     """Short label for a delivery in the current-over timeline.
     
-    Handles combined extra + wicket:
+    Handles combined extras + wickets:
     - Wide + Stumped: batsman crossed crease during wide, then stumped
+    - No-ball + Run out: batsman running during no-ball, then run out
     """
     # Handle combined wide + stumped
     if d.extra_type == d.EXTRA_WIDE and d.is_wicket:
         extra = d.extra_runs - 1
         return ('wicket-wide', f"Wd+W{('+' + str(extra)) if extra else ''}")
+    
+    # Handle combined no-ball + run-out
+    if d.extra_type == d.EXTRA_NOBALL and d.is_wicket:
+        return ('wicket-noball', f"NB+W{('+' + str(d.runs_off_bat)) if d.runs_off_bat else ''}")
     
     # Handle standard cases (single extra or single wicket)
     if d.extra_type == d.EXTRA_WIDE:
@@ -376,11 +381,16 @@ def score_ball_view(request, innings_id):
         if request.POST.get('out_end') == 'nonstriker' and innings.current_non_striker_id:
             wicket_info['out_player'] = innings.current_non_striker
     
-    # Handle extras (can now be combined with wickets in specific case: wide+stumped)
+    # Handle extras (can now be combined with wickets in specific cases)
     if wicket_info:
-        # Only allow wide + stumped combination
+        # Only allow wide + stumped or no-ball + run-out combinations
         if mode == 'wide' and wicket_info.get('dismissal_type') == 'stumped':
             kwargs.update(extra_type='wide', extra_runs=1 + runs)
+            kwargs.update(wicket_info)
+        elif mode == 'noball' and wicket_info.get('dismissal_type') == 'runout':
+            kwargs.update(extra_type='noball', extra_runs=1)
+            # For no-ball + run-out, wicket_runs is the dismissal runs, runs is any additional
+            wicket_info['runs_off_bat'] = runs
             kwargs.update(wicket_info)
         else:
             # Regular wicket without extra or invalid combination
