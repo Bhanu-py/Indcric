@@ -388,9 +388,9 @@ def score_ball_view(request, innings_id):
             kwargs.update(extra_type='wide', extra_runs=1 + runs)
             kwargs.update(wicket_info)
         elif mode == 'noball' and wicket_info.get('dismissal_type') == 'runout':
+            # For no-ball + run-out: use the wicket_runs as the runs for both the extra and the dismissal
             kwargs.update(extra_type='noball', extra_runs=1)
-            # For no-ball + run-out, wicket_runs is the dismissal runs, runs is any additional
-            wicket_info['runs_off_bat'] = runs
+            wicket_info['runs_off_bat'] = wicket_info.get('runs_off_bat', 0)
             kwargs.update(wicket_info)
         else:
             # Regular wicket without extra or invalid combination

@@ -304,20 +304,7 @@ pick bowler; ready → the tap grid. Staff only. Context from _console_context()
                                 :class="mode === 'runs' ? 'bg-stone-600 text-white' : 'bg-white text-stone-700 border border-stone-300'"
                                 class="btn btn-sm text-sm font-medium transition-colors">No</button>
                     </div>
-                    {# Extra runs selector when no-ball is selected #}
-                    <template x-if="mode === 'noball'">
-                        <div class="mt-2.5">
-                            <p class="form-label">Additional runs (beyond the no-ball)</p>
-                            <div class="grid grid-cols-4 gap-2 mt-1">
-                                {% for r in "0123" %}
-                                <button type="button" @click="extraRuns = {{ r }}"
-                                        :class="extraRuns === {{ r }} ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-stone-700 border border-stone-300'"
-                                        class="btn btn-secondary btn-sm text-base font-semibold tabular-nums transition-colors">{{ r }}</button>
-                                {% endfor %}
-                            </div>
-                            <input type="hidden" name="runs" :value="extraRuns">
-                        </div>
-                    </template>
+                    <p class="text-xs text-stone-500 mt-2" x-show="mode === 'noball'">Use "Runs completed before the run out" above for the total runs</p>
                 </div>
             </template>
 
