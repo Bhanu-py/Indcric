@@ -19,10 +19,30 @@
         </p>
     </header>
 
-    {% comment %}#donor-link-list is the HTMX swap target — a successful link
-    re-renders the remaining unlinked donors here.{% endcomment %}
-    <div id="donor-link-list">
-        {% include "donations/partials/_donor_link_rows.html" %}
+    {% comment %}Manual sync — same importer as the cron job and the bank-link
+    page. Pulls the latest booked ICG transfers; any newly imported donors then
+    show in the list below after a reload.{% endcomment %}
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <p class="text-xs text-stone-500 min-w-0">Pull the latest bank donations before linking.</p>
+        <form hx-post="{% url 'banking_run_import_now' %}"
+              hx-target="#import-result"
+              hx-swap="innerHTML"
+              hx-indicator="#import-spinner"
+              hx-disabled-elt="this button"
+              class="shrink-0">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary btn-sm">
+                <span class="htmx-show">Run import now</span>
+                <span id="import-spinner" class="htmx-indicator">Importing…</span>
+            </button>
+        </form>
+    </div>
+    <div id="import-result" class="mb-4"></div>
+
+    {% comment %}#reconcile is the HTMX swap target — confirming a deposit or
+    linking a donor re-renders the whole panel (deposits + donor links).{% endcomment %}
+    <div id="reconcile">
+        {% include "donations/partials/_reconcile.html" %}
     </div>
 
 </div>

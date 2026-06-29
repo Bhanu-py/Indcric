@@ -1,0 +1,27 @@
+{% comment %}
+Reconciliation panel — swapped as a unit (#reconcile) after a confirm or link.
+Two steps, top to bottom:
+  1. Unmatched deposits  — booked credits with no donation (usually no 'ICG'
+     reference); staff confirm the real ones into donations.
+  2. Link donors         — donations not yet tied to a member.
+
+Args: deposits, groups, members  (see _reconcile_context in views).
+{% endcomment %}
+<section class="mb-8">
+    <div class="flex items-center justify-between gap-3 mb-3">
+        {% include "_components/eyebrow.html" with label="Unmatched deposits" %}
+    </div>
+    <p class="text-xs text-stone-500 mb-3 leading-relaxed">
+        Booked transfers with no <span class="font-mono bg-stone-100 px-1 rounded">ICG</span>
+        reference aren't imported automatically. Confirm the genuine donations below — internal
+        transfers and refunds can be left alone.
+    </p>
+    {% include "donations/partials/_unmatched_deposits.html" %}
+</section>
+
+<section>
+    {% include "_components/eyebrow.html" with label="Link donors to members" %}
+    <div class="mt-3">
+        {% include "donations/partials/_donor_link_rows.html" %}
+    </div>
+</section>

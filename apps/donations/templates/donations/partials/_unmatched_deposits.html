@@ -1,0 +1,39 @@
+{% comment %}
+Booked positive credits with no linked donation — usually transfers that lacked
+an 'ICG' reference, so the importer left them IGNORED. Each row confirms into a
+donation on the General Donations campaign (POST -> confirm-transaction), then
+the whole #reconcile panel re-renders.
+
+Args: deposits  list of BankTransaction (amount > 0, donation is null)
+{% endcomment %}
+{% if deposits %}
+<div class="space-y-2">
+    {% for d in deposits %}
+    <div class="card card-body flex flex-col sm:flex-row sm:items-center gap-3">
+        <div class="min-w-0 flex-1">
+            <div class="flex items-baseline gap-2">
+                <span class="text-sm font-semibold text-stone-800 truncate">{{ d.counterparty_name|default:"(no name)" }}</span>
+                <span class="text-sm font-mono font-semibold text-emerald-700 shrink-0">€{{ d.amount|floatformat:2 }}</span>
+            </div>
+            <div class="micro-label mt-0.5 normal-case">
+                {{ d.booked_on|date:"d M Y" }}{% if d.counterparty_iban %} · {{ d.counterparty_iban }}{% endif %}
+            </div>
+            <div class="text-xs mt-1 truncate">
+                {% if d.remittance %}<span class="text-stone-500">Ref: {{ d.remittance }}</span>{% else %}<span class="italic text-stone-400">no reference</span>{% endif %}
+            </div>
+        </div>
+        <form hx-post="{% url 'confirm-transaction' d.id %}"
+              hx-target="#reconcile" hx-swap="innerHTML"
+              hx-confirm="Record €{{ d.amount|floatformat:2 }} from {{ d.counterparty_name|default:'this donor' }} as a donation?"
+              class="shrink-0">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary btn-md w-full sm:w-auto justify-center">Confirm as donation</button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card card-body text-center">
+    <p class="text-sm text-stone-500">No unmatched deposits. Transfers with “ICG” in the reference import automatically.</p>
+</div>
+{% endif %}

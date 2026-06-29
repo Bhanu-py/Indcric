@@ -178,14 +178,9 @@ def _store(link, txn):
 
 
 def _maybe_create_donation(bt: BankTransaction):
-    """Convert a MATCHED BankTransaction into a Donation.
+    """Auto-create a Donation from a MATCHED transaction during import.
 
-    Always lands on the General Donations catch-all campaign — created lazily
-    by DonationCampaign.get_default(). The future reference-suffix parser will
-    override this with a specific campaign when the remittance carries a tag
-    like 'ICG-server'; the seam is `_pick_campaign(bt)` below.
-
-    The only path that still moves a matched txn to REVIEW is admin-disabled
+    The only path that moves a matched txn to REVIEW instead is admin-disabled
     auto-create (DONATIONS_AUTO_CREATE=False) — a deliberate review-everything
     mode for clubs that want a treasurer eyeball on every entry.
     """
@@ -193,21 +188,39 @@ def _maybe_create_donation(bt: BankTransaction):
         bt.status = BankTransaction.STATUS_REVIEW
         bt.save(update_fields=['status'])
         return
+    create_donation_for(bt)
 
-    campaign = _pick_campaign(bt)
+
+@transaction.atomic
+def create_donation_for(bt: BankTransaction, *, logged_by=None, campaign=None):
+    """Create and link a Donation for a bank transaction, marking it MATCHED.
+
+    Shared by the auto-importer (above) and the manual 'confirm deposit' action
+    on the link-donors page — the latter promotes a transaction that had no
+    'ICG' reference, so the classifier left it IGNORED. Attribution reuses
+    `_match_user` (DonorLink first, then a unique name match).
+
+    Lands on the General Donations catch-all unless a campaign is passed; the
+    future reference-suffix parser will route via `_pick_campaign(bt)`. No-op
+    safe: returns the existing donation if one is already attached.
+    """
+    if bt.donation_id:
+        return bt.donation
     user = _match_user(bt)
     donation = Donation.objects.create(
-        campaign=campaign,
+        campaign=campaign or _pick_campaign(bt),
         user=user,
         donor_name='' if user else bt.counterparty_name,
         amount=bt.amount,
         donated_on=bt.booked_on,
         note=(bt.remittance or '')[:200],
         source=Donation.SOURCE_BANK,
-        logged_by=None,
+        logged_by=logged_by,
     )
     bt.donation = donation
-    bt.save(update_fields=['donation'])
+    bt.status = BankTransaction.STATUS_MATCHED
+    bt.save(update_fields=['donation', 'status'])
+    return donation
 
 
 def _pick_campaign(bt: BankTransaction) -> DonationCampaign:
