@@ -1,7 +1,7 @@
 {% comment %}
 Unlinked bank-donor groups, each with a member picker. Submitting POSTs to
-{% url 'link-donors' %} and swaps the whole list (#donor-link-list) with the
-remaining unlinked donors.
+{% url 'link-donors' %} and swaps the whole reconciliation panel (#reconcile)
+with the remaining unlinked donors + deposits.
 
 Args:
   groups   list of {iban, name, total, count}, largest first
@@ -11,7 +11,7 @@ Args:
 <div class="space-y-3">
     {% for g in groups %}
     <form class="card card-body flex flex-col sm:flex-row sm:items-center gap-3"
-          hx-post="{% url 'link-donors' %}" hx-target="#donor-link-list" hx-swap="innerHTML">
+          hx-post="{% url 'link-donors' %}" hx-target="#reconcile" hx-swap="innerHTML">
         {% csrf_token %}
         <input type="hidden" name="iban" value="{{ g.iban }}">
         <input type="hidden" name="name" value="{{ g.name }}">
