@@ -7,6 +7,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.banking.models import BankTransaction
+from apps.banking.services.importer import create_donation_for
 from .forms import DonationForm
 from .models import Donation, DonationCampaign, DonationSettings, DonorLink
 
@@ -115,6 +116,54 @@ def _unlinked_bank_donor_groups():
     return sorted(groups.values(), key=lambda g: g['total'], reverse=True)
 
 
+def _unmatched_bank_deposits():
+    """Booked positive credits not yet tied to a donation — typically transfers
+    that lacked an 'ICG' reference, so the importer left them IGNORED. Staff
+    confirm these into donations manually. Newest first."""
+    return list(
+        BankTransaction.objects
+        .filter(donation__isnull=True, amount__gt=0)
+        .order_by('-booked_on', '-id')
+    )
+
+
+def _reconcile_context():
+    """Shared context for the reconciliation panel (#reconcile): deposits to
+    confirm, donations needing a member link, and the member picker."""
+    User = get_user_model()
+    return {
+        'deposits': _unmatched_bank_deposits(),
+        'groups': _unlinked_bank_donor_groups(),
+        'members': User.objects.filter(is_active=True).order_by('first_name', 'username'),
+    }
+
+
+@staff_member_required
+def confirm_transaction_view(request, txn_id):
+    """Staff: promote a bank deposit to a donation even without an 'ICG'
+    reference (the L ANIMALLI / 'Sent from Revolut' case). Attribution reuses
+    the importer's DonorLink/name logic, so a known donor links automatically;
+    otherwise it lands unlinked for the donor-link step on the same page."""
+    bt = get_object_or_404(BankTransaction, id=txn_id)
+    if request.method != 'POST':
+        return redirect('link-donors')
+
+    if bt.donation_id:
+        messages.info(request, "That deposit is already recorded as a donation.")
+    elif bt.amount <= 0:
+        messages.error(request, "Only incoming deposits (positive amounts) can be confirmed.")
+    else:
+        donation = create_donation_for(bt, logged_by=request.user)
+        messages.success(
+            request,
+            f"Recorded €{donation.amount} from "
+            f"{bt.counterparty_name or 'unknown donor'} as a donation.")
+
+    if request.htmx:
+        return render(request, 'donations/partials/_reconcile.html', _reconcile_context())
+    return redirect('link-donors')
+
+
 @staff_member_required
 def link_donors_view(request):
     """Staff reconciliation: map an imported bank donor (IBAN/name) to a member.
@@ -124,7 +173,6 @@ def link_donors_view(request):
     in the bank importer. IBAN is the match key when present, else exact name.
     """
     User = get_user_model()
-    members = User.objects.filter(is_active=True).order_by('first_name', 'username')
 
     if request.method == 'POST':
         iban = (request.POST.get('iban') or '').strip()
@@ -161,9 +209,7 @@ def link_donors_view(request):
                 f"Linked {len(ids)} donation{'' if len(ids) == 1 else 's'} to "
                 f"{user.get_full_name() or user.username}.")
         if request.htmx:
-            return render(request, 'donations/partials/_donor_link_rows.html',
-                          {'groups': _unlinked_bank_donor_groups(), 'members': members})
+            return render(request, 'donations/partials/_reconcile.html', _reconcile_context())
         return redirect('link-donors')
 
-    return render(request, 'donations/link_donors.html',
-                  {'groups': _unlinked_bank_donor_groups(), 'members': members})
+    return render(request, 'donations/link_donors.html', _reconcile_context())
