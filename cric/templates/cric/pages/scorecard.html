@@ -157,53 +157,52 @@
     </div>
     {% endif %}
 
-    {# ── Per-innings cards (Responsive) ── #}
+    {# ── Per-innings cards (Vertical Stack) ── #}
     {% for c in cards %}
-    <div class="{% if cards|length > 1 %}hidden {% endif %}lg:block" x-show="{% if cards|length > 1 %}activeInnings == {{ c.innings.number }}{% else %}true{% endif %}" class="transition-opacity duration-150">
-        {# Responsive grid: Mobile stacked, Desktop side-by-side #}
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-            {# Batting Card #}
-            <div class="card overflow-hidden">
-                <div class="card-header">
-                    <h2 class="font-mono text-[10px] font-medium text-stone-500 uppercase tracking-[0.08em]">
-                        {{ c.batting_team.name }} batting · {{ c.score.runs }}/{{ c.score.wickets }} ({{ c.score.overs }} ov)
-                    </h2>
-                </div>
-
-                {# Batting table - responsive columns #}
-                <div class="flex items-center gap-2 px-4 py-2 border-b border-stone-100 font-mono text-[10px] text-stone-400 uppercase tracking-[0.08em]">
-                    <span class="flex-1">Batter</span>
-                    <span class="w-9 text-right hidden sm:inline">R</span><span class="w-9 text-right hidden sm:inline">B</span>
-                    <span class="w-9 text-right hidden md:inline">4s</span><span class="w-9 text-right hidden md:inline">6s</span><span class="w-12 text-right">SR</span>
-                </div>
-                {% for b in c.batting %}
-                <div class="flex items-center gap-2 px-4 py-2.5 border-b border-stone-50">
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
-                            <span class="text-[13px] font-medium text-stone-900 truncate">{{ b.player.user.first_name|default:b.player.user.username }}</span>
-                            {% if not b.out and not b.how_out %}<span class="font-mono text-[10px] font-semibold text-emerald-700 tracking-[0.04em] hidden sm:inline">NOT OUT</span>{% endif %}
-                        </div>
-                        <span class="font-mono text-[11px] text-stone-400 block sm:hidden">{{ b.how_out|default:"—" }}</span>
-                    </div>
-                    <span class="w-9 text-right font-mono text-xs font-semibold text-stone-900 tabular-nums hidden sm:inline">{{ b.runs }}</span>
-                    <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums hidden sm:inline">{{ b.balls }}</span>
-                    <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums hidden md:inline">{{ b.fours }}</span>
-                    <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums hidden md:inline">{{ b.sixes }}</span>
-                    <span class="w-12 text-right font-mono text-xs text-stone-500 tabular-nums">{{ b.strike_rate }}</span>
-                </div>
-                {% endfor %}
-                
-                {# Extras and Total #}
-                <div class="flex items-center justify-between gap-2 px-4 py-2.5 bg-stone-50 border-b border-stone-100 text-[11px] flex-col sm:flex-row">
-                    <span class="font-mono text-stone-500 tracking-[0.04em] order-2 sm:order-1">
-                        Extras {{ c.extras.total }} <span class="text-stone-400 hidden sm:inline">(w {{ c.extras.wide }}, nb {{ c.extras.noball }}, b {{ c.extras.bye }}, lb {{ c.extras.legbye }})</span>
-                    </span>
-                    <span class="font-mono text-[13px] font-semibold text-stone-900 tabular-nums order-1 sm:order-2">Total {{ c.score.runs }}/{{ c.score.wickets }}</span>
-                </div>
+    <div class="{% if cards|length > 1 %}hidden {% endif %}block" x-show="{% if cards|length > 1 %}activeInnings == {{ c.innings.number }}{% else %}true{% endif %}" class="transition-opacity duration-150">
+        
+        {# Batting Card #}
+        <div class="card overflow-hidden mb-4">
+            <div class="card-header">
+                <h2 class="font-mono text-[10px] font-medium text-stone-500 uppercase tracking-[0.08em]">
+                    {{ c.batting_team.name }} batting · {{ c.score.runs }}/{{ c.score.wickets }} ({{ c.score.overs }} ov)
+                </h2>
             </div>
 
-            {# Bowling Card #}
-            <div class="card overflow-hidden">
+            {# Batting table - responsive columns #}
+            <div class="flex items-center gap-2 px-4 py-2 border-b border-stone-100 font-mono text-[10px] text-stone-400 uppercase tracking-[0.08em]">
+                <span class="flex-1">Batter</span>
+                <span class="w-9 text-right hidden sm:inline">R</span><span class="w-9 text-right hidden sm:inline">B</span>
+                <span class="w-9 text-right hidden md:inline">4s</span><span class="w-9 text-right hidden md:inline">6s</span><span class="w-12 text-right">SR</span>
+            </div>
+            {% for b in c.batting %}
+            <div class="flex items-center gap-2 px-4 py-2.5 border-b border-stone-50">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[13px] font-medium text-stone-900 truncate">{{ b.player.user.first_name|default:b.player.user.username }}</span>
+                        {% if not b.out and not b.how_out %}<span class="font-mono text-[10px] font-semibold text-emerald-700 tracking-[0.04em] hidden sm:inline">NOT OUT</span>{% endif %}
+                    </div>
+                    <span class="font-mono text-[11px] text-stone-400 block sm:hidden">{{ b.how_out|default:"—" }}</span>
+                </div>
+                <span class="w-9 text-right font-mono text-xs font-semibold text-stone-900 tabular-nums hidden sm:inline">{{ b.runs }}</span>
+                <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums hidden sm:inline">{{ b.balls }}</span>
+                <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums hidden md:inline">{{ b.fours }}</span>
+                <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums hidden md:inline">{{ b.sixes }}</span>
+                <span class="w-12 text-right font-mono text-xs text-stone-500 tabular-nums">{{ b.strike_rate }}</span>
+            </div>
+            {% endfor %}
+            
+            {# Extras and Total #}
+            <div class="flex items-center justify-between gap-2 px-4 py-2.5 bg-stone-50 border-b border-stone-100 text-[11px] flex-col sm:flex-row">
+                <span class="font-mono text-stone-500 tracking-[0.04em] order-2 sm:order-1">
+                    Extras {{ c.extras.total }} <span class="text-stone-400 hidden sm:inline">(w {{ c.extras.wide }}, nb {{ c.extras.noball }}, b {{ c.extras.bye }}, lb {{ c.extras.legbye }})</span>
+                </span>
+                <span class="font-mono text-[13px] font-semibold text-stone-900 tabular-nums order-1 sm:order-2">Total {{ c.score.runs }}/{{ c.score.wickets }}</span>
+            </div>
+        </div>
+
+        {# Bowling Card #}
+        <div class="card overflow-hidden mb-4">
                 <div class="card-header">
                     <h2 class="font-mono text-[10px] font-medium text-stone-500 uppercase tracking-[0.08em]">
                         Bowling
@@ -247,9 +246,9 @@
             </div>
         </div>
 
-        {# Fall of Wickets (Desktop row) #}
+        {# Fall of Wickets (Collapsible on mobile) #}
         {% if c.fow %}
-        <div class="card px-4 py-3 mb-4 hidden lg:block">
+        <div class="card px-4 py-3 mb-4">
             <div class="flex flex-wrap gap-2">
                 {% for f in c.fow %}
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-50 border border-stone-100 text-xs">
