@@ -175,7 +175,7 @@
             {# Batting table - responsive columns #}
             <div class="flex items-center gap-2 px-4 py-2 border-b border-stone-100 font-mono text-[10px] text-stone-400 uppercase tracking-[0.08em]">
                 <span class="flex-1">Batter</span>
-                <span class="w-9 text-right hidden sm:inline">R</span><span class="w-9 text-right hidden sm:inline">B</span>
+                <span class="w-9 text-right">R</span><span class="w-9 text-right">B</span>
                 <span class="w-9 text-right hidden md:inline">4s</span><span class="w-9 text-right hidden md:inline">6s</span><span class="w-12 text-right">SR</span>
             </div>
             {% for b in c.batting %}
@@ -187,8 +187,8 @@
                     </div>
                     <span class="font-mono text-[11px] text-stone-400 block sm:hidden">{{ b.how_out|default:"—" }}</span>
                 </div>
-                <span class="w-9 text-right font-mono text-xs font-semibold text-stone-900 tabular-nums hidden sm:inline">{{ b.runs }}</span>
-                <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums hidden sm:inline">{{ b.balls }}</span>
+                <span class="w-9 text-right font-mono text-xs font-semibold text-stone-900 tabular-nums">{{ b.runs }}</span>
+                <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums">{{ b.balls }}</span>
                 <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums hidden md:inline">{{ b.fours }}</span>
                 <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums hidden md:inline">{{ b.sixes }}</span>
                 <span class="w-12 text-right font-mono text-xs text-stone-500 tabular-nums">{{ b.strike_rate }}</span>
@@ -215,8 +215,8 @@
             {# Bowling table - responsive columns #}
             <div class="flex items-center gap-2 px-4 py-2 border-b border-stone-100 font-mono text-[10px] text-stone-400 uppercase tracking-[0.08em]">
                 <span class="flex-1">Bowler</span>
-                <span class="w-12 text-right hidden sm:inline">O</span><span class="w-9 text-right hidden sm:inline">R</span>
-                <span class="w-9 text-right">W</span><span class="w-12 text-right hidden sm:inline">Econ</span>
+                <span class="w-12 text-right">O</span><span class="w-9 text-right">R</span>
+                <span class="w-9 text-right">W</span><span class="w-12 text-right hidden md:inline">Econ</span>
             </div>
             {% for bw in c.bowling %}
             <div class="flex items-center gap-2 px-4 py-2.5 border-b border-stone-50">
@@ -224,10 +224,10 @@
                     <span class="text-[13px] font-medium text-stone-900 truncate">{{ bw.player.user.first_name|default:bw.player.user.username }}</span>
                     {% if bw.wickets >= 3 %}{% include "_components/badge.html" with variant="purple" label=bw.wickets|stringformat:"s"|add:"-fer" %}{% endif %}
                 </div>
-                <span class="w-12 text-right font-mono text-xs text-stone-500 tabular-nums hidden sm:inline">{{ bw.overs }}</span>
-                <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums hidden sm:inline">{{ bw.runs }}</span>
+                <span class="w-12 text-right font-mono text-xs text-stone-500 tabular-nums">{{ bw.overs }}</span>
+                <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums">{{ bw.runs }}</span>
                 <span class="w-9 text-right font-mono text-xs font-semibold text-stone-900 tabular-nums">{{ bw.wickets }}</span>
-                <span class="w-12 text-right font-mono text-xs text-stone-500 tabular-nums hidden sm:inline">{{ bw.economy }}</span>
+                <span class="w-12 text-right font-mono text-xs text-stone-500 tabular-nums hidden md:inline">{{ bw.economy }}</span>
             </div>
             {% endfor %}
         </div>
