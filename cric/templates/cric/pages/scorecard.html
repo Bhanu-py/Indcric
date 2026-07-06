@@ -234,8 +234,13 @@
 
         {# Fall of Wickets #}
         {% if c.fow %}
-        <div class="card px-4 py-3 mb-4">
-            <div class="flex flex-wrap gap-2">
+        <div class="card overflow-hidden mb-4">
+            <div class="card-header">
+                <h2 class="font-mono text-[10px] font-medium text-stone-500 uppercase tracking-[0.08em]">
+                    Fall of Wickets
+                </h2>
+            </div>
+            <div class="px-4 py-3 flex flex-wrap gap-2">
                 {% for f in c.fow %}
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-50 border border-stone-100 text-xs">
                     <span class="font-mono font-semibold text-stone-900 tabular-nums">{{ f.score }}</span>
