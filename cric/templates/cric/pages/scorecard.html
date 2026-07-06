@@ -20,19 +20,22 @@
     </div>
     {% else %}
 
-    {# ── Innings Selector (Dropdown) ── #}
-    {% if cards|length > 1 %}
-    <div class="mb-4" x-data="{ activeInnings: 1 }">
-        <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-            <label for="innings-select" class="font-mono text-xs font-medium text-stone-600 uppercase tracking-[0.06em]">Innings:</label>
-            <select id="innings-select" x-model="activeInnings" class="form-select sm:w-auto">
-                {% for card in cards %}
-                <option value="{{ card.innings.number }}">Innings {{ card.innings.number }} · {{ card.batting_team.name }} batting</option>
-                {% endfor %}
-            </select>
+    {# ── Scorecard wrapper with Alpine.js state ── #}
+    <div x-data="{ activeInnings: {{ cards.0.innings.number }} }">
+
+        {# ── Innings Selector (Dropdown) ── #}
+        {% if cards|length > 1 %}
+        <div class="mb-4">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                <label for="innings-select" class="font-mono text-xs font-medium text-stone-600 uppercase tracking-[0.06em]">Innings:</label>
+                <select id="innings-select" x-model="activeInnings" class="form-select sm:w-auto">
+                    {% for card in cards %}
+                    <option value="{{ card.innings.number }}">Innings {{ card.innings.number }} · {{ card.batting_team.name }} batting</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
-    </div>
-    {% endif %}
+        {% endif %}
 
     {# ── Result hero ── #}
     <div class="card overflow-hidden mb-4">
@@ -245,6 +248,8 @@
         {% endif %}
     </div>
     {% endfor %}
+
+    </div>
 
     {% endif %}
 </div>
