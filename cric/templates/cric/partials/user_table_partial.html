@@ -44,13 +44,63 @@
     {% endif %}
     
     <script>
+        // Mobile expandable rows functionality
+        function initializeMobileExpandableRows() {
+            const rows = document.querySelectorAll('.table-container tbody tr');
+            
+            rows.forEach((row, index) => {
+                // Set initial state
+                row.setAttribute('data-expanded', 'false');
+                
+                // Get cell values (adjust indices based on your table structure)
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 7) {
+                    const battingVal = cells[2].textContent.trim();
+                    const bowlingVal = cells[4].textContent.trim();
+                    const fieldingVal = cells[5].textContent.trim();
+                    const lastLoginVal = cells[6].textContent.trim();
+                    
+                    // Create expandable details section
+                    const details = document.createElement('div');
+                    details.className = 'expandable-details';
+                    details.innerHTML = `
+                        <div><span class="label">Batting:</span> ${battingVal}</div>
+                        <div><span class="label">Bowling:</span> ${bowlingVal}</div>
+                        <div><span class="label">Fielding:</span> ${fieldingVal}</div>
+                        <div><span class="label">Last Login:</span> ${lastLoginVal}</div>
+                    `;
+                    
+                    // Append to row
+                    row.appendChild(details);
+                    
+                    // Add click handler to toggle expand/collapse
+                    row.addEventListener('click', function(e) {
+                        // Only toggle on wallet column click (last td in primary section)
+                        const walletCell = cells[8];
+                        if (e.target.closest('td') === walletCell || e.target === details) {
+                            const isExpanded = row.getAttribute('data-expanded') === 'true';
+                            row.setAttribute('data-expanded', !isExpanded);
+                        }
+                    });
+                }
+            });
+        }
+        
         // Re-initialize click handlers for rows when the partial view is loaded
         document.addEventListener("DOMContentLoaded", function() {
             // Timeout needed to ensure table is rendered before adding handlers
             setTimeout(() => {
+                initializeMobileExpandableRows();
                 if (typeof initializeTableRowHandlers === 'function') {
                     initializeTableRowHandlers();
                 }
+            }, 100);
+        });
+        
+        // Also run on HTMX refresh
+        document.body.addEventListener('htmx:afterSwap', function() {
+            setTimeout(() => {
+                initializeMobileExpandableRows();
             }, 100);
         });
     </script>
