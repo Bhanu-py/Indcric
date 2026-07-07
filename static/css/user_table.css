@@ -1,147 +1,66 @@
 /* ...existing CSS resets or comments... */
 
-/* ─── MOBILE CARD LAYOUT (< 640px) ─── */
+/* ─── MOBILE RESPONSIVE LAYOUT ─── */
 @media (max-width: 639px) {
     .table-container {
         padding: 0;
     }
 
     .table-container .overflow-x-auto {
-        overflow: visible;
+        overflow-x: auto;
     }
 
-    .table-container table {
-        border: none;
-        min-width: auto;
+    /* Reduce padding on mobile */
+    .table-container th, .table-container td {
+        padding: 0.3rem;
+        font-size: 0.75rem;
     }
 
-    /* Hide table header on mobile */
-    .table-container thead {
+    /* Hide rating columns on mobile */
+    .table-container th:nth-child(4), .table-container td:nth-child(4),
+    .table-container th:nth-child(5), .table-container td:nth-child(5),
+    .table-container th:nth-child(6), .table-container td:nth-child(6) {
         display: none;
     }
 
-    /* Convert table rows to cards */
-    .table-container tbody {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        background: transparent;
-        padding: 0 1rem 1rem;
-    }
-
-    .table-container tbody tr {
-        display: block;
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.5rem;
-        padding: 1rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Primary section - always visible */
-    .table-container tbody tr td:nth-child(1),
-    .table-container tbody tr td:nth-child(2),
-    .table-container tbody tr td:nth-child(4),
-    .table-container tbody tr td:nth-child(8),
-    .table-container tbody tr td:nth-child(9) {
-        display: flex;
-        padding: 0.5rem 0;
-        border: none;
-        font-size: 0.875rem;
-    }
-
-    /* Primary fields with labels */
-    .table-container tbody tr td:nth-child(1)::before {
-        content: "ID: ";
-        font-weight: 600;
-        color: #374151;
-        margin-right: 0.5rem;
-        min-width: 60px;
-    }
-
-    .table-container tbody tr td:nth-child(2)::before {
-        content: "Username: ";
-        font-weight: 600;
-        color: #374151;
-        margin-right: 0.5rem;
-        min-width: 100px;
-    }
-
-    .table-container tbody tr td:nth-child(4)::before {
-        content: "Role: ";
-        font-weight: 600;
-        color: #374151;
-        margin-right: 0.5rem;
-        min-width: 60px;
-    }
-
-    .table-container tbody tr td:nth-child(8)::before {
-        content: "Staff: ";
-        font-weight: 600;
-        color: #374151;
-        margin-right: 0.5rem;
-        min-width: 60px;
-    }
-
-    .table-container tbody tr td:nth-child(9)::before {
-        content: "Wallet: ";
-        font-weight: 600;
-        color: #374151;
-        margin-right: 0.5rem;
-        min-width: 60px;
-    }
-
-    /* Expandable section container */
-    .table-container tbody tr td:nth-child(3),
-    .table-container tbody tr td:nth-child(5),
-    .table-container tbody tr td:nth-child(6),
-    .table-container tbody tr td:nth-child(7) {
+    /* Hide last login on mobile */
+    .table-container th:nth-child(7), .table-container td:nth-child(7) {
         display: none;
     }
 
-    /* Add expand button after wallet amount */
-    .table-container tbody tr td:nth-child(9)::after {
-        content: " ▼";
-        color: #6b7280;
-        margin-left: 0.5rem;
+    /* Adjust column widths for mobile */
+    .table-container th:nth-child(1), .table-container td:nth-child(1) { 
+        width: 8%; /* ID */
+    }
+    .table-container th:nth-child(2), .table-container td:nth-child(2) { 
+        width: 25%; /* Username - make clickable */
+    }
+    .table-container th:nth-child(3), .table-container td:nth-child(3) { 
+        width: 15%; /* Role */
+    }
+    .table-container th:nth-child(8), .table-container td:nth-child(8) { 
+        width: 15%; /* Staff */
+    }
+    .table-container th:nth-child(9), .table-container td:nth-child(9) { 
+        width: 20%; /* Wallet */
+        text-align: right;
+    }
+
+    /* Username link styling */
+    .table-container tbody tr td:nth-child(2) a {
+        color: #3b82f6;
+        text-decoration: underline;
         cursor: pointer;
     }
 
-    /* Create expandable details section */
-    .table-container tbody tr[data-expanded="false"] .expandable-details {
-        display: none;
-    }
-
-    .table-container tbody tr[data-expanded="true"] .expandable-details {
-        display: block;
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid #e5e7eb;
-    }
-
-    .expandable-details {
-        font-size: 0.875rem;
-    }
-
-    .expandable-details div {
-        padding: 0.5rem 0;
-        display: flex;
-    }
-
-    .expandable-details div::before {
+    .table-container tbody tr td:nth-child(2) a:hover {
+        color: #1d4ed8;
         font-weight: 600;
-        color: #374151;
-        margin-right: 0.5rem;
-        min-width: 140px;
     }
 }
 
 /* ─── DESKTOP TABLE LAYOUT (≥ 640px) ─── */
 @media (min-width: 640px) {
-    .table-container .expandable-details {
-        display: none !important;
-    }
-
     .table-container thead {
         display: table-header-group;
     }
@@ -160,16 +79,16 @@
         padding: 0.75rem 1rem;
     }
 
-    .table-container tbody tr td:nth-child(1) {
-        width: 5%;
+    /* Username link styling - desktop */
+    .table-container tbody tr td:nth-child(2) a {
+        color: #3b82f6;
+        text-decoration: underline;
+        cursor: pointer;
     }
 
-    .table-container tbody tr td:nth-child(2) {
-        width: 20%;
-    }
-
-    .table-container tbody tr td:nth-child(3) {
-        width: 50%;
+    .table-container tbody tr td:nth-child(2) a:hover {
+        color: #1d4ed8;
+        font-weight: 600;
     }
 }
 
@@ -256,5 +175,3 @@
         right: -8%;
     }
 }
-
-/* ...existing CSS... */

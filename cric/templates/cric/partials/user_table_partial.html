@@ -49,39 +49,30 @@
             const rows = document.querySelectorAll('.table-container tbody tr');
             
             rows.forEach((row, index) => {
-                // Set initial state
-                row.setAttribute('data-expanded', 'false');
-                
-                // Get cell values (adjust indices based on your table structure)
+                // Get username cell (2nd column) and make it clickable
                 const cells = row.querySelectorAll('td');
-                if (cells.length >= 7) {
-                    const battingVal = cells[2].textContent.trim();
-                    const bowlingVal = cells[4].textContent.trim();
-                    const fieldingVal = cells[5].textContent.trim();
-                    const lastLoginVal = cells[6].textContent.trim();
+                if (cells.length >= 2) {
+                    const usernameCell = cells[1]; // Username is 2nd column (index 1)
                     
-                    // Create expandable details section
-                    const details = document.createElement('div');
-                    details.className = 'expandable-details';
-                    details.innerHTML = `
-                        <div><span class="label">Batting:</span> ${battingVal}</div>
-                        <div><span class="label">Bowling:</span> ${bowlingVal}</div>
-                        <div><span class="label">Fielding:</span> ${fieldingVal}</div>
-                        <div><span class="label">Last Login:</span> ${lastLoginVal}</div>
-                    `;
-                    
-                    // Append to row
-                    row.appendChild(details);
-                    
-                    // Add click handler to toggle expand/collapse
-                    row.addEventListener('click', function(e) {
-                        // Only toggle on wallet column click (last td in primary section)
-                        const walletCell = cells[8];
-                        if (e.target.closest('td') === walletCell || e.target === details) {
-                            const isExpanded = row.getAttribute('data-expanded') === 'true';
-                            row.setAttribute('data-expanded', !isExpanded);
-                        }
-                    });
+                    // Check if there's an anchor tag in the username cell
+                    const usernameLink = usernameCell.querySelector('a');
+                    if (usernameLink) {
+                        // Add click handler that opens player details
+                        usernameLink.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            // Get user ID from first cell
+                            const userIdCell = cells[0];
+                            const userId = userIdCell.textContent.trim();
+                            
+                            // Navigate to player details or open modal
+                            const editUrl = document.querySelector('[data-edit-user-url-prefix]')
+                                ?.getAttribute('data-edit-user-url-prefix');
+                            
+                            if (editUrl) {
+                                window.location.href = editUrl + userId + '/';
+                            }
+                        });
+                    }
                 }
             });
         }
