@@ -20,6 +20,23 @@
     </div>
     {% else %}
 
+    {# ── Scorecard wrapper with Alpine.js state ── #}
+    <div x-data="{ activeInnings: {{ cards.0.innings.number }} }">
+
+        {# ── Innings Selector (Dropdown) ── #}
+        {% if cards|length > 1 %}
+        <div class="mb-4">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                <label for="innings-select" class="font-mono text-xs font-medium text-stone-600 uppercase tracking-[0.06em]">Innings:</label>
+                <select id="innings-select" x-model="activeInnings" class="form-select sm:w-auto">
+                    {% for card in cards %}
+                    <option value="{{ card.innings.number }}">Innings {{ card.innings.number }} · {{ card.batting_team.name }} batting</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        {% endif %}
+
     {# ── Result hero ── #}
     <div class="card overflow-hidden mb-4">
         <div class="card-accent {% if result_line %}card-accent-pitch{% else %}card-accent-amber{% endif %}"></div>
@@ -72,7 +89,7 @@
     <div class="card overflow-hidden mb-4">
         <div class="card-header flex items-center gap-2">
             {% include "_components/trophy_icon.html" with cls="w-4 h-4 text-amber-500" %}
-            <h2 class="font-mono text-[10px] font-medium text-stone-500 uppercase tracking-[0.08em]">Awards</h2>
+            <h2 class="font-mono text-[10px] font-bold text-stone-800 uppercase tracking-[0.08em]">Awards</h2>
         </div>
 
         {# Player of the Match #}
@@ -143,77 +160,101 @@
     </div>
     {% endif %}
 
-    {# ── Per-innings cards ── #}
+    {# ── Per-innings cards (Vertical Stack) ── #}
     {% for c in cards %}
-    <div class="card overflow-hidden mb-4">
-        <div class="card-header">
-            <h2 class="font-mono text-[10px] font-medium text-stone-500 uppercase tracking-[0.08em]">
-                {{ c.batting_team.name }} batting · {{ c.score.runs }}/{{ c.score.wickets }} ({{ c.score.overs }} ov)
-            </h2>
-        </div>
+    <div {% if cards|length > 1 %}x-show="activeInnings == {{ c.innings.number }}"{% endif %} class="transition-opacity duration-150">
+        
+        {# Batting Card #}
+        <div class="card overflow-hidden mb-4">
+            <div class="card-header">
+                <h2 class="font-mono text-[10px] font-bold text-stone-800 uppercase tracking-[0.08em]">
+                    {{ c.batting_team.name }} batting · {{ c.score.runs }}/{{ c.score.wickets }} ({{ c.score.overs }} ov)
+                </h2>
+            </div>
 
-        {# batting #}
-        <div class="flex items-center gap-2 px-4 py-2 border-b border-stone-100 font-mono text-[10px] text-stone-400 uppercase tracking-[0.08em]">
-            <span class="flex-1">Batter</span>
-            <span class="w-9 text-right">R</span><span class="w-9 text-right">B</span>
-            <span class="w-9 text-right">4s</span><span class="w-9 text-right">6s</span><span class="w-12 text-right">SR</span>
-        </div>
-        {% for b in c.batting %}
-        <div class="flex items-center gap-2 px-4 py-2.5 border-b border-stone-50">
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                    <span class="text-[13px] font-medium text-stone-900 truncate">{{ b.player.user.first_name|default:b.player.user.username }}</span>
-                    {% if not b.out and not b.how_out %}<span class="font-mono text-[10px] font-semibold text-emerald-700 tracking-[0.04em]">NOT OUT</span>{% endif %}
+            {# Batting table - responsive columns #}
+            <div class="flex items-center gap-1 px-4 py-2 border-b border-stone-100 font-mono text-[10px] text-stone-400 uppercase tracking-[0.08em]">
+                <span class="flex-1">Batter</span>
+                <span class="w-8 text-right">R</span><span class="w-8 text-right">B</span>
+                <span class="w-8 text-right">4s</span><span class="w-8 text-right">6s</span><span class="w-10 text-right">SR</span>
+            </div>
+            {% for b in c.batting %}
+            <div class="flex items-center gap-1 px-4 py-2.5 border-b border-stone-50">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[13px] font-medium text-stone-900 truncate">{{ b.player.user.first_name|default:b.player.user.username }}</span>
+                        {% if not b.out and not b.how_out %}<span class="font-mono text-[10px] font-semibold text-emerald-700 tracking-[0.04em] hidden sm:inline">NOT OUT</span>{% endif %}
+                    </div>
+                    <span class="font-mono text-[11px] text-stone-400 block sm:hidden">{{ b.how_out|default:"—" }}</span>
                 </div>
-                <span class="font-mono text-[11px] text-stone-400">{{ b.how_out|default:"—" }}</span>
+                <span class="w-8 text-right font-mono text-xs font-semibold text-stone-900 tabular-nums">{{ b.runs }}</span>
+                <span class="w-8 text-right font-mono text-xs text-stone-500 tabular-nums">{{ b.balls }}</span>
+                <span class="w-8 text-right font-mono text-xs text-stone-500 tabular-nums">{{ b.fours }}</span>
+                <span class="w-8 text-right font-mono text-xs text-stone-500 tabular-nums">{{ b.sixes }}</span>
+                <span class="w-10 text-right font-mono text-xs text-stone-500 tabular-nums">{{ b.strike_rate }}</span>
             </div>
-            <span class="w-9 text-right font-mono text-xs font-semibold text-stone-900 tabular-nums">{{ b.runs }}</span>
-            <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums">{{ b.balls }}</span>
-            <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums">{{ b.fours }}</span>
-            <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums">{{ b.sixes }}</span>
-            <span class="w-12 text-right font-mono text-xs text-stone-500 tabular-nums">{{ b.strike_rate }}</span>
-        </div>
-        {% endfor %}
-        <div class="flex items-center justify-between gap-2 px-4 py-2.5 bg-stone-50 border-b border-stone-100">
-            <span class="font-mono text-[11px] text-stone-500 tracking-[0.04em]">
-                Extras {{ c.extras.total }} <span class="text-stone-400">(w {{ c.extras.wide }}, nb {{ c.extras.noball }}, b {{ c.extras.bye }}, lb {{ c.extras.legbye }})</span>
-            </span>
-            <span class="font-mono text-[13px] font-semibold text-stone-900 tabular-nums">Total {{ c.score.runs }}/{{ c.score.wickets }}</span>
-        </div>
-
-        {# bowling #}
-        <div class="flex items-center gap-2 px-4 py-2 border-b border-stone-100 font-mono text-[10px] text-stone-400 uppercase tracking-[0.08em] mt-1">
-            <span class="flex-1">Bowler</span>
-            <span class="w-12 text-right">O</span><span class="w-9 text-right">R</span>
-            <span class="w-9 text-right">W</span><span class="w-12 text-right">Econ</span>
-        </div>
-        {% for bw in c.bowling %}
-        <div class="flex items-center gap-2 px-4 py-2.5 border-b border-stone-50">
-            <div class="flex-1 min-w-0 flex items-center gap-2">
-                <span class="text-[13px] font-medium text-stone-900 truncate">{{ bw.player.user.first_name|default:bw.player.user.username }}</span>
-                {% if bw.wickets >= 3 %}{% include "_components/badge.html" with variant="purple" label=bw.wickets|stringformat:"s"|add:"-fer" %}{% endif %}
-            </div>
-            <span class="w-12 text-right font-mono text-xs text-stone-500 tabular-nums">{{ bw.overs }}</span>
-            <span class="w-9 text-right font-mono text-xs text-stone-500 tabular-nums">{{ bw.runs }}</span>
-            <span class="w-9 text-right font-mono text-xs font-semibold text-stone-900 tabular-nums">{{ bw.wickets }}</span>
-            <span class="w-12 text-right font-mono text-xs text-stone-500 tabular-nums">{{ bw.economy }}</span>
-        </div>
-        {% endfor %}
-
-        {# fall of wickets #}
-        {% if c.fow %}
-        <div class="px-4 py-3 flex flex-wrap gap-2">
-            {% for f in c.fow %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-50 border border-stone-100 text-xs">
-                <span class="font-mono font-semibold text-stone-900 tabular-nums">{{ f.score }}</span>
-                <span class="text-stone-500 truncate max-w-[80px]">{{ f.player.user.first_name|default:f.player.user.username }}</span>
-                <span class="font-mono text-[10px] text-stone-400">ov {{ f.overs }}</span>
-            </span>
             {% endfor %}
+            
+            {# Extras and Total #}
+            <div class="flex items-center justify-between gap-2 px-4 py-2.5 bg-stone-50 border-b border-stone-100 text-[11px] flex-col sm:flex-row">
+                <span class="font-mono text-stone-500 tracking-[0.04em] order-2 sm:order-1">
+                    Extras {{ c.extras.total }} <span class="text-stone-400 hidden sm:inline">(w {{ c.extras.wide }}, nb {{ c.extras.noball }}, b {{ c.extras.bye }}, lb {{ c.extras.legbye }})</span>
+                </span>
+                <span class="font-mono text-[13px] font-semibold text-stone-900 tabular-nums order-1 sm:order-2">Total {{ c.score.runs }}/{{ c.score.wickets }}</span>
+            </div>
+        </div>
+
+        {# Bowling Card #}
+        <div class="card overflow-hidden mb-4">
+            <div class="card-header">
+                <h2 class="font-mono text-[10px] font-bold text-stone-800 uppercase tracking-[0.08em]">
+                    Bowling
+                </h2>
+            </div>
+
+            {# Bowling table - responsive columns #}
+            <div class="flex items-center gap-1 px-4 py-2 border-b border-stone-100 font-mono text-[10px] text-stone-400 uppercase tracking-[0.08em]">
+                <span class="flex-1">Bowler</span>
+                <span class="w-8 text-right">O</span><span class="w-8 text-right">R</span>
+                <span class="w-8 text-right">W</span><span class="w-10 text-right">Econ</span>
+            </div>
+            {% for bw in c.bowling %}
+            <div class="flex items-center gap-1 px-4 py-2.5 border-b border-stone-50">
+                <div class="flex-1 min-w-0 flex items-center gap-2">
+                    <span class="text-[13px] font-medium text-stone-900 truncate">{{ bw.player.user.first_name|default:bw.player.user.username }}</span>
+                    {% if bw.wickets >= 3 %}{% include "_components/badge.html" with variant="purple" label=bw.wickets|stringformat:"s"|add:"-fer" %}{% endif %}
+                </div>
+                <span class="w-8 text-right font-mono text-xs text-stone-500 tabular-nums">{{ bw.overs }}</span>
+                <span class="w-8 text-right font-mono text-xs text-stone-500 tabular-nums">{{ bw.runs }}</span>
+                <span class="w-8 text-right font-mono text-xs font-semibold text-stone-900 tabular-nums">{{ bw.wickets }}</span>
+                <span class="w-10 text-right font-mono text-xs text-stone-500 tabular-nums">{{ bw.economy }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        {# Fall of Wickets #}
+        {% if c.fow %}
+        <div class="card overflow-hidden mb-4">
+            <div class="card-header">
+                <h2 class="font-mono text-[10px] font-bold text-stone-800 uppercase tracking-[0.08em]">
+                    Fall of Wickets
+                </h2>
+            </div>
+            <div class="px-4 py-3 flex flex-wrap gap-2">
+                {% for f in c.fow %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-50 border border-stone-100 text-xs">
+                    <span class="font-mono font-semibold text-stone-900 tabular-nums">{{ f.score }}</span>
+                    <span class="text-stone-500 truncate max-w-[80px]">{{ f.player.user.first_name|default:f.player.user.username }}</span>
+                    <span class="font-mono text-[10px] text-stone-400">ov {{ f.overs }}</span>
+                </span>
+                {% endfor %}
+            </div>
         </div>
         {% endif %}
     </div>
     {% endfor %}
+
+    </div>
 
     {% endif %}
 </div>
