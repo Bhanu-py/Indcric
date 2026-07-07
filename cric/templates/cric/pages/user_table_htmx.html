@@ -25,20 +25,24 @@
           hx-push-url="true"
           class="form-inline mb-3">
         {% csrf_token %}
-        <div class="flex flex-wrap items-center gap-2 mb-4">
-            <input type="text" name="query" placeholder="Search users" class="form-control mr-2" style="width: 60%; height: 50px;">
-            
-            <!-- Add wallet amount sorting dropdown -->
-            <div class="form-group">
-                <label for="sort_by_wallet">Sort by Wallet:</label>
-                <select name="sort_by_wallet" id="sort_by_wallet" class="form-control" onchange="this.form.submit()">
-                    <option value="">Default</option>
-                    <option value="asc" {% if request.GET.sort_by_wallet == 'asc' %}selected{% endif %}>Wallet (Low to High)</option>
-                    <option value="desc" {% if request.GET.sort_by_wallet == 'desc' %}selected{% endif %}>Wallet (High to Low)</option>
-                </select>
+        
+        <!-- Search form with responsive layout -->
+        <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center mb-4">
+            <!-- Search input and button container -->
+            <div class="flex gap-2 flex-1 sm:flex-none">
+                <input type="text" name="query" placeholder="Search users" class="form-control flex-1 sm:w-64" style="height: 40px; min-width: 0;">
+                <button type="submit" class="btn btn-primary px-3 sm:px-6 flex-shrink-0" style="height: 40px; white-space: nowrap;">Search</button>
             </div>
             
-            <button type="submit" class="btn btn-primary" style="width: 10%; height: 60px;">Search</button>
+            <!-- Sort by Wallet dropdown -->
+            <div class="form-group flex items-center gap-2 flex-1 sm:flex-none">
+                <label for="sort_by_wallet" class="whitespace-nowrap text-xs sm:text-sm font-medium">Sort by Wallet:</label>
+                <select name="sort_by_wallet" id="sort_by_wallet" class="form-control flex-1 sm:flex-none" style="height: 40px;" onchange="this.form.submit()">
+                    <option value="">Default</option>
+                    <option value="asc" {% if request.GET.sort_by_wallet == 'asc' %}selected{% endif %}>Low to High</option>
+                    <option value="desc" {% if request.GET.sort_by_wallet == 'desc' %}selected{% endif %}>High to Low</option>
+                </select>
+            </div>
         </div>
     </form>
 
