@@ -407,6 +407,25 @@ class GroupInboundTests(TestCase):
         mock_send.assert_not_called()
 
     @patch("apps.notifications.services.send_text_message")
+    def test_group_status_reports_all_availability_counts(self, mock_send):
+        sunday = User.objects.create_user(username="sam", first_name="Sam", password="x")
+        both = User.objects.create_user(username="jaya", first_name="Jaya", password="x")
+        Vote.objects.create(poll=self.poll, user=self.member, choice='yes')
+        Vote.objects.create(poll=self.poll, user=sunday, choice='no')
+        Vote.objects.create(poll=self.poll, user=both, choice='all')
+
+        resp = self._post({'from': '32470000001', 'wa_message_id': 'g-status', 'text': 'status', 'kind': 'text'})
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['result'], {'kind': 'command', 'command': 'status'})
+        msg = OutboundMessage.objects.get(target='community')
+        self.assertIn("*3 voted* · Saturday 1 · Sunday 1 · Both 1", msg.body)
+        self.assertIn("*SATURDAY* (1)", msg.body)
+        self.assertIn("*SUNDAY* (1)", msg.body)
+        self.assertIn("*BOTH* (1)", msg.body)
+        mock_send.assert_not_called()
+
+    @patch("apps.notifications.services.send_text_message")
     def test_reaction_on_bot_message_records_yes_and_reacts(self, mock_send):
         resp = self._post({'from': '32470000001', 'wa_message_id': 'g2c', 'kind': 'reaction', 'emoji': '👍'})
         self.assertEqual(resp.status_code, 200)

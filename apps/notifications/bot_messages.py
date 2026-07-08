@@ -37,7 +37,7 @@ def help_text():
         "📅 *Saturday*, *Sunday*, or *Both* — RSVP to the current poll\n"
         "💰 *BALANCE* — your wallet + what you owe\n"
         "🗂️ *HISTORY* — your last games + wallet\n"
-        "📊 *STATUS* — who's in / out\n"
+        "📊 *STATUS* — Saturday/Sunday/Both counts\n"
         "🏆 *SCORE* — live score of the current match\n"
         "❓ *HELP* — show this message\n"
         "\n"
@@ -136,8 +136,10 @@ def status(session_name, date_str, yes_names, no_names, both_names):
             return f"{head}\n• —"
         return head + "\n" + "\n".join(f"• {n}" for n in names)
 
+    total = len(yes_names) + len(no_names) + len(both_names)
     return "\n".join([
         f"🏏 *{session_name}* ({date_str})",
+        f"📊 *{total} voted* · Saturday {len(yes_names)} · Sunday {len(no_names)} · Both {len(both_names)}",
         "",
         block("🟢", "SATURDAY", yes_names),
         "",
