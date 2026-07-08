@@ -197,7 +197,7 @@
                 {% with cost_str=session.cost|stringformat:"s" %}
                     {% include "_components/stat_column.html" with dot="stone" label="Venue fee" value="€"|add:cost_str first=True %}
                 {% endwith %}
-                {% include "_components/stat_column.html" with dot="sky" label="Voted in" value=yes_votes %}
+                {% include "_components/stat_column.html" with dot="sky" label="Available" value=eligible_vote_count %}
                 {% if session.cost_per_person != None %}
                     {% with pp_str=session.cost_per_person|floatformat:2 %}
                         {% include "_components/stat_column.html" with dot="pitch" label="Per player" value="€"|add:pp_str %}
@@ -376,17 +376,27 @@
                         {% if user_vote == 'yes' %}
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-semibold shrink-0">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                            Saturday
+                            {{ availability.yes_label }}
                         </span>
                         {% else %}
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-[11px] font-semibold shrink-0">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                            {% if user_vote == 'no' %}Sunday{% elif user_vote == 'all' %}Both{% else %}Out{% endif %}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full {% if availability.show_both %}bg-sky-100 text-sky-700{% else %}bg-red-100 text-red-600{% endif %} text-[11px] font-semibold shrink-0">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                {% if availability.show_both %}
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                {% else %}
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/>
+                                {% endif %}
+                            </svg>
+                            {% if user_vote == 'no' %}{{ availability.no_label }}{% elif user_vote == 'all' %}{{ availability.all_label }}{% else %}Out{% endif %}
                         </span>
                         {% endif %}
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
+                        {% if availability.show_both %}
                         <span class="text-xs text-stone-400"><b class="text-emerald-600">{{ saturday_votes }}</b> Sat · {{ sunday_votes }} Sun · {{ both_votes }} Both</span>
+                        {% else %}
+                        <span class="text-xs text-stone-400"><b class="text-emerald-600">{{ yes_votes }}</b> Yes · {{ no_votes }} No</span>
+                        {% endif %}
                         <svg class="w-4 h-4 text-stone-400 transition-transform" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     </div>
                 </button>
@@ -414,10 +424,10 @@
 
                     {% if session.poll.is_open and not user_vote and not is_past %}
                     <!-- ── Not voted yet ── -->
-                    <p class="text-sm font-medium text-stone-700 mb-4">Which day works for you?</p>
+                    <p class="text-sm font-medium text-stone-700 mb-4">{{ availability.question }}</p>
                     <form method="POST" action="{% url 'vote_session' session.poll.id %}">
                         {% csrf_token %}
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="grid grid-cols-1 {% if availability.show_both %}sm:grid-cols-3{% else %}sm:grid-cols-2{% endif %} gap-3">
                             <button type="submit" name="choice" value="yes"
                                     class="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl
                                            bg-emerald-50 border-2 border-emerald-200 text-emerald-700 font-bold
@@ -425,17 +435,22 @@
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                                 </svg>
-                                <span class="text-sm">Saturday</span>
+                                <span class="text-sm">{{ availability.yes_label }}</span>
                             </button>
                             <button type="submit" name="choice" value="no"
                                     class="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl
-                                           bg-sky-50 border-2 border-sky-200 text-sky-700 font-bold
-                                           hover:bg-sky-100 hover:border-sky-400 active:scale-95 transition-all">
+                                           {% if availability.show_both %}bg-sky-50 border-2 border-sky-200 text-sky-700 hover:bg-sky-100 hover:border-sky-400{% else %}bg-red-50 border-2 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-400{% endif %} font-bold
+                                           active:scale-95 transition-all">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    {% if availability.show_both %}
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                    {% else %}
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                                    {% endif %}
                                 </svg>
-                                <span class="text-sm">Sunday</span>
+                                <span class="text-sm">{{ availability.no_label }}</span>
                             </button>
+                            {% if availability.show_both %}
                             <button type="submit" name="choice" value="all"
                                     class="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl
                                            bg-purple-50 border-2 border-purple-200 text-purple-700 font-bold
@@ -445,6 +460,7 @@
                                 </svg>
                                 <span class="text-sm">Both</span>
                             </button>
+                            {% endif %}
                         </div>
                     </form>
 
@@ -458,8 +474,8 @@
                                 </svg>
                             </div>
                             <div>
-                                <p class="text-sm font-bold text-emerald-800">You're on Saturday!</p>
-                                <p class="text-xs text-emerald-600">Your date preference is saved</p>
+                                <p class="text-sm font-bold text-emerald-800">{% if availability.show_both %}You're on Saturday!{% else %}You're marked Yes{% endif %}</p>
+                                <p class="text-xs text-emerald-600">Your availability response is saved</p>
                             </div>
                         </div>
                         {% if session.poll.is_open and not is_past %}
@@ -468,9 +484,10 @@
                                 {% csrf_token %}
                                 <button type="submit" name="choice" value="no"
                                         class="text-xs text-emerald-700 hover:text-red-600 font-medium transition-colors">
-                                    Switch to Sunday
+                                    Switch to {{ availability.no_label }}
                                 </button>
                             </form>
+                            {% if availability.show_both %}
                             <span class="text-emerald-300">·</span>
                             <form method="POST" action="{% url 'vote_session' session.poll.id %}">
                                 {% csrf_token %}
@@ -479,6 +496,7 @@
                                     Switch to Both
                                 </button>
                             </form>
+                            {% endif %}
                             <span class="text-emerald-300">·</span>
                             <form method="POST" action="{% url 'vote_session' session.poll.id %}">
                                 {% csrf_token %}
@@ -493,27 +511,32 @@
 
                     {% elif user_vote == 'no' %}
                     <!-- ── Voted Sunday ── -->
-                    <div class="bg-sky-50 rounded-xl border border-sky-200 mb-4 overflow-hidden">
+                    <div class="{% if availability.show_both %}bg-sky-50 border-sky-200{% else %}bg-red-50 border-red-200{% endif %} rounded-xl border mb-4 overflow-hidden">
                         <div class="flex items-center gap-3 p-3.5">
-                            <div class="w-8 h-8 rounded-full bg-sky-500 flex items-center justify-center shrink-0">
+                            <div class="w-8 h-8 rounded-full {% if availability.show_both %}bg-sky-500{% else %}bg-red-500{% endif %} flex items-center justify-center shrink-0">
                                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    {% if availability.show_both %}
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                    {% else %}
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                                    {% endif %}
                                 </svg>
                             </div>
                             <div>
-                                <p class="text-sm font-bold text-sky-800">You're on Sunday!</p>
-                                <p class="text-xs text-sky-600">Your date preference is saved</p>
+                                <p class="text-sm font-bold {% if availability.show_both %}text-sky-800{% else %}text-red-800{% endif %}">{% if availability.show_both %}You're on Sunday!{% else %}You're marked No{% endif %}</p>
+                                <p class="text-xs {% if availability.show_both %}text-sky-600{% else %}text-red-600{% endif %}">Your availability response is saved</p>
                             </div>
                         </div>
                         {% if session.poll.is_open and not is_past %}
-                        <div class="flex items-center gap-4 px-3.5 py-2 border-t border-sky-200 bg-sky-100/50">
+                        <div class="flex items-center gap-4 px-3.5 py-2 border-t {% if availability.show_both %}border-sky-200 bg-sky-100/50{% else %}border-red-200 bg-red-100/50{% endif %}">
                             <form method="POST" action="{% url 'vote_session' session.poll.id %}">
                                 {% csrf_token %}
                                 <button type="submit" name="choice" value="yes"
-                                        class="text-xs text-sky-700 hover:text-emerald-600 font-medium transition-colors">
-                                    Switch to Saturday
+                                        class="text-xs {% if availability.show_both %}text-sky-700{% else %}text-red-700{% endif %} hover:text-emerald-600 font-medium transition-colors">
+                                    Switch to {{ availability.yes_label }}
                                 </button>
                             </form>
+                            {% if availability.show_both %}
                             <span class="text-sky-300">·</span>
                             <form method="POST" action="{% url 'vote_session' session.poll.id %}">
                                 {% csrf_token %}
@@ -522,6 +545,7 @@
                                     Switch to Both
                                 </button>
                             </form>
+                            {% endif %}
                             <span class="text-sky-300">·</span>
                             <form method="POST" action="{% url 'vote_session' session.poll.id %}">
                                 {% csrf_token %}
@@ -582,6 +606,7 @@
                     <div x-data="{ open: {% if session.poll.is_open and not is_past %}true{% else %}false{% endif %} }" class="{% if session.poll.is_open and not user_vote %}mt-5{% endif %}">
                         <button type="button" @click="open = !open" class="w-full text-left">
                             <div class="flex items-center justify-between mb-2">
+                                {% if availability.show_both %}
                                 <div class="flex items-center gap-1.5">
                                     <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                                     <span class="text-xs font-semibold text-stone-700">{{ saturday_votes }} Saturday</span>
@@ -591,10 +616,28 @@
                                     <span class="text-xs font-semibold text-stone-400">{{ sunday_votes }} Sunday · {{ both_votes }} Both</span>
                                     <span class="w-2 h-2 rounded-full bg-red-300"></span>
                                 </div>
+                                {% else %}
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    <span class="text-xs font-semibold text-stone-700">{{ yes_votes }} Yes</span>
+                                </div>
+                                <span class="text-xs text-stone-400">{{ total_votes }} responded · <span x-text="open ? 'tap to hide' : 'tap to see'"></span></span>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-semibold text-stone-400">{{ no_votes }} No</span>
+                                    <span class="w-2 h-2 rounded-full bg-red-300"></span>
+                                </div>
+                                {% endif %}
                             </div>
-                            <div class="vote-bar h-2.5 rounded-full">
+                            <div class="vote-bar h-2.5 rounded-full flex">
                                 {% if total_votes > 0 %}
-                                <div class="vote-fill-yes" style="width:{{ yes_percentage }}%"></div>
+                                    {% if availability.show_both %}
+                                    <div class="h-full bg-emerald-500 transition-all duration-500" style="width:{{ yes_percentage }}%"></div>
+                                    <div class="h-full bg-sky-500 transition-all duration-500" style="width:{{ no_percentage }}%"></div>
+                                    <div class="h-full bg-purple-500 transition-all duration-500" style="width:{{ both_percentage }}%"></div>
+                                    {% else %}
+                                    <div class="h-full bg-emerald-500 transition-all duration-500" style="width:{{ yes_percentage }}%"></div>
+                                    <div class="h-full bg-red-400 transition-all duration-500" style="width:{{ no_percentage }}%"></div>
+                                    {% endif %}
                                 {% endif %}
                             </div>
                         </button>
@@ -602,7 +645,7 @@
                         <!-- Voter names — compact wrapping chips so a long list stays short -->
                         <div x-show="open" x-transition class="mt-3 space-y-3 text-xs">
                             <div>
-                                <p class="font-semibold text-emerald-700 mb-1.5">Saturday · {{ saturday_votes }}</p>
+                                <p class="font-semibold text-emerald-700 mb-1.5">{{ availability.yes_label }} · {{ yes_votes }}</p>
                                 <div class="flex flex-wrap gap-1.5">
                                     {% for v in yes_voters %}
                                     <span class="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100">
@@ -615,18 +658,19 @@
                                 </div>
                             </div>
                             <div>
-                                <p class="font-semibold text-sky-500 mb-1.5">Sunday · {{ sunday_votes }}</p>
+                                <p class="font-semibold {% if availability.show_both %}text-sky-500{% else %}text-red-600{% endif %} mb-1.5">{{ availability.no_label }} · {{ no_votes }}</p>
                                 <div class="flex flex-wrap gap-1.5">
                                     {% for u in no_voters %}
-                                    <span class="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full bg-sky-50 border border-sky-100">
-                                        {% if u.avatar %}<img src="{{ u.avatar.url }}" alt="{{ u.username }}" class="w-4 h-4 rounded-full object-cover" loading="lazy"/>{% else %}<span class="w-4 h-4 rounded-full bg-sky-100 text-sky-500 flex items-center justify-center text-[9px] font-bold">{{ u.username|first|upper }}</span>{% endif %}
-                                        <span class="text-sky-700">{{ u.username }}</span>
+                                    <span class="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full {% if availability.show_both %}bg-sky-50 border-sky-100{% else %}bg-red-50 border-red-100{% endif %} border">
+                                        {% if u.avatar %}<img src="{{ u.avatar.url }}" alt="{{ u.username }}" class="w-4 h-4 rounded-full object-cover" loading="lazy"/>{% else %}<span class="w-4 h-4 rounded-full {% if availability.show_both %}bg-sky-100 text-sky-500{% else %}bg-red-100 text-red-600{% endif %} flex items-center justify-center text-[9px] font-bold">{{ u.username|first|upper }}</span>{% endif %}
+                                        <span class="{% if availability.show_both %}text-sky-700{% else %}text-red-700{% endif %}">{{ u.username }}</span>
                                     </span>
                                     {% empty %}
                                     <span class="text-stone-400">None yet</span>
                                     {% endfor %}
                                 </div>
                             </div>
+                            {% if availability.show_both %}
                             <div>
                                 <p class="font-semibold text-purple-600 mb-1.5">Both · {{ both_votes }}</p>
                                 <div class="flex flex-wrap gap-1.5">
@@ -640,6 +684,7 @@
                                     {% endfor %}
                                 </div>
                             </div>
+                            {% endif %}
                         </div>
                     </div>
 
@@ -658,9 +703,10 @@
                         <span class="badge badge-stone shrink-0">Not selected</span>
                         {% endif %}
                     </div>
-                    <span class="text-[11px] text-stone-400">Team balance unlocks after saving</span>
+                    <span class="text-[11px] text-stone-400">{% if availability.show_both %}Team balance unlocks after saving{% else %}Single-day session{% endif %}</span>
                 </div>
                 <div class="card-body">
+                    {% if availability.show_both %}
                     <p class="text-sm text-stone-600 mb-4">
                         Choose the day the session will actually be played.
                     </p>
@@ -686,6 +732,12 @@
                     </form>
                     {% if session.final_play_day %}
                     <p class="mt-3 text-xs text-stone-500">Locked as {{ session.final_play_day_label }}. You can resave to change it.</p>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-sm text-stone-600">
+                        This session has one date option, so it is fixed as {{ session.final_play_day_label }}.
+                        Members vote Yes or No for that day.
+                    </p>
                     {% endif %}
                 </div>
             </div>
@@ -1047,7 +1099,7 @@
                                     flex flex-wrap gap-1.5 transition-colors"
                              data-team="pool"
                              ondrop="drop(event)" ondragover="allowDrop(event)">
-                            {% for voter in yes_voters %}
+                            {% for voter in team_pool_voters %}
                             {% if not voter.team_assigned %}
                             {% include "cric/partials/_pool_chip.html" with voter=voter %}
                             {% endif %}

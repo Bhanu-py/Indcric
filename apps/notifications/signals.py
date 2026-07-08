@@ -134,7 +134,10 @@ def on_vote(sender, instance, **kwargs):
     user = instance.user
     who = (user.first_name or user.username) if user else 'Someone'
     session = instance.poll.session
-    standing = Vote.label_for_choice(instance.choice)
+    if session.has_two_date_options:
+        standing = Vote.label_for_choice(instance.choice)
+    else:
+        standing = 'Yes' if instance.choice == 'yes' else 'No'
     safe_emit(
         ActivityEvent.KIND_RSVP,
         f"{who} picked {standing} for {session.name}",

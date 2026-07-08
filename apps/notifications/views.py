@@ -335,17 +335,24 @@ def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None, reply=None,
         reply(bot_messages.no_active_poll())
         return {'recorded': False, 'reason': 'no_poll', 'choice': choice}
 
+    session = poll_obj.session
+    if choice == 'all' and not session.has_two_date_options:
+        reply(bot_messages.invalid_availability_choice(is_two_day=False))
+        return {'recorded': False, 'reason': 'invalid_choice', 'choice': choice}
+
     Vote.objects.update_or_create(
         poll=poll_obj, user=user, defaults={'choice': choice}
     )
 
     if chat != 'community':
-        session = poll_obj.session
         date_str = session.date.strftime("%a %d %b")
         yes_names, no_names, both_names = _poll_voter_names(poll_obj)
-        reply(bot_messages.rsvp_recorded(choice, session.name, date_str, yes_names, no_names, both_names))
+        reply(bot_messages.rsvp_recorded(
+            choice, session.name, date_str, yes_names, no_names, both_names,
+            is_two_day=session.has_two_date_options,
+        ))
 
-    return {'recorded': True, 'choice': choice}
+    return {'recorded': True, 'choice': choice, 'is_two_day': session.has_two_date_options}
 
 
 def _log_inbound(wa_message_id, phone, user, action, payload):
@@ -477,6 +484,7 @@ def _handle_status(wa_message_id, phone, raw, reply=None):
     yes_names, no_names, both_names = _poll_voter_names(poll)
     reply(bot_messages.status(
         session.name, date_str, yes_names, no_names, both_names,
+        is_two_day=session.has_two_date_options,
     ))
 
 

@@ -19,7 +19,8 @@ def poll_detail_view(request, poll_id):
         if not poll.is_open:
             return HttpResponseForbidden("This poll is closed.")
         choice = Vote.normalize_choice(request.POST.get('choice'))
-        if choice in ['yes', 'no', 'all']:
+        valid_choices = ['yes', 'no', 'all'] if poll.session.has_two_date_options else ['yes', 'no']
+        if choice in valid_choices:
             Vote.objects.update_or_create(
                 poll=poll, user=request.user, defaults={'choice': choice}
             )
