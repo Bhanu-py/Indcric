@@ -34,14 +34,14 @@ def help_text():
         "🏏 *IndCric Bot*\n"
         "\n"
         "Just reply with:\n"
-        "✅ *YES* or ❌ *NO* — RSVP to the current poll\n"
+        "📅 *Saturday*, *Sunday*, or *Both* — RSVP to the current poll\n"
         "💰 *BALANCE* — your wallet + what you owe\n"
         "🗂️ *HISTORY* — your last games + wallet\n"
         "📊 *STATUS* — who's in / out\n"
         "🏆 *SCORE* — live score of the current match\n"
         "❓ *HELP* — show this message\n"
         "\n"
-        "Playing a *specific* game? Just tap the *YES/NO* link in the group message — no need to type anything."
+        "Playing a *specific* game? Just tap the poll options in the group message — no need to type anything."
     )
 
 
@@ -52,16 +52,15 @@ def no_active_poll():
     )
 
 
-def rsvp_recorded(choice, session_name, date_str, yes_names, no_names):
-    """Confirmation for an RSVP, with the updated poll tally shown above it so
-    the voter sees the effect of their vote. yes_names / no_names are lists."""
-    you_are = "IN" if choice == "yes" else "OUT"
-    mark = "✅" if choice == "yes" else "❌"
-    opposite = "NO" if choice == "yes" else "YES"
+def rsvp_recorded(choice, session_name, date_str, yes_names, no_names, both_names):
+    """Confirmation for a vote, with the updated poll tally shown above it."""
+    label = {'yes': 'Saturday', 'no': 'Sunday', 'all': 'Both'}.get(
+        choice, choice.title() if choice else 'Vote'
+    )
     return (
-        status(session_name, date_str, yes_names, no_names)
+        status(session_name, date_str, yes_names, no_names, both_names)
         + "\n\n"
-        + f"{mark} You're *{you_are}* for this one. Reply *{opposite}* to switch."
+        + f"✅ You're *{label}* for this one. Reply with *Saturday*, *Sunday*, or *Both* to switch."
     )
 
 
@@ -129,9 +128,8 @@ def history(games, career, wallet_total):
     return "\n".join(lines)
 
 
-def status(session_name, date_str, yes_names, no_names):
-    """Poll counts + voter lists, one name per line. yes_names / no_names are
-    lists of display names."""
+def status(session_name, date_str, yes_names, no_names, both_names):
+    """Poll counts + voter lists, one name per line."""
     def block(mark, label, names):
         head = f"{mark} *{label}* ({len(names)})"
         if not names:
@@ -141,9 +139,11 @@ def status(session_name, date_str, yes_names, no_names):
     return "\n".join([
         f"🏏 *{session_name}* ({date_str})",
         "",
-        block("✅", "IN", yes_names),
+        block("🟢", "SATURDAY", yes_names),
         "",
-        block("❌", "OUT", no_names),
+        block("🔵", "SUNDAY", no_names),
+        "",
+        block("🟣", "BOTH", both_names),
     ])
 
 

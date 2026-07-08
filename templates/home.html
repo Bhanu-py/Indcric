@@ -101,6 +101,11 @@
                     <div class="micro-label">Next up · {{ next_session.date|date:"D j M" }}</div>
                     {% if next_session.is_live %}{% include "_components/live_badge.html" %}{% endif %}
                 </div>
+                {% if next_session.proposed_dates|length > 1 %}
+                <div class="text-[11px] text-stone-400 mb-1.5">
+                    Date options: {{ next_session.proposed_dates.0|date:"D j M" }} or {{ next_session.proposed_dates.1|date:"D j M" }}
+                </div>
+                {% endif %}
                 <div class="text-lg font-semibold text-stone-900 leading-tight mb-1.5 group-hover:text-pitch-700 transition-colors">
                     {{ next_session.name|default:"Untitled session" }}
                 </div>
@@ -112,7 +117,7 @@
                 <div class="mt-3 pt-2.5 border-t border-stone-100 flex items-center justify-between text-xs gap-2">
                     {% if next_session_votes %}
                     <span class="text-stone-600 shrink-0">
-                        <b class="text-emerald-700">{{ next_session_votes.yes_votes }}</b> in · {{ next_session_votes.no_votes }} out
+                        <b class="text-emerald-700">{{ next_session_votes.saturday_votes }}</b> Sat · {{ next_session_votes.sunday_votes }} Sun · {{ next_session_votes.both_votes }} Both
                     </span>
                     {% else %}
                     <span class="text-stone-400 shrink-0">No votes yet</span>
@@ -126,11 +131,15 @@
                     {% elif next_session_user_vote == 'yes' %}
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-semibold shrink-0">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                        You're in
+                        You're on Saturday
                     </span>
                     {% elif next_session_user_vote == 'no' %}
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 text-[11px] font-semibold shrink-0">
-                        You're out
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 text-[11px] font-semibold shrink-0">
+                        You're on Sunday
+                    </span>
+                    {% elif next_session_user_vote == 'all' %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[11px] font-semibold shrink-0">
+                        You're on both days
                     </span>
                     {% endif %}
                 </div>

@@ -159,7 +159,7 @@ class ActivityEmitTests(TestCase):
         ev = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_RSVP).first()
         self.assertIsNotNone(ev)
         self.assertIn("Riya", ev.body)
-        self.assertIn("in for", ev.body)
+        self.assertIn("picked Saturday", ev.body)
         self.assertEqual(ev.actor, self.donor)
 
     def test_vote_change_refreshes_single_row(self):
@@ -168,7 +168,7 @@ class ActivityEmitTests(TestCase):
         v.save()
         rows = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_RSVP)
         self.assertEqual(rows.count(), 1)          # deduped on the vote, not spammed
-        self.assertIn("out of", rows.first().body)
+        self.assertIn("picked Sunday", rows.first().body)
 
     def test_vote_withdraw_removes_row(self):
         v = Vote.objects.create(poll=self._poll(), user=self.donor, choice='yes')
@@ -426,7 +426,7 @@ class GroupInboundTests(TestCase):
         mock_send.assert_not_called()
 
     def test_poll_vote_records_no(self):
-        self._post({'from': '32470000001', 'wa_message_id': 'g4', 'kind': 'poll_vote', 'selected': ['No ❌']})
+        self._post({'from': '32470000001', 'wa_message_id': 'g4', 'kind': 'poll_vote', 'selected': ['Sunday']})
         self.assertTrue(
             Vote.objects.filter(poll=self.poll, user=self.member, choice='no').exists()
         )
@@ -440,7 +440,7 @@ class GroupInboundTests(TestCase):
         resp = self._post({
             'from': '+267418135986186', 'lid': '267418135986186',
             'author_name': 'Bhanu Angam', 'wa_message_id': 'gname1',
-            'kind': 'poll_vote', 'selected': ['Yes ✅'],
+            'kind': 'poll_vote', 'selected': ['Saturday'],
         })
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(
@@ -457,7 +457,7 @@ class GroupInboundTests(TestCase):
         self.member.save()
         resp = self._post({
             'from': '+267418135986186', 'lid': '267418135986186',
-            'wa_message_id': 'glid1', 'kind': 'poll_vote', 'selected': ['Yes ✅'],
+            'wa_message_id': 'glid1', 'kind': 'poll_vote', 'selected': ['Saturday'],
         })
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(
@@ -576,7 +576,7 @@ class AutoPostEnqueueTests(TestCase):
         m = OutboundMessage.objects.filter(dedup_key=f'poll_opened:{s.poll.id}').first()
         self.assertIsNotNone(m)
         self.assertEqual(m.kind, OutboundMessage.POLL)
-        self.assertEqual(m.poll_options, ['Yes ✅', 'No ❌'])
+        self.assertEqual(m.poll_options, ['Saturday', 'Sunday', 'Both'])
         self.assertIn("Sunday Nets", m.body)
 
     def test_past_session_poll_does_not_enqueue(self):

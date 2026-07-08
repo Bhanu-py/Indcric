@@ -101,18 +101,26 @@ def inbound_message(request):
             lid=lid, defaults={'name': wa_name} if wa_name else {},
         )
 
-    # Normalise reactions / poll votes into the YES/NO text the dispatcher parses.
+    # Normalise reactions / poll votes into the vote text the dispatcher parses.
     if kind == 'reaction':
         choice = _REACTION_CHOICE.get(_normalize_emoji(data.get('emoji', '')))
         if choice is None:
             return JsonResponse({'ok': True, 'ignored': 'non_vote_reaction'})
-        text = 'YES' if choice == 'yes' else 'NO'
+        text = 'Saturday' if choice == 'yes' else ('Sunday' if choice == 'no' else 'Both')
     elif kind == 'poll_vote':
         selected = data.get('selected') or []
         if not selected:
             # Deselection / withdrawal — handled in Phase 2 (vote retract).
             return JsonResponse({'ok': True, 'ignored': 'poll_deselect'})
-        text = 'YES' if str(selected[0]).lower().startswith('yes') else 'NO'
+        selected_text = str(selected[0]).strip().lower()
+        if selected_text.startswith(('sat', 'yes')):
+            text = 'Saturday'
+        elif selected_text.startswith(('sun', 'no')):
+            text = 'Sunday'
+        elif selected_text.startswith(('both', 'all')):
+            text = 'Both'
+        else:
+            text = str(selected[0])
     else:
         text = (data.get('text') or '').strip()
 
@@ -130,9 +138,10 @@ def inbound_message(request):
 
     actions = []
     if result and result.get('kind') == 'rsvp' and result.get('recorded'):
+        emoji = '✅' if result.get('choice') == 'yes' else ('☑️' if result.get('choice') == 'all' else '❌')
         actions.append({
             'type': 'react',
-            'emoji': '✅' if result.get('choice') == 'yes' else '❌',
+            'emoji': emoji,
             'message_id': wa_message_id,
         })
 

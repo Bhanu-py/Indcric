@@ -18,6 +18,41 @@ from apps.payments.models import Payment, Wallet
 User = get_user_model()
 
 
+def _vote_choice(choice):
+    return Vote.normalize_choice(choice)
+
+
+def _session_vote_summary(poll):
+    saturday_voters = []
+    sunday_voters = []
+    both_voters = []
+    for vote in poll.votes.select_related('user').order_by('user__first_name', 'user__username'):
+        choice = _vote_choice(vote.choice)
+        if choice == 'yes':
+            saturday_voters.append(vote.user)
+        elif choice == 'no':
+            sunday_voters.append(vote.user)
+        elif choice == 'all':
+            both_voters.append(vote.user)
+    saturday_votes = len(saturday_voters)
+    sunday_votes = len(sunday_voters)
+    both_votes = len(both_voters)
+    total_votes = saturday_votes + sunday_votes + both_votes
+    return {
+        'saturday_votes': saturday_votes,
+        'sunday_votes': sunday_votes,
+        'both_votes': both_votes,
+        'total_votes': total_votes,
+        'saturday_voters': saturday_voters,
+        'sunday_voters': sunday_voters,
+        'both_voters': both_voters,
+        'yes_votes': saturday_votes,
+        'no_votes': sunday_votes,
+        'yes_voters': [{'user': u} for u in saturday_voters],
+        'no_voters': sunday_voters,
+    }
+
+
 def _live_match_session_ids(sessions):
     """Session ids that currently have a match being scored — scoring started
     (≥1 innings) but not yet concluded (the result is declared only once both
@@ -54,20 +89,11 @@ def home(request):
     session_voters = {}  # session_id -> yes-voter users (for the dashboard avatar stack)
     for session in all_sessions:
         if hasattr(session, 'poll'):
-            yes_qs = session.poll.votes.filter(choice='yes').select_related('user')
-            yes_votes = yes_qs.count()
-            no_votes = session.poll.votes.filter(choice='no').count()
-            total_votes = yes_votes + no_votes
-            yes_percentage = (yes_votes / total_votes * 100) if total_votes > 0 else 0
-            session_vote_counts[session.id] = {
-                'yes_votes': yes_votes,
-                'no_votes': no_votes,
-                'total_votes': total_votes,
-                'yes_percentage': yes_percentage,
-            }
-            session_voters[session.id] = [
-                v.user for v in yes_qs.order_by('user__first_name', 'user__username')[:12]
-            ]
+            summary = _session_vote_summary(session.poll)
+            session_vote_counts[session.id] = summary
+            session_voters[session.id] = (
+                summary['saturday_voters'] + summary['sunday_voters'] + summary['both_voters']
+            )[:12]
 
     next_session = upcoming_sessions[0] if upcoming_sessions else None
     next_session_votes = (
@@ -110,7 +136,8 @@ def home(request):
 def create_session_view(request):
     if request.method == 'POST':
         name = request.POST['name']
-        date_str = request.POST.get('date')
+        date_option_1_str = request.POST.get('date_option_1') or request.POST.get('date')
+        date_option_2_str = request.POST.get('date_option_2')
         time_str = request.POST.get('time')
         duration = request.POST.get('duration', 3)
         location = request.POST.get('location', '')
@@ -126,10 +153,10 @@ def create_session_view(request):
         except (ValueError, TypeError):
             cost = 0.0
 
-        date = time = None
+        date_option_1 = date_option_2 = time = None
 
-        if not date_str:
-            messages.error(request, "Date is required.")
+        if not date_option_1_str:
+            messages.error(request, "The first date option is required.")
             return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
 
         if not time_str:
@@ -137,10 +164,17 @@ def create_session_view(request):
             return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
 
         try:
-            date = timezone.datetime.strptime(date_str, '%Y-%m-%d').date()
+            date_option_1 = timezone.datetime.strptime(date_option_1_str, '%Y-%m-%d').date()
         except ValueError:
             messages.error(request, "Invalid date format. Please use YYYY-MM-DD.")
             return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
+
+        if date_option_2_str:
+            try:
+                date_option_2 = timezone.datetime.strptime(date_option_2_str, '%Y-%m-%d').date()
+            except ValueError:
+                messages.error(request, "Invalid second date format. Please use YYYY-MM-DD.")
+                return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
 
         try:
             time = timezone.datetime.strptime(time_str, '%H:%M').time()
@@ -149,8 +183,15 @@ def create_session_view(request):
             return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
 
         session = Session.objects.create(
-            name=name, date=date, time=time, duration=duration,
-            location=location, cost=cost, created_by=request.user,
+            name=name,
+            date=date_option_1,
+            date_option_1=date_option_1,
+            date_option_2=date_option_2,
+            time=time,
+            duration=duration,
+            location=location,
+            cost=cost,
+            created_by=request.user,
         )
         poll = Poll.objects.create(
             session=session,
@@ -160,7 +201,7 @@ def create_session_view(request):
 
         messages.success(
             request,
-            'Session created. Open the session page and tap '
+            'Session created with date options. Open the session page and tap '
             '"Share to WhatsApp Group" to invite members.'
         )
         return redirect('home')
@@ -295,22 +336,27 @@ def session_detail_view(request, session_id):
         return _ROLE_ORDER.get((p['user'].role or '').lower(), 3)
 
     user_vote = None
-    yes_votes = no_votes = total_votes = 0
+    saturday_votes = sunday_votes = both_votes = total_votes = 0
+    yes_votes = no_votes = 0
     yes_percentage = 0
     yes_voters = []
     no_voters = []
+    both_voters = []
     if hasattr(session, 'poll'):
         poll = session.poll
         vote = Vote.objects.filter(poll=poll, user=request.user).first()
-        user_vote = vote.choice if vote else None
-        yes_votes = poll.votes.filter(choice='yes').count()
-        no_votes = poll.votes.filter(choice='no').count()
-        total_votes = yes_votes + no_votes
-        if total_votes > 0:
-            yes_percentage = (yes_votes / total_votes) * 100
-        yes_voters = [{'user': v.user, 'team_assigned': False, **_player_skills(v.user)}
-                      for v in poll.votes.filter(choice='yes').select_related('user')]
-        no_voters = [v.user for v in poll.votes.filter(choice='no').select_related('user')]
+        user_vote = _vote_choice(vote.choice) if vote else None
+        summary = _session_vote_summary(poll)
+        saturday_votes = summary['saturday_votes']
+        sunday_votes = summary['sunday_votes']
+        both_votes = summary['both_votes']
+        total_votes = summary['total_votes']
+        yes_votes = saturday_votes
+        no_votes = sunday_votes
+        yes_percentage = (saturday_votes / total_votes) * 100 if total_votes > 0 else 0
+        yes_voters = [{'user': u, 'team_assigned': False, **_player_skills(u)} for u in summary['saturday_voters']]
+        no_voters = summary['sunday_voters']
+        both_voters = summary['both_voters']
 
     matches = list(
         session.matches.prefetch_related('teams__players__user', 'innings').order_by('id')
@@ -400,11 +446,9 @@ def session_detail_view(request, session_id):
     attendance_present_ids = []
     addable_users = []
     if is_past and hasattr(session, 'poll'):
-        # Auto-create SessionPlayer rows for yes-voters so the roster is populated.
-        # Default each new attendee to attended=True — the optimistic assumption is that
-        # whoever voted Yes showed up. Staff unchecks no-shows and saves.
-        yes_user_ids = list(session.poll.votes.filter(choice='yes').values_list('user_id', flat=True))
-        for uid in yes_user_ids:
+        # Auto-create SessionPlayer rows for poll voters so the roster is populated.
+        voter_user_ids = list(session.poll.votes.values_list('user_id', flat=True))
+        for uid in voter_user_ids:
             sp, _ = SessionPlayer.objects.get_or_create(session=session, user_id=uid)
             Attendance.objects.get_or_create(match_player=sp, defaults={'attended': True})
         attendance_roster = list(
@@ -438,10 +482,14 @@ def session_detail_view(request, session_id):
         'user_vote': user_vote,
         'yes_votes': yes_votes,
         'no_votes': no_votes,
+        'saturday_votes': saturday_votes,
+        'sunday_votes': sunday_votes,
+        'both_votes': both_votes,
         'total_votes': total_votes,
         'yes_percentage': yes_percentage,
         'yes_voters': yes_voters,
         'no_voters': no_voters,
+        'both_voters': both_voters,
         'cost_per_person_est': cost_per_person_est,
         'addable_pool': addable_pool,
         'matches': matches,
@@ -472,12 +520,12 @@ def vote_session_view(request, poll_id):
             messages.error(request, "This session has already ended.")
             return redirect('session_detail', session_id=session.id)
 
-        choice = request.POST.get('choice')
-        if choice in ['yes', 'no']:
+        choice = _vote_choice(request.POST.get('choice'))
+        if choice in ['yes', 'no', 'all']:
             Vote.objects.update_or_create(
                 poll=poll, user=request.user, defaults={'choice': choice}
             )
-            messages.success(request, f"Vote updated to '{choice}'.")
+            messages.success(request, f"Vote updated to '{Vote.label_for_choice(choice)}'.")
         elif choice == 'withdraw':
             Vote.objects.filter(poll=poll, user=request.user).delete()
             messages.success(request, "Your vote has been removed.")
@@ -502,6 +550,36 @@ def close_poll_view(request, poll_id):
         status = "opened" if poll.is_open else "closed"
         messages.success(request, f"Poll has been {status}.")
 
+    return redirect('session_detail', session_id=session.id)
+
+
+@login_required
+def finalize_play_day_view(request, session_id):
+    session = get_object_or_404(Session, id=session_id)
+
+    if not request.user.is_staff:
+        messages.error(request, "You don't have permission to perform this action.")
+        return redirect('session_detail', session_id=session.id)
+
+    if request.method != 'POST':
+        return redirect('session_detail', session_id=session.id)
+
+    choice = (request.POST.get('play_day') or '').strip().lower()
+    if choice not in {'sat', 'sun', 'both'}:
+        messages.error(request, 'Please choose Saturday, Sunday, or Both.')
+        return redirect('session_detail', session_id=session.id)
+
+    session.final_play_day = choice
+    session.save(update_fields=['final_play_day'])
+
+    if hasattr(session, 'poll') and session.poll.is_open:
+        session.poll.is_open = False
+        session.poll.save(update_fields=['is_open'])
+
+    messages.success(
+        request,
+        f"Play day set to {session.final_play_day_label}. Team balance is now open."
+    )
     return redirect('session_detail', session_id=session.id)
 
 
