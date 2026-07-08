@@ -422,16 +422,19 @@ class GroupInboundTests(TestCase):
         Vote.objects.create(poll=self.poll, user=self.member, choice='yes')
         Vote.objects.create(poll=self.poll, user=sunday, choice='no')
         Vote.objects.create(poll=self.poll, user=both, choice='all')
+        unavailable = User.objects.create_user(username="lee", first_name="Lee", password="x")
+        Vote.objects.create(poll=self.poll, user=unavailable, choice='out')
 
         resp = self._post({'from': '32470000001', 'wa_message_id': 'g-status', 'text': 'status', 'kind': 'text'})
 
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()['result'], {'kind': 'command', 'command': 'status'})
         msg = OutboundMessage.objects.get(target='community')
-        self.assertIn("*3 voted* · Saturday 1 · Sunday 1 · Both 1", msg.body)
+        self.assertIn("*4 voted* · Saturday 1 · Sunday 1 · Both 1 · Not available 1", msg.body)
         self.assertIn("*SATURDAY* (1)", msg.body)
         self.assertIn("*SUNDAY* (1)", msg.body)
         self.assertIn("*BOTH* (1)", msg.body)
+        self.assertIn("*NOT AVAILABLE* (1)", msg.body)
         mock_send.assert_not_called()
 
     @patch("apps.notifications.services.send_text_message")
@@ -459,6 +462,13 @@ class GroupInboundTests(TestCase):
             Vote.objects.filter(poll=self.poll, user=self.member, choice='no').exists()
         )
         self.assertEqual(resp.json()['actions'][0]['emoji'], '✅')
+
+    def test_poll_vote_records_not_available(self):
+        resp = self._post({'from': '32470000001', 'wa_message_id': 'g4out', 'kind': 'poll_vote', 'selected': ['Not available']})
+        self.assertTrue(
+            Vote.objects.filter(poll=self.poll, user=self.member, choice='out').exists()
+        )
+        self.assertEqual(resp.json()['actions'][0]['emoji'], '❌')
 
     @patch("apps.notifications.services.send_text_message")
     def test_one_day_poll_vote_no_records_no_and_reacts_cross(self, mock_send):
@@ -627,7 +637,7 @@ class AutoPostEnqueueTests(TestCase):
         m = OutboundMessage.objects.filter(dedup_key=f'poll_opened:{s.poll.id}').first()
         self.assertIsNotNone(m)
         self.assertEqual(m.kind, OutboundMessage.POLL)
-        self.assertEqual(m.poll_options, ['Saturday', 'Sunday', 'Both'])
+        self.assertEqual(m.poll_options, ['Saturday', 'Sunday', 'Both', 'Not available'])
         self.assertIn("Sunday Nets", m.body)
 
     def test_one_day_poll_open_enqueues_yes_no_native_poll(self):

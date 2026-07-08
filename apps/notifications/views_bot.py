@@ -106,14 +106,22 @@ def inbound_message(request):
         choice = _REACTION_CHOICE.get(_normalize_emoji(data.get('emoji', '')))
         if choice is None:
             return JsonResponse({'ok': True, 'ignored': 'non_vote_reaction'})
-        text = 'Saturday' if choice == 'yes' else ('Sunday' if choice == 'no' else 'Both')
+        if choice == 'yes':
+            text = 'Saturday'
+        elif choice == 'no':
+            poll = nviews._next_open_poll()
+            text = 'Out' if poll and poll.session.has_two_date_options else 'No'
+        else:
+            text = 'Both'
     elif kind == 'poll_vote':
         selected = data.get('selected') or []
         if not selected:
             # Deselection / withdrawal — handled in Phase 2 (vote retract).
             return JsonResponse({'ok': True, 'ignored': 'poll_deselect'})
         selected_text = str(selected[0]).strip().lower()
-        if selected_text.startswith(('sat', 'yes')):
+        if selected_text.startswith(('not available', 'unavailable', 'out', 'na')):
+            text = 'Out'
+        elif selected_text.startswith(('sat', 'yes')):
             text = 'Saturday'
         elif selected_text.startswith(('sun', 'no')):
             text = 'Sunday'
@@ -138,7 +146,9 @@ def inbound_message(request):
 
     actions = []
     if result and result.get('kind') == 'rsvp' and result.get('recorded'):
-        if result.get('choice') == 'all':
+        if result.get('choice') == 'out':
+            emoji = '❌'
+        elif result.get('choice') == 'all':
             emoji = '☑️'
         elif result.get('choice') == 'no' and not result.get('is_two_day'):
             emoji = '❌'

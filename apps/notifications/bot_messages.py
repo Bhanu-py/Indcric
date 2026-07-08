@@ -34,7 +34,7 @@ def help_text():
         "🏏 *IndCric Bot*\n"
         "\n"
         "Just reply with:\n"
-        "📅 *Saturday*, *Sunday*, *Both*, *Yes*, or *No* — RSVP to the current poll\n"
+        "📅 *Saturday*, *Sunday*, *Both*, *Not available*, *Yes*, or *No* — RSVP to the current poll\n"
         "💰 *BALANCE* — your wallet + what you owe\n"
         "🗂️ *HISTORY* — your last games + wallet\n"
         "📊 *STATUS* — availability counts\n"
@@ -54,23 +54,27 @@ def no_active_poll():
 
 def invalid_availability_choice(*, is_two_day=True):
     if is_two_day:
-        return "Please choose *Saturday*, *Sunday*, or *Both* for this poll."
+        return "Please choose *Saturday*, *Sunday*, *Both*, or *Not available* for this poll."
     return "Please choose *Yes* or *No* for this poll."
 
 
-def rsvp_recorded(choice, session_name, date_str, yes_names, no_names, both_names, *, is_two_day=True):
+def rsvp_recorded(choice, session_name, date_str, yes_names, no_names, both_names, unavailable_names=None, *, is_two_day=True):
     """Confirmation for a vote, with the updated poll tally shown above it."""
+    unavailable_names = unavailable_names or []
     labels = (
-        {'yes': 'Saturday', 'no': 'Sunday', 'all': 'Both'}
+        {'yes': 'Saturday', 'no': 'Sunday', 'all': 'Both', 'out': 'Not available'}
         if is_two_day else
         {'yes': 'Yes', 'no': 'No'}
     )
     label = labels.get(choice, choice.title() if choice else 'Vote')
     return (
-        status(session_name, date_str, yes_names, no_names, both_names, is_two_day=is_two_day)
+        status(
+            session_name, date_str, yes_names, no_names, both_names,
+            unavailable_names, is_two_day=is_two_day,
+        )
         + "\n\n"
         + (
-            f"✅ You're *{label}* for this one. Reply with *Saturday*, *Sunday*, or *Both* to switch."
+            f"✅ You're *{label}* for this one. Reply with *Saturday*, *Sunday*, *Both*, or *Not available* to switch."
             if is_two_day else
             f"✅ You're marked *{label}* for this one. Reply with *Yes* or *No* to switch."
         )
@@ -141,8 +145,9 @@ def history(games, career, wallet_total):
     return "\n".join(lines)
 
 
-def status(session_name, date_str, yes_names, no_names, both_names, *, is_two_day=True):
+def status(session_name, date_str, yes_names, no_names, both_names, unavailable_names=None, *, is_two_day=True):
     """Poll counts + voter lists, one name per line."""
+    unavailable_names = unavailable_names or []
     def block(mark, label, names):
         head = f"{mark} *{label}* ({len(names)})"
         if not names:
@@ -160,16 +165,18 @@ def status(session_name, date_str, yes_names, no_names, both_names, *, is_two_da
             block("🔴", "NO", no_names),
         ])
 
-    total = len(yes_names) + len(no_names) + len(both_names)
+    total = len(yes_names) + len(no_names) + len(both_names) + len(unavailable_names)
     return "\n".join([
         f"🏏 *{session_name}* ({date_str})",
-        f"📊 *{total} voted* · Saturday {len(yes_names)} · Sunday {len(no_names)} · Both {len(both_names)}",
+        f"📊 *{total} voted* · Saturday {len(yes_names)} · Sunday {len(no_names)} · Both {len(both_names)} · Not available {len(unavailable_names)}",
         "",
         block("🟢", "SATURDAY", yes_names),
         "",
         block("🔵", "SUNDAY", no_names),
         "",
         block("🟣", "BOTH", both_names),
+        "",
+        block("🔴", "NOT AVAILABLE", unavailable_names),
     ])
 
 
