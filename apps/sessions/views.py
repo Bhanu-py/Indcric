@@ -38,16 +38,23 @@ def _session_vote_summary(poll):
     sunday_votes = len(sunday_voters)
     both_votes = len(both_voters)
     total_votes = saturday_votes + sunday_votes + both_votes
+    saturday_percentage = (saturday_votes / total_votes) * 100 if total_votes else 0
+    sunday_percentage = (sunday_votes / total_votes) * 100 if total_votes else 0
+    both_percentage = (both_votes / total_votes) * 100 if total_votes else 0
     return {
         'saturday_votes': saturday_votes,
         'sunday_votes': sunday_votes,
         'both_votes': both_votes,
         'total_votes': total_votes,
+        'saturday_percentage': saturday_percentage,
+        'sunday_percentage': sunday_percentage,
+        'both_percentage': both_percentage,
         'saturday_voters': saturday_voters,
         'sunday_voters': sunday_voters,
         'both_voters': both_voters,
         'yes_votes': saturday_votes,
         'no_votes': sunday_votes,
+        'yes_percentage': saturday_percentage,
         'yes_voters': [{'user': u} for u in saturday_voters],
         'no_voters': sunday_voters,
     }

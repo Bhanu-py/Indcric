@@ -9,7 +9,7 @@ Usage:
 
 Args:
   session     Session instance (uses .id .name .date .time .duration .location .poll .matches)
-  vote_count  optional dict with keys yes_votes, no_votes, yes_percentage, total_votes
+  vote_count  optional dict with Saturday/Sunday/Both vote counts and percentages
   past        if True, render in dimmed past-session style
   is_staff    if True, show staff-only delete affordance on hover
   locked      if True, link redirects to login with ?next=<session_detail>; shows lock badge
@@ -68,23 +68,24 @@ Args:
             <div class="flex items-center justify-between text-xs mb-2">
                 <span class="font-medium text-stone-600">Availability poll</span>
                 <div class="flex items-center gap-1.5">
-                    {% include "_components/badge.html" with variant="green" label=vote_count.yes_votes|stringformat:"s"|add:" Yes" %}
-                    {% include "_components/badge.html" with variant="red" label=vote_count.no_votes|stringformat:"s"|add:" No" %}
+                    {% include "_components/badge.html" with variant="green" label=vote_count.saturday_votes|stringformat:"s"|add:" Sat" %}
+                    {% include "_components/badge.html" with variant="sky" label=vote_count.sunday_votes|stringformat:"s"|add:" Sun" %}
+                    {% include "_components/badge.html" with variant="purple" label=vote_count.both_votes|stringformat:"s"|add:" Both" %}
                     {% if not session.poll.is_open %}
                         {% include "_components/badge.html" with variant="stone" label="Closed" %}
                     {% endif %}
                 </div>
             </div>
-            {% if vote_count.total_votes > 0 %}
-            <div class="vote-bar">
-                <div class="vote-fill-yes" style="width:{{ vote_count.yes_percentage }}%"></div>
+            <div class="vote-bar flex">
+                {% if vote_count.total_votes > 0 %}
+                    <div class="h-full bg-emerald-500 transition-all duration-500" style="width:{{ vote_count.saturday_percentage }}%"></div>
+                    <div class="h-full bg-sky-500 transition-all duration-500" style="width:{{ vote_count.sunday_percentage }}%"></div>
+                    <div class="h-full bg-purple-500 transition-all duration-500" style="width:{{ vote_count.both_percentage }}%"></div>
+                {% endif %}
             </div>
-            {% else %}
-            <div class="vote-bar"><div class="vote-fill-yes w-0"></div></div>
-            {% endif %}
             {% if voters %}
             <div class="flex items-center gap-2 mt-3">
-                {% include "_components/avatar_stack.html" with users=voters total=vote_count.yes_votes size=24 %}
+                {% include "_components/avatar_stack.html" with users=voters total=vote_count.total_votes size=24 %}
                 <span class="text-[11px] text-stone-500">going</span>
             </div>
             {% endif %}
