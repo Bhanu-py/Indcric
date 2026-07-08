@@ -1,5 +1,97 @@
 /* ...existing CSS resets or comments... */
 
+/* ─── MOBILE RESPONSIVE LAYOUT ─── */
+@media (max-width: 639px) {
+    .table-container {
+        padding: 0;
+    }
+
+    .table-container .overflow-x-auto {
+        overflow-x: auto;
+    }
+
+    /* Reduce padding on mobile */
+    .table-container th, .table-container td {
+        padding: 0.3rem;
+        font-size: 0.75rem;
+    }
+
+    /* Hide rating columns on mobile */
+    .table-container th:nth-child(4), .table-container td:nth-child(4),
+    .table-container th:nth-child(5), .table-container td:nth-child(5),
+    .table-container th:nth-child(6), .table-container td:nth-child(6) {
+        display: none;
+    }
+
+    /* Hide last login on mobile */
+    .table-container th:nth-child(7), .table-container td:nth-child(7) {
+        display: none;
+    }
+
+    /* Adjust column widths for mobile */
+    .table-container th:nth-child(1), .table-container td:nth-child(1) { 
+        width: 8%; /* ID */
+    }
+    .table-container th:nth-child(2), .table-container td:nth-child(2) { 
+        width: 25%; /* Username - make clickable */
+    }
+    .table-container th:nth-child(3), .table-container td:nth-child(3) { 
+        width: 15%; /* Role */
+    }
+    .table-container th:nth-child(8), .table-container td:nth-child(8) { 
+        width: 15%; /* Staff */
+    }
+    .table-container th:nth-child(9), .table-container td:nth-child(9) { 
+        width: 20%; /* Wallet */
+        text-align: right;
+    }
+
+    /* Username link styling */
+    .table-container tbody tr td:nth-child(2) a {
+        color: #3b82f6;
+        text-decoration: underline;
+        cursor: pointer;
+    }
+
+    .table-container tbody tr td:nth-child(2) a:hover {
+        color: #1d4ed8;
+        font-weight: 600;
+    }
+}
+
+/* ─── DESKTOP TABLE LAYOUT (≥ 640px) ─── */
+@media (min-width: 640px) {
+    .table-container thead {
+        display: table-header-group;
+    }
+
+    .table-container tbody {
+        display: table-row-group;
+    }
+
+    .table-container tbody tr {
+        display: table-row;
+    }
+
+    .table-container tbody tr td {
+        display: table-cell;
+        border: 1px solid #e5e7eb;
+        padding: 0.75rem 1rem;
+    }
+
+    /* Username link styling - desktop */
+    .table-container tbody tr td:nth-child(2) a {
+        color: #3b82f6;
+        text-decoration: underline;
+        cursor: pointer;
+    }
+
+    .table-container tbody tr td:nth-child(2) a:hover {
+        color: #1d4ed8;
+        font-weight: 600;
+    }
+}
+
 /* Table style */
 .table-container th.asc:after {
     content: '\0000a0\0025b2';
@@ -9,18 +101,6 @@
 .table-container th.desc:after {
     content: '\0000a0\0025bc';
     float: right;
-}
-
-.table-container table td:nth-child(1) {
-    width: 5%;
-}
-
-.table-container table td:nth-child(2) {
-    width: 20%;
-}
-
-.table-container table td:nth-child(3) {
-    width: 50%;
 }
 
 /* Progress bar */
@@ -95,5 +175,3 @@
         right: -8%;
     }
 }
-
-/* ...existing CSS... */

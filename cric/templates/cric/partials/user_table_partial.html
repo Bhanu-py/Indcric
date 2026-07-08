@@ -44,13 +44,54 @@
     {% endif %}
     
     <script>
+        // Mobile expandable rows functionality
+        function initializeMobileExpandableRows() {
+            const rows = document.querySelectorAll('.table-container tbody tr');
+            
+            rows.forEach((row, index) => {
+                // Get username cell (2nd column) and make it clickable
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 2) {
+                    const usernameCell = cells[1]; // Username is 2nd column (index 1)
+                    
+                    // Check if there's an anchor tag in the username cell
+                    const usernameLink = usernameCell.querySelector('a');
+                    if (usernameLink) {
+                        // Add click handler that opens player details
+                        usernameLink.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            // Get user ID from first cell
+                            const userIdCell = cells[0];
+                            const userId = userIdCell.textContent.trim();
+                            
+                            // Navigate to player details or open modal
+                            const editUrl = document.querySelector('[data-edit-user-url-prefix]')
+                                ?.getAttribute('data-edit-user-url-prefix');
+                            
+                            if (editUrl) {
+                                window.location.href = editUrl + userId + '/';
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        
         // Re-initialize click handlers for rows when the partial view is loaded
         document.addEventListener("DOMContentLoaded", function() {
             // Timeout needed to ensure table is rendered before adding handlers
             setTimeout(() => {
+                initializeMobileExpandableRows();
                 if (typeof initializeTableRowHandlers === 'function') {
                     initializeTableRowHandlers();
                 }
+            }, 100);
+        });
+        
+        // Also run on HTMX refresh
+        document.body.addEventListener('htmx:afterSwap', function() {
+            setTimeout(() => {
+                initializeMobileExpandableRows();
             }, 100);
         });
     </script>
