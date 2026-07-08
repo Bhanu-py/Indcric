@@ -9,7 +9,7 @@ Usage:
 
 Args:
   session     Session instance (uses .id .name .date .time .duration .location .poll .matches)
-  vote_count  optional dict with Saturday/Sunday/Both vote counts and percentages
+  vote_count  optional dict with availability vote counts and percentages
   past        if True, render in dimmed past-session style
   is_staff    if True, show staff-only delete affordance on hover
   locked      if True, link redirects to login with ?next=<session_detail>; shows lock badge
@@ -72,6 +72,7 @@ Args:
                         {% include "_components/badge.html" with variant="green" label=vote_count.saturday_votes|stringformat:"s"|add:" Sat" %}
                         {% include "_components/badge.html" with variant="sky" label=vote_count.sunday_votes|stringformat:"s"|add:" Sun" %}
                         {% include "_components/badge.html" with variant="purple" label=vote_count.both_votes|stringformat:"s"|add:" Both" %}
+                        {% include "_components/badge.html" with variant="red" label=vote_count.unavailable_votes|stringformat:"s"|add:" Out" %}
                     {% else %}
                         {% include "_components/badge.html" with variant="green" label=vote_count.yes_votes|stringformat:"s"|add:" Yes" %}
                         {% include "_components/badge.html" with variant="red" label=vote_count.no_votes|stringformat:"s"|add:" No" %}
@@ -87,6 +88,7 @@ Args:
                         <div class="h-full bg-emerald-500 transition-all duration-500" style="width:{{ vote_count.saturday_percentage }}%"></div>
                         <div class="h-full bg-sky-500 transition-all duration-500" style="width:{{ vote_count.sunday_percentage }}%"></div>
                         <div class="h-full bg-purple-500 transition-all duration-500" style="width:{{ vote_count.both_percentage }}%"></div>
+                        <div class="h-full bg-red-400 transition-all duration-500" style="width:{{ vote_count.unavailable_percentage }}%"></div>
                     {% else %}
                         <div class="h-full bg-emerald-500 transition-all duration-500" style="width:{{ vote_count.yes_percentage }}%"></div>
                         <div class="h-full bg-red-400 transition-all duration-500" style="width:{{ vote_count.no_percentage }}%"></div>
@@ -96,7 +98,7 @@ Args:
             {% if voters %}
             <div class="flex items-center gap-2 mt-3">
                 {% if availability.show_both %}
-                    {% include "_components/avatar_stack.html" with users=voters total=vote_count.total_votes size=24 %}
+                    {% include "_components/avatar_stack.html" with users=voters total=vote_count.eligible_votes size=24 %}
                 {% else %}
                     {% include "_components/avatar_stack.html" with users=voters total=vote_count.yes_votes size=24 %}
                 {% endif %}
@@ -131,7 +133,7 @@ Args:
         {% if voters %}
         <div class="mt-2 flex items-center gap-2">
             {% if availability.show_both %}
-                {% include "_components/avatar_stack.html" with users=voters total=vote_count.total_votes size=22 %}
+                {% include "_components/avatar_stack.html" with users=voters total=vote_count.eligible_votes size=22 %}
             {% else %}
                 {% include "_components/avatar_stack.html" with users=voters total=vote_count.yes_votes size=22 %}
             {% endif %}

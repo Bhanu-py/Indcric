@@ -32,9 +32,11 @@ def _availability_context(session):
         'yes_label': 'Saturday' if is_two_day else 'Yes',
         'no_label': 'Sunday' if is_two_day else 'No',
         'all_label': 'Both',
+        'out_label': 'Not available',
         'summary_label': 'Sat' if is_two_day else 'Yes',
         'secondary_summary_label': 'Sun' if is_two_day else 'No',
         'show_both': is_two_day,
+        'show_unavailable': is_two_day,
     }
 
 
@@ -42,6 +44,7 @@ def _session_vote_summary(poll):
     saturday_voters = []
     sunday_voters = []
     both_voters = []
+    unavailable_voters = []
     for vote in poll.votes.select_related('user').order_by('user__first_name', 'user__username'):
         choice = _vote_choice(vote.choice)
         if choice == 'yes':
@@ -50,25 +53,34 @@ def _session_vote_summary(poll):
             sunday_voters.append(vote.user)
         elif choice == 'all':
             both_voters.append(vote.user)
+        elif choice == 'out':
+            unavailable_voters.append(vote.user)
     saturday_votes = len(saturday_voters)
     sunday_votes = len(sunday_voters)
     both_votes = len(both_voters)
-    total_votes = saturday_votes + sunday_votes + both_votes
+    unavailable_votes = len(unavailable_voters)
+    available_votes = saturday_votes + sunday_votes + both_votes
+    total_votes = saturday_votes + sunday_votes + both_votes + unavailable_votes
     saturday_percentage = (saturday_votes / total_votes) * 100 if total_votes else 0
     sunday_percentage = (sunday_votes / total_votes) * 100 if total_votes else 0
     both_percentage = (both_votes / total_votes) * 100 if total_votes else 0
+    unavailable_percentage = (unavailable_votes / total_votes) * 100 if total_votes else 0
     return {
         'saturday_votes': saturday_votes,
         'sunday_votes': sunday_votes,
         'both_votes': both_votes,
+        'unavailable_votes': unavailable_votes,
+        'available_votes': available_votes,
         'total_votes': total_votes,
         'saturday_percentage': saturday_percentage,
         'sunday_percentage': sunday_percentage,
         'both_percentage': both_percentage,
+        'unavailable_percentage': unavailable_percentage,
         'no_percentage': sunday_percentage,
         'saturday_voters': saturday_voters,
         'sunday_voters': sunday_voters,
         'both_voters': both_voters,
+        'unavailable_voters': unavailable_voters,
         'yes_votes': saturday_votes,
         'no_votes': sunday_votes,
         'yes_percentage': saturday_percentage,
@@ -129,8 +141,10 @@ def home(request):
         availability_by_session[session.id] = _availability_context(session)
         if hasattr(session, 'poll'):
             summary = _session_vote_summary(session.poll)
+            eligible_users = _eligible_voters_for_play_day(session, summary)
+            summary['eligible_votes'] = len(eligible_users)
             session_vote_counts[session.id] = summary
-            session_voters[session.id] = _eligible_voters_for_play_day(session, summary)[:12]
+            session_voters[session.id] = eligible_users[:12]
 
     next_session = upcoming_sessions[0] if upcoming_sessions else None
     next_session_votes = (
@@ -384,14 +398,16 @@ def session_detail_view(request, session_id):
         return _ROLE_ORDER.get((p['user'].role or '').lower(), 3)
 
     user_vote = None
-    saturday_votes = sunday_votes = both_votes = total_votes = 0
+    saturday_votes = sunday_votes = both_votes = unavailable_votes = total_votes = 0
     yes_votes = no_votes = 0
     yes_percentage = 0
     no_percentage = 0
     both_percentage = 0
+    unavailable_percentage = 0
     yes_voters = []
     no_voters = []
     both_voters = []
+    unavailable_voters = []
     team_pool_voters = []
     eligible_voter_users = []
     summary = None
@@ -403,15 +419,18 @@ def session_detail_view(request, session_id):
         saturday_votes = summary['saturday_votes']
         sunday_votes = summary['sunday_votes']
         both_votes = summary['both_votes']
+        unavailable_votes = summary['unavailable_votes']
         total_votes = summary['total_votes']
         yes_votes = saturday_votes
         no_votes = sunday_votes
         yes_percentage = summary['saturday_percentage']
         no_percentage = summary['no_percentage']
         both_percentage = summary['both_percentage']
+        unavailable_percentage = summary['unavailable_percentage']
         yes_voters = [{'user': u, 'team_assigned': False, **_player_skills(u)} for u in summary['saturday_voters']]
         no_voters = summary['sunday_voters']
         both_voters = summary['both_voters']
+        unavailable_voters = summary['unavailable_voters']
         eligible_voter_users = _eligible_voters_for_play_day(session, summary)
         team_pool_voters = [
             {'user': u, 'team_assigned': False, **_player_skills(u)}
@@ -510,10 +529,15 @@ def session_detail_view(request, session_id):
         # Auto-create SessionPlayer rows for poll voters so the roster is populated.
         # Default "present" follows the final play day:
         # Saturday => Saturday/Both voters, Sunday => Sunday/Both voters,
-        # one-date sessions => Yes voters only.
+        # one-date sessions => Yes voters only. Unavailable voters are excluded.
         if summary is None:
             summary = _session_vote_summary(session.poll)
-        voter_user_ids = list(session.poll.votes.values_list('user_id', flat=True))
+        voter_user_ids = list(
+            session.poll.votes.exclude(choice='out').values_list('user_id', flat=True)
+        )
+        unavailable_user_ids = set(
+            session.poll.votes.filter(choice='out').values_list('user_id', flat=True)
+        )
         default_present_user_ids = {u.id for u in _eligible_voters_for_play_day(session, summary)}
         for uid in voter_user_ids:
             sp, _ = SessionPlayer.objects.get_or_create(session=session, user_id=uid)
@@ -526,6 +550,7 @@ def session_detail_view(request, session_id):
                 attendance.save(update_fields=['attended'])
         attendance_roster = list(
             SessionPlayer.objects.filter(session=session)
+            .exclude(user_id__in=unavailable_user_ids)
             .select_related('user')
             .order_by('user__username')
         )
@@ -558,13 +583,16 @@ def session_detail_view(request, session_id):
         'saturday_votes': saturday_votes,
         'sunday_votes': sunday_votes,
         'both_votes': both_votes,
+        'unavailable_votes': unavailable_votes,
         'total_votes': total_votes,
         'yes_percentage': yes_percentage,
         'no_percentage': no_percentage,
         'both_percentage': both_percentage,
+        'unavailable_percentage': unavailable_percentage,
         'yes_voters': yes_voters,
         'no_voters': no_voters,
         'both_voters': both_voters,
+        'unavailable_voters': unavailable_voters,
         'team_pool_voters': team_pool_voters,
         'eligible_vote_count': eligible_vote_count,
         'availability': availability,
@@ -599,14 +627,18 @@ def vote_session_view(request, poll_id):
             return redirect('session_detail', session_id=session.id)
 
         choice = _vote_choice(request.POST.get('choice'))
-        valid_choices = ['yes', 'no', 'all'] if session.has_two_date_options else ['yes', 'no']
+        valid_choices = ['yes', 'no', 'all', 'out'] if session.has_two_date_options else ['yes', 'no']
         if choice in valid_choices:
             Vote.objects.update_or_create(
                 poll=poll, user=request.user, defaults={'choice': choice}
             )
-            label = _availability_context(session)['yes_label'] if choice == 'yes' else (
-                _availability_context(session)['no_label'] if choice == 'no' else _availability_context(session)['all_label']
-            )
+            availability = _availability_context(session)
+            label = {
+                'yes': availability['yes_label'],
+                'no': availability['no_label'],
+                'all': availability['all_label'],
+                'out': availability['out_label'],
+            }[choice]
             messages.success(request, f"Vote updated to '{label}'.")
         elif choice == 'withdraw':
             Vote.objects.filter(poll=poll, user=request.user).delete()

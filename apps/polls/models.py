@@ -29,6 +29,7 @@ class Vote(models.Model):
         ('yes', 'Saturday'),
         ('no', 'Sunday'),
         ('all', 'Both'),
+        ('out', 'Not available'),
     )
     choice = models.CharField(max_length=3, choices=CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)

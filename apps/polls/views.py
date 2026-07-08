@@ -19,7 +19,7 @@ def poll_detail_view(request, poll_id):
         if not poll.is_open:
             return HttpResponseForbidden("This poll is closed.")
         choice = Vote.normalize_choice(request.POST.get('choice'))
-        valid_choices = ['yes', 'no', 'all'] if poll.session.has_two_date_options else ['yes', 'no']
+        valid_choices = ['yes', 'no', 'all', 'out'] if poll.session.has_two_date_options else ['yes', 'no']
         if choice in valid_choices:
             Vote.objects.update_or_create(
                 poll=poll, user=request.user, defaults={'choice': choice}
@@ -29,13 +29,15 @@ def poll_detail_view(request, poll_id):
     saturday_votes = poll.votes.filter(choice='yes').count()
     sunday_votes = poll.votes.filter(choice='no').count()
     both_votes = poll.votes.filter(choice='all').count()
-    total_votes = saturday_votes + sunday_votes + both_votes
+    unavailable_votes = poll.votes.filter(choice='out').count()
+    total_votes = saturday_votes + sunday_votes + both_votes + unavailable_votes
 
     context = {
         'poll': poll,
         'saturday_votes': saturday_votes,
         'sunday_votes': sunday_votes,
         'both_votes': both_votes,
+        'unavailable_votes': unavailable_votes,
         'total_votes': total_votes,
         'user_vote': user_vote,
         'poll_url': request.build_absolute_uri(poll.get_absolute_url()),

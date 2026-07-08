@@ -412,6 +412,7 @@ def build_group_invite_text(poll, base_url):
             lines.append(f"✅ SATURDAY → https://wa.me/{bot}?text=SATURDAY%20{session.id}")
             lines.append(f"✅ SUNDAY → https://wa.me/{bot}?text=SUNDAY%20{session.id}")
             lines.append(f"✅ BOTH → https://wa.me/{bot}?text=BOTH%20{session.id}")
+            lines.append(f"❌ NOT AVAILABLE → https://wa.me/{bot}?text=OUT%20{session.id}")
         else:
             lines.append(f"✅ YES → https://wa.me/{bot}?text=YES%20{session.id}")
             lines.append(f"❌ NO → https://wa.me/{bot}?text=NO%20{session.id}")
@@ -437,7 +438,7 @@ def build_group_rsvp_poll(poll):
     time_str = session.time.strftime("%H:%M") if session.time else ''
     when = date_str + (f" {time_str}" if time_str else '')
     if session.has_two_date_options:
-        return f"🏏 {session.name} ({when}) — which day works?", ['Saturday', 'Sunday', 'Both']
+        return f"🏏 {session.name} ({when}) — which day works?", ['Saturday', 'Sunday', 'Both', 'Not available']
     return f"🏏 {session.name} ({when}) — can you play on {session.single_play_day_label}?", ['Yes', 'No']
 
 

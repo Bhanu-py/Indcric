@@ -122,6 +122,7 @@ class AvailabilityModeTests(TestCase):
         saturday_user = User.objects.create_user(username="sat", password="x")
         sunday_user = User.objects.create_user(username="sun", password="x")
         both_user = User.objects.create_user(username="both", password="x")
+        out_user = User.objects.create_user(username="out", password="x")
         session = Session.objects.create(
             name="Weekend",
             duration=Decimal("2"),
@@ -137,6 +138,7 @@ class AvailabilityModeTests(TestCase):
         Vote.objects.create(poll=poll, user=saturday_user, choice="yes")
         Vote.objects.create(poll=poll, user=sunday_user, choice="no")
         Vote.objects.create(poll=poll, user=both_user, choice="all")
+        Vote.objects.create(poll=poll, user=out_user, choice="out")
 
         resp = self.client.get(reverse("session_detail", args=[session.id]))
 
@@ -151,3 +153,4 @@ class AvailabilityModeTests(TestCase):
             "both": True,
         })
         self.assertEqual(SessionPlayer.objects.filter(session=session).count(), 3)
+        self.assertFalse(SessionPlayer.objects.filter(session=session, user=out_user).exists())
