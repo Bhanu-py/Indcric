@@ -521,20 +521,11 @@ def edit_user_view(request, user_id):
             is_staff = request.POST.get('is_staff') == 'True'
             is_superuser = request.POST.get('is_superuser') == 'True'
             wallet_amount = request.POST.get('wallet_amount')
-            batting_rating = request.POST.get('batting_rating')
-            bowling_rating = request.POST.get('bowling_rating')
-            fielding_rating = request.POST.get('fielding_rating')
 
             try:
                 wallet_amount = Decimal(wallet_amount) if wallet_amount else Decimal('0.00')
-                batting_rating = min(max(Decimal(batting_rating if batting_rating else '2.5'), Decimal('0')), Decimal('5'))
-                bowling_rating = min(max(Decimal(bowling_rating if bowling_rating else '2.5'), Decimal('0')), Decimal('5'))
-                fielding_rating = min(max(Decimal(fielding_rating if fielding_rating else '2.5'), Decimal('0')), Decimal('5'))
             except (ValueError, TypeError, InvalidOperation):
                 wallet_amount = Decimal('0.00')
-                batting_rating = Decimal('2.5')
-                bowling_rating = Decimal('2.5')
-                fielding_rating = Decimal('2.5')
 
             with transaction.atomic():
                 user.username = username
@@ -542,9 +533,6 @@ def edit_user_view(request, user_id):
                 user.role = role
                 user.is_staff = is_staff
                 user.is_superuser = is_superuser
-                user.batting_rating = batting_rating
-                user.bowling_rating = bowling_rating
-                user.fielding_rating = fielding_rating
                 user.save()
 
                 # Wallet is a ledger: append a balancing row so Sum() lands on

@@ -46,22 +46,20 @@
         <!-- Player Ratings -->
         <div class="mb-4">
             <label class="block text-gray-700 text-sm font-bold mb-2 !inline-block">Player Ratings</label>
+            <p class="text-xs text-gray-500 mb-2">Calculated from completed scored matches; not editable manually.</p>
             
             <div class="grid grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-gray-700 text-xs mb-1 !inline-block" for="batting_rating">Batting (0-5)</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                           id="batting_rating" name="batting_rating" type="number" step="0.5" min="0" max="5" value="{{ user.batting_rating }}">
+                    <span class="block text-gray-700 text-xs mb-1">Batting</span>
+                    <span class="block border rounded w-full py-2 px-3 text-gray-700 bg-gray-50">{{ user.batting_rating|floatformat:1 }}</span>
                 </div>
                 <div>
-                    <label class="block text-gray-700 text-xs mb-1 !inline-block" for="bowling_rating">Bowling (0-5)</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                           id="bowling_rating" name="bowling_rating" type="number" step="0.5" min="0" max="5" value="{{ user.bowling_rating }}">
+                    <span class="block text-gray-700 text-xs mb-1">Bowling</span>
+                    <span class="block border rounded w-full py-2 px-3 text-gray-700 bg-gray-50">{{ user.bowling_rating|floatformat:1 }}</span>
                 </div>
                 <div>
-                    <label class="block text-gray-700 text-xs mb-1 !inline-block" for="fielding_rating">Fielding (0-5)</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                           id="fielding_rating" name="fielding_rating" type="number" step="0.5" min="0" max="5" value="{{ user.fielding_rating }}">
+                    <span class="block text-gray-700 text-xs mb-1">Fielding</span>
+                    <span class="block border rounded w-full py-2 px-3 text-gray-700 bg-gray-50">{{ user.fielding_rating|floatformat:1 }}</span>
                 </div>
             </div>
         </div>
