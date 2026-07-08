@@ -408,8 +408,13 @@ def build_group_invite_text(poll, base_url):
 
     if bot:
         lines.append("RSVP by tapping below — the bot will record your vote:")
-        lines.append(f"✅ YES → https://wa.me/{bot}?text=YES%20{session.id}")
-        lines.append(f"❌ NO → https://wa.me/{bot}?text=NO%20{session.id}")
+        if session.has_two_date_options:
+            lines.append(f"✅ SATURDAY → https://wa.me/{bot}?text=SATURDAY%20{session.id}")
+            lines.append(f"✅ SUNDAY → https://wa.me/{bot}?text=SUNDAY%20{session.id}")
+            lines.append(f"✅ BOTH → https://wa.me/{bot}?text=BOTH%20{session.id}")
+        else:
+            lines.append(f"✅ YES → https://wa.me/{bot}?text=YES%20{session.id}")
+            lines.append(f"❌ NO → https://wa.me/{bot}?text=NO%20{session.id}")
     else:
         lines.append("Vote on the website (link below).")
 
@@ -426,13 +431,14 @@ def build_group_invite_text(poll, base_url):
 
 def build_group_rsvp_poll(poll):
     """(question, options) for the native WhatsApp poll the bot posts when a poll
-    opens. The poll asks whether Saturday, Sunday, or Both works. Detail/links
-    stay in the app; the poll is deliberately minimal."""
+    opens. Detail/links stay in the app; the poll is deliberately minimal."""
     session = poll.session
     date_str = session.date.strftime("%a %d %b")
     time_str = session.time.strftime("%H:%M") if session.time else ''
     when = date_str + (f" {time_str}" if time_str else '')
-    return f"🏏 {session.name} ({when}) — which day works?", ['Saturday', 'Sunday', 'Both']
+    if session.has_two_date_options:
+        return f"🏏 {session.name} ({when}) — which day works?", ['Saturday', 'Sunday', 'Both']
+    return f"🏏 {session.name} ({when}) — can you play on {session.single_play_day_label}?", ['Yes', 'No']
 
 
 def build_group_cost_split_text(session, base_url):

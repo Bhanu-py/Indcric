@@ -22,6 +22,22 @@ def _vote_choice(choice):
     return Vote.normalize_choice(choice)
 
 
+def _availability_context(session):
+    is_two_day = session.has_two_date_options
+    single_label = session.single_play_day_label or 'session'
+    return {
+        'is_two_day': is_two_day,
+        'single_label': single_label,
+        'question': 'Which day works for you?' if is_two_day else f'Can you play on {single_label}?',
+        'yes_label': 'Saturday' if is_two_day else 'Yes',
+        'no_label': 'Sunday' if is_two_day else 'No',
+        'all_label': 'Both',
+        'summary_label': 'Sat' if is_two_day else 'Yes',
+        'secondary_summary_label': 'Sun' if is_two_day else 'No',
+        'show_both': is_two_day,
+    }
+
+
 def _session_vote_summary(poll):
     saturday_voters = []
     sunday_voters = []
@@ -49,6 +65,7 @@ def _session_vote_summary(poll):
         'saturday_percentage': saturday_percentage,
         'sunday_percentage': sunday_percentage,
         'both_percentage': both_percentage,
+        'no_percentage': sunday_percentage,
         'saturday_voters': saturday_voters,
         'sunday_voters': sunday_voters,
         'both_voters': both_voters,
@@ -58,6 +75,19 @@ def _session_vote_summary(poll):
         'yes_voters': [{'user': u} for u in saturday_voters],
         'no_voters': sunday_voters,
     }
+
+
+def _eligible_voters_for_play_day(session, summary):
+    if session.has_two_date_options:
+        play_day = session.final_play_day
+        if play_day == 'sat':
+            return summary['saturday_voters'] + summary['both_voters']
+        if play_day == 'sun':
+            return summary['sunday_voters'] + summary['both_voters']
+        if play_day == 'both':
+            return summary['saturday_voters'] + summary['sunday_voters'] + summary['both_voters']
+        return summary['saturday_voters'] + summary['sunday_voters'] + summary['both_voters']
+    return summary['saturday_voters']
 
 
 def _live_match_session_ids(sessions):
@@ -93,14 +123,14 @@ def home(request):
         session.is_live = session.id in live_session_ids
 
     session_vote_counts = {}
-    session_voters = {}  # session_id -> yes-voter users (for the dashboard avatar stack)
+    session_voters = {}  # session_id -> eligible/going users for the dashboard avatar stack
+    availability_by_session = {}
     for session in all_sessions:
+        availability_by_session[session.id] = _availability_context(session)
         if hasattr(session, 'poll'):
             summary = _session_vote_summary(session.poll)
             session_vote_counts[session.id] = summary
-            session_voters[session.id] = (
-                summary['saturday_voters'] + summary['sunday_voters'] + summary['both_voters']
-            )[:12]
+            session_voters[session.id] = _eligible_voters_for_play_day(session, summary)[:12]
 
     next_session = upcoming_sessions[0] if upcoming_sessions else None
     next_session_votes = (
@@ -130,6 +160,7 @@ def home(request):
         'previous_sessions': previous_sessions,
         'vote_counts': session_vote_counts,
         'session_voters': session_voters,
+        'availability_by_session': availability_by_session,
         'next_session': next_session,
         'next_session_votes': next_session_votes,
         'next_session_user_vote': next_session_user_vote,
@@ -162,19 +193,20 @@ def create_session_view(request):
 
         date_option_1 = date_option_2 = time = None
 
-        if not date_option_1_str:
-            messages.error(request, "The first date option is required.")
+        if not date_option_1_str and not date_option_2_str:
+            messages.error(request, "Choose at least one date option.")
             return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
 
         if not time_str:
             messages.error(request, "Time is required.")
             return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
 
-        try:
-            date_option_1 = timezone.datetime.strptime(date_option_1_str, '%Y-%m-%d').date()
-        except ValueError:
-            messages.error(request, "Invalid date format. Please use YYYY-MM-DD.")
-            return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
+        if date_option_1_str:
+            try:
+                date_option_1 = timezone.datetime.strptime(date_option_1_str, '%Y-%m-%d').date()
+            except ValueError:
+                messages.error(request, "Invalid date format. Please use YYYY-MM-DD.")
+                return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
 
         if date_option_2_str:
             try:
@@ -189,20 +221,28 @@ def create_session_view(request):
             messages.error(request, "Invalid time format. Please use HH:MM.")
             return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
 
+        final_play_day = None
+        if date_option_1 and not date_option_2:
+            final_play_day = 'sat'
+        elif date_option_2 and not date_option_1:
+            final_play_day = 'sun'
+
         session = Session.objects.create(
             name=name,
-            date=date_option_1,
+            date=date_option_1 or date_option_2,
             date_option_1=date_option_1,
             date_option_2=date_option_2,
+            final_play_day=final_play_day,
             time=time,
             duration=duration,
             location=location,
             cost=cost,
             created_by=request.user,
         )
+        availability = _availability_context(session)
         poll = Poll.objects.create(
             session=session,
-            question="Which day works for you?",
+            question=availability['question'],
             is_open=True,
         )
 
@@ -320,6 +360,7 @@ def delete_session_view(request, session_id):
 def session_detail_view(request, session_id):
     session = get_object_or_404(Session, id=session_id)
     is_past = session.date < timezone.now().date()
+    availability = _availability_context(session)
 
     def _combined_rating(u):
         """Avg of batting/bowling/fielding ratings, rounded to 2dp. Defaults each None to 2.5."""
@@ -346,9 +387,14 @@ def session_detail_view(request, session_id):
     saturday_votes = sunday_votes = both_votes = total_votes = 0
     yes_votes = no_votes = 0
     yes_percentage = 0
+    no_percentage = 0
+    both_percentage = 0
     yes_voters = []
     no_voters = []
     both_voters = []
+    team_pool_voters = []
+    eligible_voter_users = []
+    summary = None
     if hasattr(session, 'poll'):
         poll = session.poll
         vote = Vote.objects.filter(poll=poll, user=request.user).first()
@@ -360,10 +406,17 @@ def session_detail_view(request, session_id):
         total_votes = summary['total_votes']
         yes_votes = saturday_votes
         no_votes = sunday_votes
-        yes_percentage = (saturday_votes / total_votes) * 100 if total_votes > 0 else 0
+        yes_percentage = summary['saturday_percentage']
+        no_percentage = summary['no_percentage']
+        both_percentage = summary['both_percentage']
         yes_voters = [{'user': u, 'team_assigned': False, **_player_skills(u)} for u in summary['saturday_voters']]
         no_voters = summary['sunday_voters']
         both_voters = summary['both_voters']
+        eligible_voter_users = _eligible_voters_for_play_day(session, summary)
+        team_pool_voters = [
+            {'user': u, 'team_assigned': False, **_player_skills(u)}
+            for u in eligible_voter_users
+        ]
 
     matches = list(
         session.matches.prefetch_related('teams__players__user', 'innings').order_by('id')
@@ -418,7 +471,7 @@ def session_detail_view(request, session_id):
             ], key=_role_sort_key)
 
     assigned_ids = {p['user'].id for p in edit_team1_players + edit_team2_players}
-    for voter in yes_voters:
+    for voter in team_pool_voters:
         voter['team_assigned'] = voter['user'].id in assigned_ids
 
     # Check if user has valid temporary scoring access for this session
@@ -437,7 +490,7 @@ def session_detail_view(request, session_id):
     addable_pool = []
     can_add_players = request.user.is_staff or user_has_scoring_access
     if can_add_players:
-        editor_ids = {v['user'].id for v in yes_voters} | assigned_ids
+        editor_ids = {v['user'].id for v in team_pool_voters} | assigned_ids
         for u in User.objects.filter(is_active=True).exclude(id__in=editor_ids).order_by('first_name', 'username'):
             addable_pool.append({
                 'id': u.id, 'username': u.username, 'role': u.role or '',
@@ -445,8 +498,9 @@ def session_detail_view(request, session_id):
             })
 
     cost_per_person_est = None
-    if not session.cost_per_person and yes_votes > 0 and session.cost:
-        cost_per_person_est = (session.cost / Decimal(yes_votes)).quantize(Decimal('0.01'))
+    eligible_vote_count = len(eligible_voter_users) if eligible_voter_users else yes_votes
+    if not session.cost_per_person and eligible_vote_count > 0 and session.cost:
+        cost_per_person_est = (session.cost / Decimal(eligible_vote_count)).quantize(Decimal('0.01'))
 
     # ── Attendance roster (only used by the embedded attendance card on past sessions) ──
     attendance_roster = []
@@ -454,10 +508,22 @@ def session_detail_view(request, session_id):
     addable_users = []
     if is_past and hasattr(session, 'poll'):
         # Auto-create SessionPlayer rows for poll voters so the roster is populated.
+        # Default "present" follows the final play day:
+        # Saturday => Saturday/Both voters, Sunday => Sunday/Both voters,
+        # one-date sessions => Yes voters only.
+        if summary is None:
+            summary = _session_vote_summary(session.poll)
         voter_user_ids = list(session.poll.votes.values_list('user_id', flat=True))
+        default_present_user_ids = {u.id for u in _eligible_voters_for_play_day(session, summary)}
         for uid in voter_user_ids:
             sp, _ = SessionPlayer.objects.get_or_create(session=session, user_id=uid)
-            Attendance.objects.get_or_create(match_player=sp, defaults={'attended': True})
+            should_attend = uid in default_present_user_ids
+            attendance, _ = Attendance.objects.get_or_create(
+                match_player=sp, defaults={'attended': should_attend}
+            )
+            if not session.attendance_confirmed and attendance.attended != should_attend:
+                attendance.attended = should_attend
+                attendance.save(update_fields=['attended'])
         attendance_roster = list(
             SessionPlayer.objects.filter(session=session)
             .select_related('user')
@@ -494,9 +560,14 @@ def session_detail_view(request, session_id):
         'both_votes': both_votes,
         'total_votes': total_votes,
         'yes_percentage': yes_percentage,
+        'no_percentage': no_percentage,
+        'both_percentage': both_percentage,
         'yes_voters': yes_voters,
         'no_voters': no_voters,
         'both_voters': both_voters,
+        'team_pool_voters': team_pool_voters,
+        'eligible_vote_count': eligible_vote_count,
+        'availability': availability,
         'cost_per_person_est': cost_per_person_est,
         'addable_pool': addable_pool,
         'matches': matches,
@@ -528,11 +599,15 @@ def vote_session_view(request, poll_id):
             return redirect('session_detail', session_id=session.id)
 
         choice = _vote_choice(request.POST.get('choice'))
-        if choice in ['yes', 'no', 'all']:
+        valid_choices = ['yes', 'no', 'all'] if session.has_two_date_options else ['yes', 'no']
+        if choice in valid_choices:
             Vote.objects.update_or_create(
                 poll=poll, user=request.user, defaults={'choice': choice}
             )
-            messages.success(request, f"Vote updated to '{Vote.label_for_choice(choice)}'.")
+            label = _availability_context(session)['yes_label'] if choice == 'yes' else (
+                _availability_context(session)['no_label'] if choice == 'no' else _availability_context(session)['all_label']
+            )
+            messages.success(request, f"Vote updated to '{label}'.")
         elif choice == 'withdraw':
             Vote.objects.filter(poll=poll, user=request.user).delete()
             messages.success(request, "Your vote has been removed.")
@@ -572,8 +647,9 @@ def finalize_play_day_view(request, session_id):
         return redirect('session_detail', session_id=session.id)
 
     choice = (request.POST.get('play_day') or '').strip().lower()
-    if choice not in {'sat', 'sun', 'both'}:
-        messages.error(request, 'Please choose Saturday, Sunday, or Both.')
+    allowed_choices = {'sat', 'sun', 'both'} if session.has_two_date_options else {session.single_play_day}
+    if choice not in allowed_choices:
+        messages.error(request, 'Please choose one of the available play days.')
         return redirect('session_detail', session_id=session.id)
 
     session.final_play_day = choice

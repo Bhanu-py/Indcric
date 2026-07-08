@@ -68,9 +68,14 @@ Args:
             <div class="flex items-center justify-between text-xs mb-2">
                 <span class="font-medium text-stone-600">Availability poll</span>
                 <div class="flex items-center gap-1.5">
-                    {% include "_components/badge.html" with variant="green" label=vote_count.saturday_votes|stringformat:"s"|add:" Sat" %}
-                    {% include "_components/badge.html" with variant="sky" label=vote_count.sunday_votes|stringformat:"s"|add:" Sun" %}
-                    {% include "_components/badge.html" with variant="purple" label=vote_count.both_votes|stringformat:"s"|add:" Both" %}
+                    {% if availability.show_both %}
+                        {% include "_components/badge.html" with variant="green" label=vote_count.saturday_votes|stringformat:"s"|add:" Sat" %}
+                        {% include "_components/badge.html" with variant="sky" label=vote_count.sunday_votes|stringformat:"s"|add:" Sun" %}
+                        {% include "_components/badge.html" with variant="purple" label=vote_count.both_votes|stringformat:"s"|add:" Both" %}
+                    {% else %}
+                        {% include "_components/badge.html" with variant="green" label=vote_count.yes_votes|stringformat:"s"|add:" Yes" %}
+                        {% include "_components/badge.html" with variant="red" label=vote_count.no_votes|stringformat:"s"|add:" No" %}
+                    {% endif %}
                     {% if not session.poll.is_open %}
                         {% include "_components/badge.html" with variant="stone" label="Closed" %}
                     {% endif %}
@@ -78,14 +83,23 @@ Args:
             </div>
             <div class="vote-bar flex">
                 {% if vote_count.total_votes > 0 %}
-                    <div class="h-full bg-emerald-500 transition-all duration-500" style="width:{{ vote_count.saturday_percentage }}%"></div>
-                    <div class="h-full bg-sky-500 transition-all duration-500" style="width:{{ vote_count.sunday_percentage }}%"></div>
-                    <div class="h-full bg-purple-500 transition-all duration-500" style="width:{{ vote_count.both_percentage }}%"></div>
+                    {% if availability.show_both %}
+                        <div class="h-full bg-emerald-500 transition-all duration-500" style="width:{{ vote_count.saturday_percentage }}%"></div>
+                        <div class="h-full bg-sky-500 transition-all duration-500" style="width:{{ vote_count.sunday_percentage }}%"></div>
+                        <div class="h-full bg-purple-500 transition-all duration-500" style="width:{{ vote_count.both_percentage }}%"></div>
+                    {% else %}
+                        <div class="h-full bg-emerald-500 transition-all duration-500" style="width:{{ vote_count.yes_percentage }}%"></div>
+                        <div class="h-full bg-red-400 transition-all duration-500" style="width:{{ vote_count.no_percentage }}%"></div>
+                    {% endif %}
                 {% endif %}
             </div>
             {% if voters %}
             <div class="flex items-center gap-2 mt-3">
-                {% include "_components/avatar_stack.html" with users=voters total=vote_count.total_votes size=24 %}
+                {% if availability.show_both %}
+                    {% include "_components/avatar_stack.html" with users=voters total=vote_count.total_votes size=24 %}
+                {% else %}
+                    {% include "_components/avatar_stack.html" with users=voters total=vote_count.yes_votes size=24 %}
+                {% endif %}
                 <span class="text-[11px] text-stone-500">going</span>
             </div>
             {% endif %}
@@ -116,7 +130,11 @@ Args:
         </div>
         {% if voters %}
         <div class="mt-2 flex items-center gap-2">
-            {% include "_components/avatar_stack.html" with users=voters total=vote_count.yes_votes size=22 %}
+            {% if availability.show_both %}
+                {% include "_components/avatar_stack.html" with users=voters total=vote_count.total_votes size=22 %}
+            {% else %}
+                {% include "_components/avatar_stack.html" with users=voters total=vote_count.yes_votes size=22 %}
+            {% endif %}
             <span class="text-[11px] text-stone-400">squad</span>
         </div>
         {% endif %}

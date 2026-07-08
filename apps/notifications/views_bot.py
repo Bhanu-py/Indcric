@@ -138,7 +138,12 @@ def inbound_message(request):
 
     actions = []
     if result and result.get('kind') == 'rsvp' and result.get('recorded'):
-        emoji = '✅' if result.get('choice') == 'yes' else ('☑️' if result.get('choice') == 'all' else '❌')
+        if result.get('choice') == 'all':
+            emoji = '☑️'
+        elif result.get('choice') == 'no' and not result.get('is_two_day'):
+            emoji = '❌'
+        else:
+            emoji = '✅'
         actions.append({
             'type': 'react',
             'emoji': emoji,
