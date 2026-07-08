@@ -135,7 +135,7 @@ def home(request):
 @login_required
 def create_session_view(request):
     if request.method == 'POST':
-        name = request.POST['name']
+        name = (request.POST.get('name') or 'Cricket this week').strip() or 'Cricket this week'
         date_option_1_str = request.POST.get('date_option_1') or request.POST.get('date')
         date_option_2_str = request.POST.get('date_option_2')
         time_str = request.POST.get('time')
@@ -195,7 +195,7 @@ def create_session_view(request):
         )
         poll = Poll.objects.create(
             session=session,
-            question="Will you attend this session?",
+            question="Which day works for you?",
             is_open=True,
         )
 

@@ -14,13 +14,13 @@
                 {% csrf_token %}
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                     <button type="submit" name="choice" value="yes" class="text-white font-bold py-2 px-6 rounded {% if user_vote == 'yes' %}bg-green-700{% else %}bg-green-500 hover:bg-green-600{% endif %}">
-                        Saturday
+                        ✓ Saturday
                     </button>
                     <button type="submit" name="choice" value="no" class="text-white font-bold py-2 px-6 rounded {% if user_vote == 'no' %}bg-sky-700{% else %}bg-sky-500 hover:bg-sky-600{% endif %}">
-                        Sunday
+                        ✓ Sunday
                     </button>
                     <button type="submit" name="choice" value="all" class="text-white font-bold py-2 px-6 rounded {% if user_vote == 'all' %}bg-purple-700{% else %}bg-purple-500 hover:bg-purple-600{% endif %}">
-                        Both
+                        ✓ Both
                     </button>
                 </div>
             </form>
