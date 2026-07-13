@@ -15,6 +15,9 @@
         Back to Dashboard
     </a>
 
+    <!-- ── Messages ── -->
+    {% include "includes/messages.html" %}
+
     <!-- ═══════════════════════════════════
          HERO CARD — gradient strip + date tile + name + meta
     ═══════════════════════════════════ -->
@@ -245,8 +248,7 @@
                 </span>
                 <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </button>
-            <form x-show="open" x-cloak method="post" action="{% url 'session_add_attendee' session.id %}"
-                  class="mt-2 flex flex-col sm:flex-row gap-2">
+            <form x-show="open" x-cloak method="post" action="{% url 'session_add_attendee' session.id %}" class="mt-2 flex flex-col sm:flex-row gap-2">
                 {% csrf_token %}
                 <select name="user_id" required class="form-select flex-1">
                     <option value="">Select a player…</option>
@@ -266,7 +268,7 @@
 
         {% if not attendance_roster %}
         <div class="card-body">
-            <p class="text-sm text-stone-500">No one voted Yes on the poll, so there's no roster to mark.{% if user.is_staff and addable_users %} Add walk-in players above.{% endif %}</p>
+            <p class="text-sm text-stone-500">No one voted Yes on the poll, so there's no roster to mark. Add players via the Team balance section above.</p>
         </div>
         {% else %}
         <form method="post" action="{% url 'session_attendance_detail' session.id %}">
