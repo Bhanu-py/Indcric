@@ -26,8 +26,10 @@ class Vote(models.Model):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE, related_name='votes')
     user = models.ForeignKey('accounts.User', on_delete=models.CASCADE)
     CHOICES = (
-        ('yes', 'Yes'),
-        ('no', 'No'),
+        ('yes', 'Saturday'),
+        ('no', 'Sunday'),
+        ('all', 'Both'),
+        ('out', 'Not available'),
     )
     choice = models.CharField(max_length=3, choices=CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -36,3 +38,12 @@ class Vote(models.Model):
 
     class Meta:
         unique_together = ('poll', 'user')
+
+    @classmethod
+    def normalize_choice(cls, choice):
+        return (choice or '').strip().lower()
+
+    @classmethod
+    def label_for_choice(cls, choice):
+        normalized = cls.normalize_choice(choice)
+        return dict(cls.CHOICES).get(normalized, normalized.title())

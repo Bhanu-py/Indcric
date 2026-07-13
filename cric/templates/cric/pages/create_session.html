@@ -23,12 +23,20 @@
                     <div class="sm:col-span-2">
                         <label class="form-label" for="name">Session Name</label>
                         <input class="form-input" id="name" name="name" type="text"
-                               placeholder="e.g. Sunday Cricket — April 2025">
+                               value="Cricket this week"
+                               placeholder="Cricket this week">
                     </div>
 
                     <div>
-                        <label class="form-label" for="date">Date</label>
-                        <input class="form-input" id="date" name="date" type="date">
+                        <label class="form-label" for="date_option_1">Saturday option</label>
+                        <input class="form-input" id="date_option_1" name="date_option_1" type="date">
+                        <p class="text-xs text-stone-400 mt-1">Leave empty for a Sunday-only session.</p>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="date_option_2">Sunday option</label>
+                        <input class="form-input" id="date_option_2" name="date_option_2" type="date">
+                        <p class="text-xs text-stone-400 mt-1">Leave empty for a Saturday-only session.</p>
                     </div>
 
                     <div>

@@ -1,14 +1,17 @@
 from datetime import time as dtime
 from decimal import Decimal
+from io import StringIO
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from apps.sessions.models import Session
-from .models import Match, Team, Player, Innings, Delivery
+from .models import Match, Team, Player, Innings, Delivery, PlayerMatchStat
 from . import scoring
+from .rating_engine import compute_match_ratings
 
 User = get_user_model()
 
@@ -206,6 +209,89 @@ class ScoringEngineTests(MatchFixtureMixin, TestCase):
         self.assertEqual(winner, self.team_a)
         self.match.refresh_from_db()
         self.assertEqual(self.match.winner, self.team_a)
+
+
+class RatingEngineTests(MatchFixtureMixin, TestCase):
+    def _complete_scored_match(self):
+        a1, a2, _ = self.a
+        b1, b2, _ = self.b
+        scoring.record_delivery(
+            self.inn,
+            striker=a1,
+            non_striker=a2,
+            bowler=b1,
+            runs_off_bat=6,
+        )
+        self.inn.is_closed = True
+        self.inn.save()
+
+        inn2 = Innings.objects.create(
+            match=self.match,
+            number=2,
+            batting_team=self.team_b,
+            bowling_team=self.team_a,
+        )
+        scoring.record_delivery(
+            inn2,
+            striker=b1,
+            non_striker=b2,
+            bowler=a1,
+            is_wicket=True,
+            dismissal_type='bowled',
+            out_player=b1,
+        )
+        inn2.is_closed = True
+        inn2.save()
+        scoring.finalize_match_result(self.match)
+
+    def test_completed_scored_match_updates_player_ratings(self):
+        self._complete_scored_match()
+
+        self.assertEqual(PlayerMatchStat.objects.filter(match=self.match).count(), 6)
+        self.a[0].user.refresh_from_db()
+        self.assertEqual(self.a[0].user.batting_rating, Decimal('5.0'))
+        self.assertEqual(self.a[0].user.bowling_rating, Decimal('3.5'))
+        self.assertEqual(self.a[0].user.fielding_rating, Decimal('0.0'))
+
+    def test_update_ratings_command_is_idempotent(self):
+        self._complete_scored_match()
+        first_ratings = {
+            user.id: (user.batting_rating, user.bowling_rating, user.fielding_rating)
+            for user in get_user_model().objects.order_by('id')
+        }
+        first_count = PlayerMatchStat.objects.count()
+
+        call_command('update_ratings', stdout=StringIO())
+        call_command('update_ratings', stdout=StringIO())
+
+        self.assertEqual(PlayerMatchStat.objects.count(), first_count)
+        second_ratings = {
+            user.id: (user.batting_rating, user.bowling_rating, user.fielding_rating)
+            for user in get_user_model().objects.order_by('id')
+        }
+        self.assertEqual(second_ratings, first_ratings)
+
+    def test_uncompleted_match_does_not_change_ratings(self):
+        user = self.a[0].user
+        user.batting_rating = Decimal('4.0')
+        user.bowling_rating = Decimal('3.0')
+        user.fielding_rating = Decimal('2.0')
+        user.save(update_fields=['batting_rating', 'bowling_rating', 'fielding_rating'])
+
+        scoring.record_delivery(
+            self.inn,
+            striker=self.a[0],
+            non_striker=self.a[1],
+            bowler=self.b[0],
+            runs_off_bat=6,
+        )
+
+        self.assertEqual(compute_match_ratings(self.match), 0)
+        self.assertFalse(PlayerMatchStat.objects.filter(match=self.match).exists())
+        user.refresh_from_db()
+        self.assertEqual(user.batting_rating, Decimal('4.0'))
+        self.assertEqual(user.bowling_rating, Decimal('3.0'))
+        self.assertEqual(user.fielding_rating, Decimal('2.0'))
 
 
 class ScoreBallViewTests(MatchFixtureMixin, TestCase):

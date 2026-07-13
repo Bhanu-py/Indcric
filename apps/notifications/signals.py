@@ -107,7 +107,7 @@ def on_poll(sender, instance, created, **kwargs):
     session = instance.session
     safe_emit(
         ActivityEvent.KIND_SESSION,
-        f"Poll opened — are you in for {session.name}?",
+        f"Poll opened — which day works for {session.name}?",
         url=session.get_absolute_url(),
         action_label='Vote',
         context=session.name,
@@ -134,10 +134,13 @@ def on_vote(sender, instance, **kwargs):
     user = instance.user
     who = (user.first_name or user.username) if user else 'Someone'
     session = instance.poll.session
-    standing = 'in for' if instance.choice == 'yes' else 'out of'
+    if session.has_two_date_options:
+        standing = Vote.label_for_choice(instance.choice)
+    else:
+        standing = 'Yes' if instance.choice == 'yes' else 'No'
     safe_emit(
         ActivityEvent.KIND_RSVP,
-        f"{who} is {standing} {session.name}",
+        f"{who} picked {standing} for {session.name}",
         actor=user,
         url=session.get_absolute_url(),
         action_label='View',
