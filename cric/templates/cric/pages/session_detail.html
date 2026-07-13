@@ -239,39 +239,9 @@
         </button>
         <div x-show="expanded" x-cloak>
 
-        {% if user.is_staff and addable_users %}
-        <div x-data="{ open: false }" class="px-5 py-3 border-b border-stone-100 bg-stone-50">
-            <button type="button" @click="open = !open"
-                    class="w-full flex items-center justify-between gap-2 text-sm font-medium text-pitch-700 hover:text-pitch-900 py-2 min-h-[44px]"
-                    :aria-expanded="open">
-                <span class="inline-flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    Add walk-in player
-                </span>
-                <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-            </button>
-            <form x-show="open" x-cloak method="post" action="{% url 'session_add_attendee' session.id %}"
-                  class="mt-2 flex flex-col sm:flex-row gap-2">
-                {% csrf_token %}
-                <select name="user_id" required class="form-select flex-1">
-                    <option value="">Select a player…</option>
-                    {% for u in addable_users %}
-                    <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }} (@{{ u.username }})</option>
-                    {% endfor %}
-                </select>
-                <button type="submit" class="btn btn-primary btn-md sm:w-auto">
-                    Add to roster
-                </button>
-            </form>
-            <p x-show="open" x-cloak class="font-mono text-[10px] text-stone-500 uppercase tracking-[0.08em] mt-2">
-                For players who showed up without voting. Save attendance afterwards to apply the cost split.
-            </p>
-        </div>
-        {% endif %}
-
         {% if not attendance_roster %}
         <div class="card-body">
-            <p class="text-sm text-stone-500">No one voted Yes on the poll, so there's no roster to mark.{% if user.is_staff and addable_users %} Add walk-in players above.{% endif %}</p>
+            <p class="text-sm text-stone-500">No one voted Yes on the poll, so there's no roster to mark. Add players via the Team balance section above.</p>
         </div>
         {% else %}
         <form method="post" action="{% url 'session_attendance_detail' session.id %}">
