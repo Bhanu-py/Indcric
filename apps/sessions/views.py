@@ -418,9 +418,15 @@ def session_detail_view(request, session_id):
         )
         if request.user.is_staff:
             in_roster_ids = {sp.user_id for sp in attendance_roster}
+            # Get voters (who already voted yes/both - not "out")
+            voted_ids = set(
+                session.poll.votes.exclude(choice='out').values_list('user_id', flat=True)
+            )
+            # Show only users who didn't vote (didn't vote = didn't commit, came to play unexpectedly)
             addable_users = list(
                 User.objects.filter(is_active=True)
                 .exclude(id__in=in_roster_ids)
+                .exclude(id__in=voted_ids)
                 .order_by('username')
             )
 
@@ -562,6 +568,16 @@ def _sync_teams_in_place(match, teams, t1_name, t2_name, t1_ids, t2_ids, t1_cap_
             u = User.objects.filter(id=uid).first()
             if u:
                 Player.objects.get_or_create(user=u, team=team, defaults={'role': u.role or 'batsman'})
+                # Auto-create SessionPlayer + Attendance for this user
+                sp, created = SessionPlayer.objects.get_or_create(
+                    session=match.session,
+                    user=u,
+                    defaults={'team': None}
+                )
+                Attendance.objects.get_or_create(
+                    match_player=sp,
+                    defaults={'attended': True}
+                )
 
 
 @login_required
@@ -641,6 +657,25 @@ def save_teams_view(request, session_id):
                     Player.objects.create(user=u, team=team2, role=u.role)
                 except (User.DoesNotExist, ValueError):
                     pass
+
+        # ── Auto-create SessionPlayer + Attendance records for all team players ──
+        # This ensures they appear in the Attendance tab and are pre-marked as present.
+        all_team_ids = set(_int_ids(team1_ids)) | set(_int_ids(team2_ids))
+        for user_id in all_team_ids:
+            try:
+                user = User.objects.get(id=int(user_id))
+                sp, created = SessionPlayer.objects.get_or_create(
+                    session=session,
+                    user=user,
+                    defaults={'team': None}
+                )
+                # Auto-create attendance record with attended=True
+                Attendance.objects.get_or_create(
+                    match_player=sp,
+                    defaults={'attended': True}
+                )
+            except (User.DoesNotExist, ValueError):
+                pass
 
         messages.success(request, f"Teams saved for {match.name}!")
 
