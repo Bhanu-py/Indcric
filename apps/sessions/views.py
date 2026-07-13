@@ -791,6 +791,11 @@ def save_teams_view(request, session_id):
         messages.error(request, "You don't have permission to perform this action.")
         return redirect('session_detail', session_id=session_id)
 
+    # Prevent team edits when attendance is already confirmed
+    if session.attendance_confirmed:
+        messages.error(request, "Attendance already confirmed. Cannot modify teams.")
+        return redirect('session_detail', session_id=session_id)
+
     if request.method == 'POST':
         team1_name = request.POST.get('team1_name', 'Team 1')
         team2_name = request.POST.get('team2_name', 'Team 2')
