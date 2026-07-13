@@ -1,49 +1,6 @@
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 
-
-class PlayerMatchStat(models.Model):
-    """Aggregated performance for one player in one completed match.
-
-    Written by the rating engine from the Delivery ledger. User rating fields
-    are recalculated from these rows and remain denormalized for team balancing.
-    """
-
-    match = models.ForeignKey(
-        'matches.Match',
-        on_delete=models.CASCADE,
-        related_name='player_stats',
-    )
-    session = models.ForeignKey(
-        'cric_sessions.Session',
-        on_delete=models.CASCADE,
-        related_name='player_match_stats',
-        null=True,
-        blank=True,
-    )
-    user = models.ForeignKey(
-        'accounts.User',
-        on_delete=models.CASCADE,
-        related_name='match_stats',
-    )
-    runs = models.PositiveIntegerField(default=0)
-    balls_faced = models.PositiveIntegerField(default=0)
-    wickets = models.PositiveIntegerField(default=0)
-    balls_bowled = models.PositiveIntegerField(default=0)
-    runs_conceded = models.PositiveIntegerField(default=0)
-    catches = models.PositiveIntegerField(default=0)
-    runouts = models.PositiveIntegerField(default=0)
-    stumpings = models.PositiveIntegerField(default=0)
-    computed_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = [('match', 'user')]
-        ordering = ['-session__date', '-match_id', 'user_id']
-
-    def __str__(self):
-        return f"{self.user.username} @ {self.match.name}"
-
-
 class Match(models.Model):
     # Deleting a match removes its activity-feed rows (e.g. the result entry).
     feed_events = GenericRelation('notifications.ActivityEvent')

@@ -101,11 +101,6 @@
                     <div class="micro-label">Next up · {{ next_session.date|date:"D j M" }}</div>
                     {% if next_session.is_live %}{% include "_components/live_badge.html" %}{% endif %}
                 </div>
-                {% if next_session.proposed_dates|length > 1 %}
-                <div class="text-[11px] text-stone-400 mb-1.5">
-                    Date options: {{ next_session.proposed_dates.0|date:"D j M" }} or {{ next_session.proposed_dates.1|date:"D j M" }}
-                </div>
-                {% endif %}
                 <div class="text-lg font-semibold text-stone-900 leading-tight mb-1.5 group-hover:text-pitch-700 transition-colors">
                     {{ next_session.name|default:"Untitled session" }}
                 </div>
@@ -117,11 +112,7 @@
                 <div class="mt-3 pt-2.5 border-t border-stone-100 flex items-center justify-between text-xs gap-2">
                     {% if next_session_votes %}
                     <span class="text-stone-600 shrink-0">
-                        {% if next_session.has_two_date_options %}
-                        <b class="text-emerald-700">{{ next_session_votes.saturday_votes }}</b> Sat · {{ next_session_votes.sunday_votes }} Sun · {{ next_session_votes.both_votes }} Both · {{ next_session_votes.unavailable_votes }} Out
-                        {% else %}
-                        <b class="text-emerald-700">{{ next_session_votes.yes_votes }}</b> Yes · {{ next_session_votes.no_votes }} No
-                        {% endif %}
+                        <b class="text-emerald-700">{{ next_session_votes.yes_votes }}</b> in · {{ next_session_votes.no_votes }} out
                     </span>
                     {% else %}
                     <span class="text-stone-400 shrink-0">No votes yet</span>
@@ -135,19 +126,11 @@
                     {% elif next_session_user_vote == 'yes' %}
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-semibold shrink-0">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                        {% if next_session.has_two_date_options %}You're on Saturday{% else %}You're in{% endif %}
+                        You're in
                     </span>
                     {% elif next_session_user_vote == 'no' %}
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full {% if next_session.has_two_date_options %}bg-sky-100 text-sky-700{% else %}bg-red-100 text-red-700{% endif %} text-[11px] font-semibold shrink-0">
-                        {% if next_session.has_two_date_options %}You're on Sunday{% else %}You're out{% endif %}
-                    </span>
-                    {% elif next_session_user_vote == 'all' %}
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[11px] font-semibold shrink-0">
-                        You're on both days
-                    </span>
-                    {% elif next_session_user_vote == 'out' %}
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[11px] font-semibold shrink-0">
-                        Not available
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 text-[11px] font-semibold shrink-0">
+                        You're out
                     </span>
                     {% endif %}
                 </div>
@@ -209,7 +192,7 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for session in upcoming_sessions %}
-                {% include "_components/session_card.html" with session=session vote_count=vote_counts|get_item:session.id voters=session_voters|get_item:session.id availability=availability_by_session|get_item:session.id is_staff=user.is_staff past=False %}
+                {% include "_components/session_card.html" with session=session vote_count=vote_counts|get_item:session.id voters=session_voters|get_item:session.id is_staff=user.is_staff past=False %}
             {% empty %}
                 <div class="col-span-3 card p-10 text-center">
                     <svg class="w-10 h-10 text-stone-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -228,7 +211,7 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for session in previous_sessions %}
-                {% include "_components/session_card.html" with session=session vote_count=vote_counts|get_item:session.id voters=session_voters|get_item:session.id availability=availability_by_session|get_item:session.id is_staff=user.is_staff past=True %}
+                {% include "_components/session_card.html" with session=session vote_count=vote_counts|get_item:session.id voters=session_voters|get_item:session.id is_staff=user.is_staff past=True %}
             {% empty %}
                 <div class="col-span-3 py-8 text-center">
                     <p class="text-sm text-stone-400">No previous sessions yet.</p>

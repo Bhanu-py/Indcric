@@ -536,8 +536,6 @@ def reopen_scoring_view(request, match_id):
             if match.winner_id is not None:
                 match.winner = None
                 match.save(update_fields=['winner'])
-            from .rating_engine import clear_match_ratings
-            clear_match_ratings(match)
         return redirect('match_score', match_id=match.id)
     return redirect('scorecard', match_id=match.id)
 

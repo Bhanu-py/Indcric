@@ -129,39 +129,57 @@
             </div>
         </div>
 
-        <!-- Skill ratings are derived from completed scored matches. -->
+        <!-- Skill ratings — JSX-style inline rows: [label] [rating bar viz] [number input] -->
         <div class="card overflow-hidden">
             <div class="card-header flex items-center justify-between">
                 {% include "_components/eyebrow.html" with label="Skill ratings" %}
-                <span class="font-mono text-[10px] text-stone-400 uppercase tracking-[0.08em]">Auto-calculated</span>
+                <span class="font-mono text-[10px] text-stone-400 uppercase tracking-[0.08em]">0.0 — 5.0 · half-steps</span>
             </div>
             <div class="card-body space-y-3.5">
+                <!-- Batting -->
                 <div class="grid grid-cols-[1fr_auto_auto] items-center gap-3.5">
-                    <span class="text-sm font-medium text-stone-700">Batting</span>
+                    <label for="id_batting_rating" class="text-sm font-medium text-stone-700 cursor-pointer">Batting</label>
                     {% include "_components/rating_bar.html" with value=user.batting_rating %}
-                    <span class="font-mono text-xs text-stone-500 tabular-nums min-w-[28px] text-right">
-                        {{ user.batting_rating|default:0|floatformat:1 }}
-                    </span>
+                    <input type="number" name="batting_rating" id="id_batting_rating"
+                           min="0" max="5" step="0.5"
+                           value="{{ form.batting_rating.value|default:user.batting_rating }}"
+                           class="w-[60px] text-right font-mono text-xs tabular-nums border border-stone-200 rounded-md px-2 py-1
+                                  focus:outline-none focus:ring-2 focus:ring-pitch-500 focus:border-transparent">
                 </div>
+                {% if form.batting_rating.errors %}
+                <ul class="errorlist">{% for e in form.batting_rating.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                {% endif %}
 
+                <!-- Bowling -->
                 <div class="grid grid-cols-[1fr_auto_auto] items-center gap-3.5">
-                    <span class="text-sm font-medium text-stone-700">Bowling</span>
+                    <label for="id_bowling_rating" class="text-sm font-medium text-stone-700 cursor-pointer">Bowling</label>
                     {% include "_components/rating_bar.html" with value=user.bowling_rating %}
-                    <span class="font-mono text-xs text-stone-500 tabular-nums min-w-[28px] text-right">
-                        {{ user.bowling_rating|default:0|floatformat:1 }}
-                    </span>
+                    <input type="number" name="bowling_rating" id="id_bowling_rating"
+                           min="0" max="5" step="0.5"
+                           value="{{ form.bowling_rating.value|default:user.bowling_rating }}"
+                           class="w-[60px] text-right font-mono text-xs tabular-nums border border-stone-200 rounded-md px-2 py-1
+                                  focus:outline-none focus:ring-2 focus:ring-pitch-500 focus:border-transparent">
                 </div>
+                {% if form.bowling_rating.errors %}
+                <ul class="errorlist">{% for e in form.bowling_rating.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                {% endif %}
 
+                <!-- Fielding -->
                 <div class="grid grid-cols-[1fr_auto_auto] items-center gap-3.5">
-                    <span class="text-sm font-medium text-stone-700">Fielding</span>
+                    <label for="id_fielding_rating" class="text-sm font-medium text-stone-700 cursor-pointer">Fielding</label>
                     {% include "_components/rating_bar.html" with value=user.fielding_rating %}
-                    <span class="font-mono text-xs text-stone-500 tabular-nums min-w-[28px] text-right">
-                        {{ user.fielding_rating|default:0|floatformat:1 }}
-                    </span>
+                    <input type="number" name="fielding_rating" id="id_fielding_rating"
+                           min="0" max="5" step="0.5"
+                           value="{{ form.fielding_rating.value|default:user.fielding_rating }}"
+                           class="w-[60px] text-right font-mono text-xs tabular-nums border border-stone-200 rounded-md px-2 py-1
+                                  focus:outline-none focus:ring-2 focus:ring-pitch-500 focus:border-transparent">
                 </div>
+                {% if form.fielding_rating.errors %}
+                <ul class="errorlist">{% for e in form.fielding_rating.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+                {% endif %}
 
                 <p class="font-mono text-[10px] text-stone-400 uppercase tracking-[0.08em] pt-2 mt-2 border-t border-stone-100">
-                    Ratings are calculated from completed scored matches and cannot be edited manually.
+                    Bars show your current saved value — press <span class="text-stone-600">Done</span> above to update.
                 </p>
             </div>
         </div>

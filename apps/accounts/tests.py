@@ -1,5 +1,4 @@
 import io
-from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -8,7 +7,7 @@ from django.urls import reverse
 
 from PIL import Image
 
-from .forms import OnboardingForm, ProfileForm, AVATAR_MAX_BYTES
+from .forms import ProfileForm, AVATAR_MAX_BYTES
 
 User = get_user_model()
 
@@ -63,61 +62,6 @@ class ProfileFormAvatarValidationTests(TestCase):
         form = ProfileForm(self.base, {'avatar': big}, instance=self.user)
         self.assertFalse(form.is_valid())
         self.assertIn('avatar', form.errors)
-
-
-class RatingFormLockTests(TestCase):
-    def test_profile_form_ignores_posted_rating_fields(self):
-        user = User.objects.create_user(
-            username='jadeja', password='x',
-            batting_rating=Decimal('1.5'),
-            bowling_rating=Decimal('2.0'),
-            fielding_rating=Decimal('3.0'),
-        )
-        form = ProfileForm({
-            'first_name': 'Ravindra',
-            'last_name': 'Jadeja',
-            'role': 'allrounder',
-            'batting_rating': '5.0',
-            'bowling_rating': '5.0',
-            'fielding_rating': '5.0',
-        }, instance=user)
-
-        self.assertNotIn('batting_rating', form.fields)
-        self.assertNotIn('bowling_rating', form.fields)
-        self.assertNotIn('fielding_rating', form.fields)
-        self.assertTrue(form.is_valid(), form.errors)
-        form.save()
-
-        user.refresh_from_db()
-        self.assertEqual(user.batting_rating, Decimal('1.5'))
-        self.assertEqual(user.bowling_rating, Decimal('2.0'))
-        self.assertEqual(user.fielding_rating, Decimal('3.0'))
-
-    def test_onboarding_form_ignores_posted_rating_fields(self):
-        user = User.objects.create_user(
-            username='newbie', password='x',
-            batting_rating=Decimal('1.5'),
-            bowling_rating=Decimal('2.0'),
-            fielding_rating=Decimal('3.0'),
-        )
-        form = OnboardingForm({
-            'full_name': 'New Member',
-            'role': 'batsman',
-            'batting_rating': '5.0',
-            'bowling_rating': '5.0',
-            'fielding_rating': '5.0',
-        }, instance=user)
-
-        self.assertNotIn('batting_rating', form.fields)
-        self.assertNotIn('bowling_rating', form.fields)
-        self.assertNotIn('fielding_rating', form.fields)
-        self.assertTrue(form.is_valid(), form.errors)
-        form.save()
-
-        user.refresh_from_db()
-        self.assertEqual(user.batting_rating, Decimal('1.5'))
-        self.assertEqual(user.bowling_rating, Decimal('2.0'))
-        self.assertEqual(user.fielding_rating, Decimal('3.0'))
 
 
 class AvatarChangeViewTests(TestCase):

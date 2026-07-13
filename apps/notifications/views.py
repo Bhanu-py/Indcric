@@ -18,10 +18,7 @@ from .activity import FEED_TABS, KIND_STYLE, RSVP_NO_STYLE, TAB_KINDS
 from .models import ActivityEvent, ActivityFeedState, BotEvent, seen_at_for
 
 
-RSVP_PATTERN = re.compile(
-    r'^\s*(yes|no|y|n|sat|saturday|sun|sunday|both|all|out|unavailable|not available|na|✅|❌|1|2|3|4)\s*(?:[#\s]*(\d+))?\s*$',
-    re.IGNORECASE,
-)
+RSVP_PATTERN = re.compile(r'^\s*(yes|no|y|n|✅|❌|1|2)\s*(?:[#\s]*(\d+))?\s*$', re.IGNORECASE)
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -205,7 +202,7 @@ def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None
     dict describing what happened so the group endpoint can translate an RSVP
     into an emoji reaction (✅/❌) instead of a text post.
 
-    `allow_text_rsvp`: when False, typed vote text is NOT counted as a vote.
+    `allow_text_rsvp`: when False, typed 'yes'/'no' is NOT counted as a vote.
     Used for GROUP text — members say "yes"/"no" in normal conversation, so free
     text must not record RSVPs. Group votes come ONLY from native poll votes and
     reactions on the bot's own message (the endpoint forwards those as a vote
@@ -227,14 +224,7 @@ def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None
         if rsvp:
             token = rsvp.group(1).lower()
             session_id = int(rsvp.group(2)) if rsvp.group(2) else None
-            if token in ('yes', 'y', '✅', '1', 'sat', 'saturday'):
-                choice = 'yes'
-            elif token in ('no', 'n', '❌', '2', 'sun', 'sunday'):
-                choice = 'no'
-            elif token in ('out', 'unavailable', 'not available', 'na', '4'):
-                choice = 'out'
-            else:
-                choice = 'all'
+            choice = 'yes' if token in ('yes', 'y', '✅', '1') else 'no'
             result = _handle_rsvp(
                 wa_message_id, phone, choice, raw,
                 session_id=session_id, reply=reply, chat=chat,
@@ -337,25 +327,17 @@ def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None, reply=None,
         reply(bot_messages.no_active_poll())
         return {'recorded': False, 'reason': 'no_poll', 'choice': choice}
 
-    session = poll_obj.session
-    if choice in {'all', 'out'} and not session.has_two_date_options:
-        reply(bot_messages.invalid_availability_choice(is_two_day=False))
-        return {'recorded': False, 'reason': 'invalid_choice', 'choice': choice}
-
     Vote.objects.update_or_create(
         poll=poll_obj, user=user, defaults={'choice': choice}
     )
 
     if chat != 'community':
+        session = poll_obj.session
         date_str = session.date.strftime("%a %d %b")
-        yes_names, no_names, both_names, unavailable_names = _poll_voter_names(poll_obj)
-        reply(bot_messages.rsvp_recorded(
-            choice, session.name, date_str, yes_names, no_names, both_names,
-            unavailable_names,
-            is_two_day=session.has_two_date_options,
-        ))
+        yes_names, no_names = _poll_voter_names(poll_obj)
+        reply(bot_messages.rsvp_recorded(choice, session.name, date_str, yes_names, no_names))
 
-    return {'recorded': True, 'choice': choice, 'is_two_day': session.has_two_date_options}
+    return {'recorded': True, 'choice': choice}
 
 
 def _log_inbound(wa_message_id, phone, user, action, payload):
@@ -450,7 +432,7 @@ def _display_name(user):
 
 
 def _poll_voter_names(poll):
-    """Display-name lists for a poll, name-sorted."""
+    """(yes_names, no_names) display-name lists for a poll, name-sorted."""
     def names(choice):
         return [
             _display_name(v.user)
@@ -458,7 +440,7 @@ def _poll_voter_names(poll):
             .select_related('user')
             .order_by('user__first_name', 'user__username')
         ]
-    return names('yes'), names('no'), names('all'), names('out')
+    return names('yes'), names('no')
 
 
 def _handle_status(wa_message_id, phone, raw, reply=None):
@@ -484,11 +466,9 @@ def _handle_status(wa_message_id, phone, raw, reply=None):
 
     session = poll.session
     date_str = session.date.strftime("%a %d %b")
-    yes_names, no_names, both_names, unavailable_names = _poll_voter_names(poll)
+    yes_names, no_names = _poll_voter_names(poll)
     reply(bot_messages.status(
-        session.name, date_str, yes_names, no_names, both_names,
-        unavailable_names,
-        is_two_day=session.has_two_date_options,
+        session.name, date_str, yes_names, no_names,
     ))
 
 
