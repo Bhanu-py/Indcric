@@ -9,19 +9,13 @@
     step: 0,
     name: '{{ form.full_name.value|default:''|escapejs }}',
     role: '{{ form.role.value|default:''|escapejs }}',
-    batting: parseFloat('{{ form.batting_rating.value|default:'2.5' }}') || 2.5,
-    bowling: parseFloat('{{ form.bowling_rating.value|default:'2.5' }}') || 2.5,
-    fielding: parseFloat('{{ form.fielding_rating.value|default:'2.5' }}') || 2.5,
     canAdvance() {
       if (this.step === 0) return this.name.trim().length > 0;
       if (this.step === 1) return !!this.role;
       return true;
     },
     next() { if (this.canAdvance() && this.step < 2) this.step++; },
-    back() { if (this.step > 0) this.step--; },
-    get avg() {
-      return ((parseFloat(this.batting) + parseFloat(this.bowling) + parseFloat(this.fielding)) / 3).toFixed(2);
-    }
+    back() { if (this.step > 0) this.step--; }
   }"
   class="min-h-screen flex items-center justify-center bg-stone-50 px-4 py-8">
 
@@ -39,7 +33,7 @@
           Step <span x-text="step + 1"></span> of 3
         </div>
         <div class="text-[15px] font-semibold text-stone-900 mt-0.5"
-             x-text="['Identity', 'Role & skill', 'Wrap up'][step]"></div>
+             x-text="['Identity', 'Role', 'Wrap up'][step]"></div>
       </div>
       <div class="flex gap-1 shrink-0">
         <template x-for="i in 3" :key="i">
@@ -87,7 +81,7 @@
         </div>
       </div>
 
-      {# Step 2 — Role & skill #}
+      {# Step 2 — Role #}
       <div x-show="step === 1" x-cloak class="flex flex-col gap-5">
         <div>
           <label class="block text-sm font-semibold text-stone-700 mb-2">
@@ -140,46 +134,9 @@
           {% endif %}
         </div>
 
-        <div>
-          <label class="block text-sm font-semibold text-stone-700 mb-2">
-            Rate yourself
-          </label>
-          <div class="flex flex-col gap-3.5">
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-sm font-medium text-stone-700">Batting</span>
-                <span class="font-mono text-[12px] text-stone-500 tabular-nums" x-text="parseFloat(batting).toFixed(1)"></span>
-              </div>
-              <input type="range" name="batting_rating" min="0" max="5" step="0.5"
-                     x-model="batting"
-                     class="w-full h-1.5 rounded-full bg-stone-200 accent-pitch-700">
-              {% if form.batting_rating.errors %}<p class="text-red-600 text-xs mt-1">{{ form.batting_rating.errors.0 }}</p>{% endif %}
-            </div>
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-sm font-medium text-stone-700">Bowling</span>
-                <span class="font-mono text-[12px] text-stone-500 tabular-nums" x-text="parseFloat(bowling).toFixed(1)"></span>
-              </div>
-              <input type="range" name="bowling_rating" min="0" max="5" step="0.5"
-                     x-model="bowling"
-                     class="w-full h-1.5 rounded-full bg-stone-200 accent-pitch-700">
-              {% if form.bowling_rating.errors %}<p class="text-red-600 text-xs mt-1">{{ form.bowling_rating.errors.0 }}</p>{% endif %}
-            </div>
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-sm font-medium text-stone-700">Fielding</span>
-                <span class="font-mono text-[12px] text-stone-500 tabular-nums" x-text="parseFloat(fielding).toFixed(1)"></span>
-              </div>
-              <input type="range" name="fielding_rating" min="0" max="5" step="0.5"
-                     x-model="fielding"
-                     class="w-full h-1.5 rounded-full bg-stone-200 accent-pitch-700">
-              {% if form.fielding_rating.errors %}<p class="text-red-600 text-xs mt-1">{{ form.fielding_rating.errors.0 }}</p>{% endif %}
-            </div>
-          </div>
-          <p class="text-[11px] text-stone-400 font-mono tracking-wider mt-3">
-            Teammates can refine your ratings later · rolling avg over time
-          </p>
-        </div>
+        <p class="text-[12px] text-stone-500">
+          Skill ratings are calculated automatically after completed scored matches.
+        </p>
       </div>
 
       {# Step 3 — Wrap up #}
@@ -193,7 +150,7 @@
           <div class="flex-1 min-w-0">
             <div class="text-sm font-semibold text-stone-900 truncate" x-text="name || 'New Member'"></div>
             <div class="text-[10px] font-mono text-stone-500 mt-0.5 tracking-wider uppercase">
-              Avg skill <span x-text="avg"></span>
+              Ratings start at 2.5 until scored match history is available
             </div>
           </div>
           <span class="text-[11px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md shrink-0"
