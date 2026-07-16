@@ -61,14 +61,17 @@ def tax_report_download(request):
             return redirect('tax_report_download')
     
     # GET: Show form
-    locations = Session.objects.values_list('location', flat=True).distinct().filter(location__isnull=False)
+    # Get all possible venues (hardcoded options + any from database)
+    hardcoded_venues = ['GUSB', 'Henry Storyplein', 'HOGENT Sports hall']
+    db_venues = list(Session.objects.filter(location__isnull=False).values_list('location', flat=True).distinct())
+    all_venues = sorted(set(hardcoded_venues + db_venues))
     
     # Default date range: last 30 days
     to_date = timezone.now().date()
     from_date = to_date - timedelta(days=30)
     
     context = {
-        'venues': locations,
+        'venues': all_venues,
         'default_from_date': from_date.strftime('%Y-%m-%d'),
         'default_to_date': to_date.strftime('%Y-%m-%d'),
     }
