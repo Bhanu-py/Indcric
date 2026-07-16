@@ -178,7 +178,11 @@ class TaxComplianceExcelExport:
         
         self._style_header(ws, headers)
         
-        sessions = self._get_sessions()
+        sessions = list(self._get_sessions())
+        
+        # Batch fetch all payments for efficiency
+        all_payments = Payment.objects.filter(session__in=sessions)
+        payment_map = {(p.user_id, p.session_id): p for p in all_payments}
         
         for session in sessions:
             # Get all session players with their payment info
@@ -199,8 +203,8 @@ class TaxComplianceExcelExport:
                 ])
             else:
                 for sp in session_players:
-                    # Get payment info
-                    payment = Payment.objects.filter(user=sp.user, session=session).first()
+                    # Get payment info from pre-fetched map
+                    payment = payment_map.get((sp.user_id, session.id))
                     
                     if payment:
                         invoice_amount = payment.amount
@@ -233,14 +237,10 @@ class TaxComplianceExcelExport:
         # Add totals row
         ws.append([])  # Blank row
         
-        # Calculate totals - fetch all payments at once for efficiency
+        # Calculate totals using the already-fetched payment_map
         total_invoice = Decimal('0')
         total_paid = Decimal('0')
         total_outstanding = Decimal('0')
-        
-        sessions = list(self._get_sessions())
-        all_payments = Payment.objects.filter(session__in=sessions)
-        payment_map = {(p.user_id, p.session_id): p for p in all_payments}
         
         for session in sessions:
             session_players = SessionPlayer.objects.filter(session=session).select_related('user')
