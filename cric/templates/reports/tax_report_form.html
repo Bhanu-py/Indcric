@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Tax Compliance Report - IndCric{% endblock %}
+
+{% block content %}
+<div class="page-content-narrow">
+    <a href="{% url 'session_detail' 1 %}" class="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-800 transition-colors mb-3">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back
+    </a>
+
+    <div class="card overflow-hidden mb-6">
+        <div class="card-header">
+            <h1 class="font-mono text-[10px] font-bold text-stone-800 uppercase tracking-[0.08em]">
+                Tax Compliance & Attendance Report
+            </h1>
+        </div>
+
+        <div class="p-6">
+            <p class="text-sm text-stone-600 mb-6">
+                Download a comprehensive Excel report with all session attendance, player payments, and donations for tax and compliance purposes.
+            </p>
+
+            <form method="post" class="space-y-5">
+                {% csrf_token %}
+
+                <!-- From Date -->
+                <div>
+                    <label for="from_date" class="block text-sm font-medium text-stone-700 mb-2">
+                        From Date
+                    </label>
+                    <input type="date" id="from_date" name="from_date" 
+                           value="{{ default_from_date }}"
+                           class="w-full form-input">
+                    <p class="text-xs text-stone-500 mt-1">Leave blank to include all dates</p>
+                </div>
+
+                <!-- To Date -->
+                <div>
+                    <label for="to_date" class="block text-sm font-medium text-stone-700 mb-2">
+                        To Date
+                    </label>
+                    <input type="date" id="to_date" name="to_date" 
+                           value="{{ default_to_date }}"
+                           class="w-full form-input">
+                </div>
+
+                <!-- Venue Filter -->
+                <div>
+                    <label for="venue" class="block text-sm font-medium text-stone-700 mb-2">
+                        Venue (Optional)
+                    </label>
+                    <select id="venue" name="venue" class="w-full form-select">
+                        <option value="">All Venues</option>
+                        {% for v in venues %}
+                        <option value="{{ v }}">{{ v }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" class="btn btn-primary btn-md flex-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        Download Excel Report
+                    </button>
+                </div>
+            </form>
+
+            <!-- Info Box -->
+            <div class="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 class="font-semibold text-blue-900 mb-2">Report Contents:</h3>
+                <ul class="text-sm text-blue-800 space-y-1">
+                    <li>✓ Sessions Register - All sessions with venues and costs</li>
+                    <li>✓ Attendance Register - Player-by-player attendance per session</li>
+                    <li>✓ Payments Ledger - All payments from players</li>
+                    <li>✓ Donations & Funding - All donations received</li>
+                    <li>✓ Financial Summary - Key statistics and compliance checklist</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
