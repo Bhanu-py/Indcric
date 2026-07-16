@@ -426,14 +426,13 @@ def build_group_invite_text(poll, base_url):
 
 def build_group_rsvp_poll(poll):
     """(question, options) for the native WhatsApp poll the bot posts when a poll
-    opens. One-tap Yes/No is the vote surface — typed replies in the group do NOT
-    count (see whatsapp-group-bot.md 'Group vote inputs'). Detail/links stay in
-    the app; the poll is deliberately minimal."""
+    opens. The poll asks whether Saturday, Sunday, or Both works. Detail/links
+    stay in the app; the poll is deliberately minimal."""
     session = poll.session
     date_str = session.date.strftime("%a %d %b")
     time_str = session.time.strftime("%H:%M") if session.time else ''
     when = date_str + (f" {time_str}" if time_str else '')
-    return f"🏏 {session.name} ({when}) — are you in?", ['Yes ✅', 'No ❌']
+    return f"🏏 {session.name} ({when}) — which day works?", ['Saturday', 'Sunday', 'Both']
 
 
 def build_group_cost_split_text(session, base_url):
