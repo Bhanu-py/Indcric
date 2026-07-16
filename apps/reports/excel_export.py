@@ -100,12 +100,26 @@ class TaxComplianceExcelExport:
         self._style_header(ws, headers)
         
         # Get all sessions and their attendance
-        sessions = self._get_sessions()
+        sessions = list(self._get_sessions())
+        
+        # Batch fetch all players and attendances for efficiency
+        from apps.matches.models import Player as MatchPlayer
+        all_session_players = SessionPlayer.objects.filter(session__in=sessions).select_related('user')
+        all_match_players = MatchPlayer.objects.filter(
+            team__match__session__in=sessions
+        ).select_related('team', 'user')
+        all_attendances = Attendance.objects.filter(match_player__session__in=sessions)
+        
+        # Build lookup maps
+        player_team_map = {(mp.user_id, mp.team.match.session_id): mp.team.name 
+                          for mp in all_match_players if mp.team and mp.team.match}
+        attendance_map = {sp.id: a for a in all_attendances for sp in all_session_players 
+                         if a.match_player_id == sp.id}
         
         for session in sessions:
-            session_players = SessionPlayer.objects.filter(session=session).select_related('user')
+            session_players = [sp for sp in all_session_players if sp.session_id == session.id]
             
-            if not session_players.exists():
+            if not session_players:
                 # If no session players, add a blank row
                 ws.append([
                     session.date.strftime('%Y-%m-%d'),
@@ -118,17 +132,12 @@ class TaxComplianceExcelExport:
                 ])
             else:
                 for idx, sp in enumerate(session_players):
-                    # Get attendance status
-                    attendance = Attendance.objects.filter(match_player=sp).first()
+                    # Get attendance status from pre-fetched map
+                    attendance = attendance_map.get(sp.id)
                     attended = 'Yes' if attendance and attendance.attended else 'No'
                     
-                    # Get team assignment from Player model (through Match -> Team)
-                    from apps.matches.models import Player as MatchPlayer
-                    player_team = MatchPlayer.objects.filter(
-                        user=sp.user,
-                        team__match__session=session
-                    ).first()
-                    team_name = player_team.team.name if player_team and player_team.team else 'Not assigned'
+                    # Get team assignment from pre-built map
+                    team_name = player_team_map.get((sp.user_id, session.id), 'Not assigned')
                     
                     # Only show session info on first player row
                     if idx == 0:
