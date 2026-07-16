@@ -50,9 +50,9 @@ def _session_vote_summary(poll):
     unavailable_voters = []
     for vote in poll.votes.select_related('user').order_by('user__first_name', 'user__username'):
         choice = _vote_choice(vote.choice, poll.session)
-        if choice == 'sat':
+        if choice in ('sat', 'yes'):
             saturday_voters.append(vote.user)
-        elif choice == 'sun':
+        elif choice in ('sun', 'no'):
             sunday_voters.append(vote.user)
         elif choice == 'all':
             both_voters.append(vote.user)

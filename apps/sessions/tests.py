@@ -183,6 +183,31 @@ class AvailabilityModeTests(TestCase):
         self.client.post(reverse("vote_session", args=[poll.id]), {"choice": "no"})
         self.assertTrue(Vote.objects.filter(poll=poll, user=user, choice="no").exists())
 
+    def test_one_day_poll_buttons_show_yes_no_counts(self):
+        yes_user_1 = User.objects.create_user(username="yes1", password="x")
+        yes_user_2 = User.objects.create_user(username="yes2", password="x")
+        no_user = User.objects.create_user(username="no1", password="x")
+        saturday = timezone.localdate() + timedelta(days=5)
+        session = Session.objects.create(
+            name="Saturday only",
+            duration=Decimal("2"),
+            date=saturday,
+            date_option_1=saturday,
+            final_play_day="sat",
+            time=time(18, 0),
+            location="Hall",
+        )
+        poll = Poll.objects.create(session=session)
+        Vote.objects.create(poll=poll, user=yes_user_1, choice="yes")
+        Vote.objects.create(poll=poll, user=yes_user_2, choice="yes")
+        Vote.objects.create(poll=poll, user=no_user, choice="no")
+
+        resp = self.client.get(reverse("session_detail", args=[session.id]))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "2 selected")
+        self.assertContains(resp, "1 selected")
+
     def test_attendance_defaults_to_final_play_day_voters(self):
         saturday_user = User.objects.create_user(username="sat", password="x")
         sunday_user = User.objects.create_user(username="sun", password="x")
