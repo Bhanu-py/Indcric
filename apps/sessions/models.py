@@ -103,6 +103,7 @@ class SessionPlayer(models.Model):
 class Attendance(models.Model):
     match_player = models.ForeignKey(SessionPlayer, on_delete=models.CASCADE)
     attended = models.BooleanField(default=False)
+    cost_exempt = models.BooleanField(default=False)
     payment = models.ForeignKey(
         'payments.Payment',
         on_delete=models.CASCADE,

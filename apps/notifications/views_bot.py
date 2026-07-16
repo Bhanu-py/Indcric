@@ -119,12 +119,18 @@ def inbound_message(request):
             # Deselection / withdrawal — handled in Phase 2 (vote retract).
             return JsonResponse({'ok': True, 'ignored': 'poll_deselect'})
         selected_text = str(selected[0]).strip().lower()
+        poll = nviews._next_open_poll()
+        is_two_day = bool(poll and poll.session.has_two_date_options)
         if selected_text.startswith(('not available', 'unavailable', 'out', 'na')):
             text = 'Out'
-        elif selected_text.startswith(('sat', 'yes')):
+        elif selected_text.startswith('sat'):
             text = 'Saturday'
-        elif selected_text.startswith(('sun', 'no')):
+        elif selected_text.startswith('yes') and not is_two_day:
+            text = 'Yes'
+        elif selected_text.startswith('sun'):
             text = 'Sunday'
+        elif selected_text.startswith('no') and not is_two_day:
+            text = 'No'
         elif selected_text.startswith(('both', 'all')):
             text = 'Both'
         else:

@@ -62,7 +62,14 @@ def rsvp_recorded(choice, session_name, date_str, yes_names, no_names, both_name
     """Confirmation for a vote, with the updated poll tally shown above it."""
     unavailable_names = unavailable_names or []
     labels = (
-        {'yes': 'Saturday', 'no': 'Sunday', 'all': 'Both', 'out': 'Not available'}
+        {
+            'sat': 'Saturday',
+            'sun': 'Sunday',
+            'yes': 'Saturday',
+            'no': 'Sunday',
+            'all': 'Both',
+            'out': 'Not available',
+        }
         if is_two_day else
         {'yes': 'Yes', 'no': 'No'}
     )

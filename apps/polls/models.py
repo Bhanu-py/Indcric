@@ -26,8 +26,10 @@ class Vote(models.Model):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE, related_name='votes')
     user = models.ForeignKey('accounts.User', on_delete=models.CASCADE)
     CHOICES = (
-        ('yes', 'Saturday'),
-        ('no', 'Sunday'),
+        ('yes', 'Yes'),
+        ('no', 'No'),
+        ('sat', 'Saturday'),
+        ('sun', 'Sunday'),
         ('all', 'Both'),
         ('out', 'Not available'),
     )
