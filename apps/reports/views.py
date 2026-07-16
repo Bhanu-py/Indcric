@@ -63,7 +63,7 @@ def tax_report_download(request):
     # GET: Show form
     # Get all possible venues (hardcoded options + any from database)
     hardcoded_venues = ['GUSB', 'Henry Storyplein', 'HOGENT Sports hall']
-    db_venues = list(Session.objects.values_list('location', flat=True).distinct().filter(location__isnull=False))
+    db_venues = list(Session.objects.filter(location__isnull=False).values_list('location', flat=True).distinct())
     all_venues = sorted(set(hardcoded_venues + db_venues))
     
     # Default date range: last 30 days
