@@ -46,7 +46,7 @@ class JerseyOrder(models.Model):
         ('round_full', '180 GSM Round Neck Full Sleeve'),
         ('pant', '220 GSM 4-Way Lycra Pant'),
         ('shorts', '220 GSM 4-Way Lycra Shorts'),
-        ('umpire_cap', 'Umpire Cap'),
+        ('umpire_cap', 'Umpire Hat'),
         ('player_cap', 'Player Cap'),
     ]
     SHIRT_ITEMS = {'collar_half', 'collar_full', 'round_half', 'round_full'}

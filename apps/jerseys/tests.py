@@ -17,19 +17,22 @@ class JerseyOrderTests(TestCase):
             'for_person': 'self',
             'gender': 'male',
             'wearer_name': 'Kural',
-            'item_type': 'collar_half',
+            'item_types': ['collar_half', 'player_cap'],
             'size': '38',
-            'quantity': '2',
+            'quantity_collar_half': '2',
+            'quantity_player_cap': '1',
             'jersey_number': '7',
             'notes': '',
         })
 
         self.assertEqual(resp.status_code, 302)
-        order = JerseyOrder.objects.get()
+        self.assertEqual(JerseyOrder.objects.count(), 2)
+        order = JerseyOrder.objects.get(item_type='collar_half')
         self.assertEqual(order.user, self.user)
         self.assertEqual(order.gender, 'male')
         self.assertEqual(order.jersey_number, '7')
         self.assertEqual(order.line_total, JerseyOrder.rate_for('collar_half') * 2)
+        self.assertEqual(JerseyOrder.objects.get(item_type='player_cap').quantity, 1)
 
     def test_duplicate_jersey_number_is_allowed(self):
         other = User.objects.create_user(username='other', password='x')
@@ -48,9 +51,9 @@ class JerseyOrderTests(TestCase):
             'for_person': 'kid',
             'gender': 'boy',
             'wearer_name': 'Kural',
-            'item_type': 'round_half',
+            'item_types': ['round_half'],
             'size': '40',
-            'quantity': '1',
+            'quantity_round_half': '1',
             'jersey_number': '10',
             'notes': '',
         })

@@ -68,10 +68,10 @@ def jersey_orders_view(request):
     if request.method == 'POST':
         form = JerseyOrderForm(request.POST, user=request.user)
         if form.is_valid():
-            order = form.save()
+            orders = form.save_orders()
             messages.success(
                 request,
-                f"Added {order.quantity} x {order.get_item_type_display()} for {order.wearer_name}."
+                f"Added {len(orders)} item{'' if len(orders) == 1 else 's'} for {form.cleaned_data['wearer_name']}."
             )
             return redirect('jersey-orders')
 
@@ -80,6 +80,7 @@ def jersey_orders_view(request):
         'form': form,
         'own_orders': own_orders,
         'catalog': _catalog(),
+        'item_rows': form.item_rows(),
         'size_measurements': JerseyOrder.SIZE_MEASUREMENTS,
         'taken_numbers': _taken_numbers(),
     }
