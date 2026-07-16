@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Jersey Order{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+        <div>
+            <p class="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pitch-600 mb-2">Team kit</p>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-stone-900">Jersey order</h1>
+            <p class="text-sm text-stone-500 mt-1">Add one entry per wearer, then tick all items they need.</p>
+        </div>
+        {% if request.user.is_staff %}
+        <a href="{% url 'jersey-orders-admin' %}" class="btn btn-secondary btn-md">Admin summary</a>
+        {% endif %}
+    </div>
+
+    <div class="card p-4 mb-5 bg-amber-50 border-amber-100">
+        <p class="text-sm font-semibold text-amber-900">Prices are in Indian rupees (₹) and exclude postal/courier charges.</p>
+        <p class="text-xs text-amber-800 mt-1">The supplier size chart and quotation values are copied below for reference. Product image links can be added here after the files are uploaded.</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-5">
+        <div class="card overflow-hidden">
+            <div class="card-header">
+                <h2 class="text-sm font-bold text-stone-800">Add order</h2>
+            </div>
+            <form method="post" class="card-body space-y-4">
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                <div class="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
+                    {{ form.non_field_errors }}
+                </div>
+                {% endif %}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="form-label" for="{{ form.for_person.id_for_label }}">For</label>
+                        {{ form.for_person }}
+                        {{ form.for_person.errors }}
+                    </div>
+                    <div>
+                        <label class="form-label" for="{{ form.gender.id_for_label }}">Gender / fit</label>
+                        {{ form.gender }}
+                        {{ form.gender.errors }}
+                    </div>
+                    <div>
+                        <label class="form-label" for="{{ form.wearer_name.id_for_label }}">Printed name / wearer</label>
+                        {{ form.wearer_name }}
+                        {{ form.wearer_name.errors }}
+                    </div>
+                    <div>
+                        <label class="form-label" for="{{ form.jersey_number.id_for_label }}">Number</label>
+                        {{ form.jersey_number }}
+                        <p class="text-xs text-stone-400 mt-1">Optional. Duplicate numbers are allowed for family and kids.</p>
+                        {{ form.jersey_number.errors }}
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="form-label">Items needed</label>
+                        <p class="text-xs text-stone-500 mb-2">Select based on your requirement, then enter the quantity next to each selected item.</p>
+                        <div class="space-y-2">
+                            {% for item in item_rows %}
+                            <div class="grid grid-cols-[1fr_92px] gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2.5">
+                                <label class="flex items-start gap-2 text-sm font-medium text-stone-700">
+                                    <input type="checkbox" name="item_types" value="{{ item.code }}"
+                                           class="mt-1 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500"
+                                           {% if item.checked %}checked{% endif %}>
+                                    <span>
+                                        {{ item.label }}
+                                        <span class="block text-xs font-semibold text-pitch-700">₹{{ item.rate }}</span>
+                                    </span>
+                                </label>
+                                <div>
+                                    {{ item.quantity_field }}
+                                    {% if item.quantity_field.errors %}
+                                    <p class="text-[11px] text-red-600 mt-1">{{ item.quantity_field.errors|striptags }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <p class="text-xs text-stone-400 mt-1">Example: choose only full sleeve, only half sleeve, cap/hat, or multiple items together.</p>
+                        {{ form.item_types.errors }}
+                    </div>
+                    <div>
+                        <label class="form-label" for="{{ form.size.id_for_label }}">Size</label>
+                        {{ form.size }}
+                        {{ form.size.errors }}
+                    </div>
+                    <div>
+                        <label class="form-label" for="{{ form.notes.id_for_label }}">Notes</label>
+                        {{ form.notes }}
+                        {{ form.notes.errors }}
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg w-full sm:w-auto">Add order</button>
+            </form>
+        </div>
+
+        <div class="space-y-5">
+            <div class="card overflow-hidden">
+                <div class="card-header flex items-center justify-between">
+                    <h2 class="text-sm font-bold text-stone-800">Number reference</h2>
+                    <span class="badge badge-stone">{{ taken_numbers|length }} entered</span>
+                </div>
+                <div class="card-body">
+                    {% if taken_numbers %}
+                    <p class="text-xs text-stone-500 mb-3">These numbers are already entered by members. You can still reuse a number if needed.</p>
+                    <div class="flex flex-wrap gap-2">
+                        {% for row in taken_numbers %}
+                        <span class="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700">
+                            #{{ row.jersey_number }} <span class="text-stone-400">{{ row.wearer_name }} · by {{ row.user__username }}</span>
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-sm text-stone-500">No numbers entered yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card overflow-hidden">
+                <div class="card-header">
+                    <h2 class="text-sm font-bold text-stone-800">Your order</h2>
+                </div>
+                <div class="divide-y divide-stone-100">
+                    {% for order in own_orders %}
+                    <div class="p-4 flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-semibold text-stone-800">{{ order.wearer_name }} · {{ order.get_item_type_display }}</p>
+                            <p class="text-xs text-stone-500 mt-1">{{ order.get_gender_display }} · Size {{ order.size }} · Qty {{ order.quantity }}{% if order.jersey_number %} · #{{ order.jersey_number }}{% endif %}</p>
+                            <p class="text-xs font-semibold text-pitch-700 mt-1">₹{{ order.line_total }}</p>
+                        </div>
+                        <form method="post" action="{% url 'jersey-order-delete' order.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-ghost btn-sm text-red-600">Remove</button>
+                        </form>
+                    </div>
+                    {% empty %}
+                    <div class="p-4 text-sm text-stone-500">No order lines yet.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+        <div class="card overflow-hidden">
+            <div class="card-header">
+                <h2 class="text-sm font-bold text-stone-800">Price list</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-stone-50 text-xs uppercase tracking-wide text-stone-500">
+                        <tr>
+                            <th class="px-4 py-3 text-left">Item</th>
+                            <th class="px-4 py-3 text-right">Rate / pc</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-stone-100">
+                        {% for item in catalog %}
+                        <tr>
+                            <td class="px-4 py-3 text-stone-700">{{ item.label }}</td>
+                            <td class="px-4 py-3 text-right font-semibold text-stone-900">₹{{ item.rate }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card overflow-hidden">
+            <div class="card-header">
+                <h2 class="text-sm font-bold text-stone-800">Size chart</h2>
+                <p class="text-xs text-stone-400 mt-1">All measurements are inches.</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-stone-50 text-xs uppercase tracking-wide text-stone-500">
+                        <tr>
+                            <th class="px-3 py-3 text-left">Size</th>
+                            <th class="px-3 py-3 text-right">Full chest</th>
+                            <th class="px-3 py-3 text-right">Half chest</th>
+                            <th class="px-3 py-3 text-right">Length</th>
+                            <th class="px-3 py-3 text-right">Shoulder</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-stone-100">
+                        {% for row in size_measurements %}
+                        <tr>
+                            <td class="px-3 py-3 font-semibold text-stone-900">{{ row.size }}</td>
+                            <td class="px-3 py-3 text-right">{{ row.full_chest }}</td>
+                            <td class="px-3 py-3 text-right">{{ row.half_chest }}</td>
+                            <td class="px-3 py-3 text-right">{{ row.length }}</td>
+                            <td class="px-3 py-3 text-right">{{ row.shoulder }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

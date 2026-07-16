@@ -7,7 +7,6 @@ class Session(models.Model):
     PLAY_DAY_CHOICES = [
         ('sat', 'Saturday'),
         ('sun', 'Sunday'),
-        ('both', 'Both days'),
     ]
 
     name = models.CharField(max_length=100)
@@ -103,6 +102,7 @@ class SessionPlayer(models.Model):
 class Attendance(models.Model):
     match_player = models.ForeignKey(SessionPlayer, on_delete=models.CASCADE)
     attended = models.BooleanField(default=False)
+    cost_exempt = models.BooleanField(default=False)
     payment = models.ForeignKey(
         'payments.Payment',
         on_delete=models.CASCADE,
