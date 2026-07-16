@@ -136,7 +136,7 @@ ROLE_CHOICES = (
 
 
 class OnboardingForm(forms.ModelForm):
-    """Post-signup wizard: full name + role + skill ratings.
+    """Post-signup wizard: full name + role.
 
     Phone is collected at signup via CustomSignupForm.
     A single `full_name` field is split into first_name / last_name on save.
@@ -147,22 +147,13 @@ class OnboardingForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ['full_name', 'role', 'batting_rating', 'bowling_rating', 'fielding_rating']
+        fields = ['full_name', 'role']
 
     def clean_full_name(self):
         name = (self.cleaned_data.get('full_name') or '').strip()
         if not name:
             raise forms.ValidationError('Full name is required.')
         return name
-
-    def clean_batting_rating(self):
-        return _round_to_half(self.cleaned_data.get('batting_rating'))
-
-    def clean_bowling_rating(self):
-        return _round_to_half(self.cleaned_data.get('bowling_rating'))
-
-    def clean_fielding_rating(self):
-        return _round_to_half(self.cleaned_data.get('fielding_rating'))
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -201,7 +192,7 @@ def _clean_avatar(image):
 class ProfileForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'role', 'avatar', 'batting_rating', 'bowling_rating', 'fielding_rating']
+        fields = ['first_name', 'last_name', 'role', 'avatar']
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'w-full p-2 border rounded'}),
             'last_name': forms.TextInput(attrs={'class': 'w-full p-2 border rounded'}),
@@ -213,22 +204,10 @@ class ProfileForm(forms.ModelForm):
                 'class': 'form-input',
                 'accept': 'image/*',
             }),
-            'batting_rating': forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'min': '0', 'max': '5', 'step': '0.5'}),
-            'bowling_rating': forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'min': '0', 'max': '5', 'step': '0.5'}),
-            'fielding_rating': forms.NumberInput(attrs={'class': 'w-full p-2 border rounded', 'min': '0', 'max': '5', 'step': '0.5'}),
         }
 
     def clean_avatar(self):
         return _clean_avatar(self.cleaned_data.get('avatar'))
-
-    def clean_batting_rating(self):
-        return _round_to_half(self.cleaned_data.get('batting_rating'))
-
-    def clean_bowling_rating(self):
-        return _round_to_half(self.cleaned_data.get('bowling_rating'))
-
-    def clean_fielding_rating(self):
-        return _round_to_half(self.cleaned_data.get('fielding_rating'))
 
 
 class EmailForm(forms.ModelForm):

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto px-4 py-8">
@@ -11,13 +12,21 @@
         {% if poll.is_open %}
             <form method="post">
                 {% csrf_token %}
-                <div class="flex justify-around mb-4">
+                <div class="grid grid-cols-1 {% if poll.session.has_two_date_options %}sm:grid-cols-4{% else %}sm:grid-cols-2{% endif %} gap-3 mb-4">
                     <button type="submit" name="choice" value="yes" class="text-white font-bold py-2 px-6 rounded {% if user_vote == 'yes' %}bg-green-700{% else %}bg-green-500 hover:bg-green-600{% endif %}">
-                        Yes
+                        ✓ {% if poll.session.has_two_date_options %}Saturday{% else %}Yes{% endif %}
                     </button>
-                    <button type="submit" name="choice" value="no" class="text-white font-bold py-2 px-6 rounded {% if user_vote == 'no' %}bg-red-700{% else %}bg-red-500 hover:bg-red-600{% endif %}">
-                        No
+                    <button type="submit" name="choice" value="no" class="text-white font-bold py-2 px-6 rounded {% if poll.session.has_two_date_options %}{% if user_vote == 'no' %}bg-sky-700{% else %}bg-sky-500 hover:bg-sky-600{% endif %}{% else %}{% if user_vote == 'no' %}bg-red-700{% else %}bg-red-500 hover:bg-red-600{% endif %}{% endif %}">
+                        {% if poll.session.has_two_date_options %}✓ Sunday{% else %}✕ No{% endif %}
                     </button>
+                    {% if poll.session.has_two_date_options %}
+                    <button type="submit" name="choice" value="all" class="text-white font-bold py-2 px-6 rounded {% if user_vote == 'all' %}bg-purple-700{% else %}bg-purple-500 hover:bg-purple-600{% endif %}">
+                        ✓ Both
+                    </button>
+                    <button type="submit" name="choice" value="out" class="text-white font-bold py-2 px-6 rounded {% if user_vote == 'out' %}bg-red-700{% else %}bg-red-500 hover:bg-red-600{% endif %}">
+                        ✕ Not available
+                    </button>
+                    {% endif %}
                 </div>
             </form>
         {% else %}
@@ -26,17 +35,29 @@
 
         <div class="mt-6">
             <h3 class="text-xl font-semibold mb-2">Results</h3>
-            <div class="w-full bg-gray-200 rounded-full h-6 flex">
-                <div class="bg-green-500 h-6 rounded-l-full text-xs font-medium text-blue-100 text-center p-0.5 leading-none" style="width: {% if total_votes > 0 %}{{ yes_votes|mul:100|floordiv:total_votes }}{% else %}0{% endif %}%">
-                    {% if total_votes > 0 %}{{ yes_votes|mul:100|floordiv:total_votes }}%{% endif %}
+            <div class="w-full bg-gray-200 rounded-full h-6 flex overflow-hidden">
+                <div class="bg-green-500 h-6 text-xs font-medium text-blue-100 text-center p-0.5 leading-none" style="width: {% if total_votes > 0 %}{{ saturday_votes|mul:100|floordiv:total_votes }}{% else %}0{% endif %}%">
+                    {% if total_votes > 0 %}{{ saturday_votes|mul:100|floordiv:total_votes }}%{% endif %}
                 </div>
-                <div class="bg-red-500 h-6 rounded-r-full text-xs font-medium text-blue-100 text-center p-0.5 leading-none" style="width: {% if total_votes > 0 %}{{ no_votes|mul:100|floordiv:total_votes }}{% else %}0{% endif %}%">
-                    {% if total_votes > 0 %}{{ no_votes|mul:100|floordiv:total_votes }}%{% endif %}
+                <div class="{% if poll.session.has_two_date_options %}bg-sky-500{% else %}bg-red-500{% endif %} h-6 text-xs font-medium text-blue-100 text-center p-0.5 leading-none" style="width: {% if total_votes > 0 %}{{ sunday_votes|mul:100|floordiv:total_votes }}{% else %}0{% endif %}%">
+                    {% if total_votes > 0 %}{{ sunday_votes|mul:100|floordiv:total_votes }}%{% endif %}
                 </div>
+                {% if poll.session.has_two_date_options %}
+                <div class="bg-purple-500 h-6 text-xs font-medium text-blue-100 text-center p-0.5 leading-none" style="width: {% if total_votes > 0 %}{{ both_votes|mul:100|floordiv:total_votes }}{% else %}0{% endif %}%">
+                    {% if total_votes > 0 %}{{ both_votes|mul:100|floordiv:total_votes }}%{% endif %}
+                </div>
+                <div class="bg-red-500 h-6 text-xs font-medium text-blue-100 text-center p-0.5 leading-none" style="width: {% if total_votes > 0 %}{{ unavailable_votes|mul:100|floordiv:total_votes }}{% else %}0{% endif %}%">
+                    {% if total_votes > 0 %}{{ unavailable_votes|mul:100|floordiv:total_votes }}%{% endif %}
+                </div>
+                {% endif %}
             </div>
             <div class="flex justify-between mt-2 text-sm">
-                <span>Yes: {{ yes_votes }}</span>
-                <span>No: {{ no_votes }}</span>
+                <span>{% if poll.session.has_two_date_options %}Saturday{% else %}Yes{% endif %}: {{ saturday_votes }}</span>
+                <span>{% if poll.session.has_two_date_options %}Sunday{% else %}No{% endif %}: {{ sunday_votes }}</span>
+                {% if poll.session.has_two_date_options %}
+                <span>Both: {{ both_votes }}</span>
+                <span>Not available: {{ unavailable_votes }}</span>
+                {% endif %}
             </div>
             <p class="text-center mt-2">Total Votes: {{ total_votes }}</p>
         </div>

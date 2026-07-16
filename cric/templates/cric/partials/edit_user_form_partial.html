@@ -55,22 +55,20 @@
     </div>
 
     <div>
-        <label class="form-label">Skill Ratings <span class="text-stone-400 font-normal text-xs">(0.0 – 5.0)</span></label>
+        <label class="form-label">Skill Ratings <span class="text-stone-400 font-normal text-xs">(auto-calculated)</span></label>
+        <p class="text-xs text-stone-400 mb-2">Calculated from completed scored matches; not editable manually.</p>
         <div class="grid grid-cols-3 gap-3">
             <div>
                 <p class="text-xs text-stone-500 mb-1">Batting</p>
-                <input class="form-input text-sm" id="batting_rating" name="batting_rating"
-                       type="number" step="0.1" min="0" max="5" value="{{ user.batting_rating }}">
+                <div class="form-input text-sm bg-stone-50 text-stone-600">{{ user.batting_rating|floatformat:1 }}</div>
             </div>
             <div>
                 <p class="text-xs text-stone-500 mb-1">Bowling</p>
-                <input class="form-input text-sm" id="bowling_rating" name="bowling_rating"
-                       type="number" step="0.1" min="0" max="5" value="{{ user.bowling_rating }}">
+                <div class="form-input text-sm bg-stone-50 text-stone-600">{{ user.bowling_rating|floatformat:1 }}</div>
             </div>
             <div>
                 <p class="text-xs text-stone-500 mb-1">Fielding</p>
-                <input class="form-input text-sm" id="fielding_rating" name="fielding_rating"
-                       type="number" step="0.1" min="0" max="5" value="{{ user.fielding_rating }}">
+                <div class="form-input text-sm bg-stone-50 text-stone-600">{{ user.fielding_rating|floatformat:1 }}</div>
             </div>
         </div>
     </div>

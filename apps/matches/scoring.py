@@ -673,4 +673,6 @@ def finalize_match_result(match):
     winner = scored[0][0] if scored[0][1] > scored[1][1] else None
     match.winner = winner
     match.save(update_fields=['winner'])
+    from .rating_engine import compute_match_ratings
+    compute_match_ratings(match)
     return winner

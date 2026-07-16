@@ -34,14 +34,14 @@ def help_text():
         "🏏 *IndCric Bot*\n"
         "\n"
         "Just reply with:\n"
-        "✅ *YES* or ❌ *NO* — RSVP to the current poll\n"
+        "📅 *Saturday*, *Sunday*, *Both*, *Not available*, *Yes*, or *No* — RSVP to the current poll\n"
         "💰 *BALANCE* — your wallet + what you owe\n"
         "🗂️ *HISTORY* — your last games + wallet\n"
-        "📊 *STATUS* — who's in / out\n"
+        "📊 *STATUS* — availability counts\n"
         "🏆 *SCORE* — live score of the current match\n"
         "❓ *HELP* — show this message\n"
         "\n"
-        "Playing a *specific* game? Just tap the *YES/NO* link in the group message — no need to type anything."
+        "Playing a *specific* game? Just tap the poll options in the group message — no need to type anything."
     )
 
 
@@ -52,16 +52,32 @@ def no_active_poll():
     )
 
 
-def rsvp_recorded(choice, session_name, date_str, yes_names, no_names):
-    """Confirmation for an RSVP, with the updated poll tally shown above it so
-    the voter sees the effect of their vote. yes_names / no_names are lists."""
-    you_are = "IN" if choice == "yes" else "OUT"
-    mark = "✅" if choice == "yes" else "❌"
-    opposite = "NO" if choice == "yes" else "YES"
+def invalid_availability_choice(*, is_two_day=True):
+    if is_two_day:
+        return "Please choose *Saturday*, *Sunday*, *Both*, or *Not available* for this poll."
+    return "Please choose *Yes* or *No* for this poll."
+
+
+def rsvp_recorded(choice, session_name, date_str, yes_names, no_names, both_names, unavailable_names=None, *, is_two_day=True):
+    """Confirmation for a vote, with the updated poll tally shown above it."""
+    unavailable_names = unavailable_names or []
+    labels = (
+        {'yes': 'Saturday', 'no': 'Sunday', 'all': 'Both', 'out': 'Not available'}
+        if is_two_day else
+        {'yes': 'Yes', 'no': 'No'}
+    )
+    label = labels.get(choice, choice.title() if choice else 'Vote')
     return (
-        status(session_name, date_str, yes_names, no_names)
+        status(
+            session_name, date_str, yes_names, no_names, both_names,
+            unavailable_names, is_two_day=is_two_day,
+        )
         + "\n\n"
-        + f"{mark} You're *{you_are}* for this one. Reply *{opposite}* to switch."
+        + (
+            f"✅ You're *{label}* for this one. Reply with *Saturday*, *Sunday*, *Both*, or *Not available* to switch."
+            if is_two_day else
+            f"✅ You're marked *{label}* for this one. Reply with *Yes* or *No* to switch."
+        )
     )
 
 
@@ -129,21 +145,38 @@ def history(games, career, wallet_total):
     return "\n".join(lines)
 
 
-def status(session_name, date_str, yes_names, no_names):
-    """Poll counts + voter lists, one name per line. yes_names / no_names are
-    lists of display names."""
+def status(session_name, date_str, yes_names, no_names, both_names, unavailable_names=None, *, is_two_day=True):
+    """Poll counts + voter lists, one name per line."""
+    unavailable_names = unavailable_names or []
     def block(mark, label, names):
         head = f"{mark} *{label}* ({len(names)})"
         if not names:
             return f"{head}\n• —"
         return head + "\n" + "\n".join(f"• {n}" for n in names)
 
+    if not is_two_day:
+        total = len(yes_names) + len(no_names)
+        return "\n".join([
+            f"🏏 *{session_name}* ({date_str})",
+            f"📊 *{total} voted* · Yes {len(yes_names)} · No {len(no_names)}",
+            "",
+            block("🟢", "YES", yes_names),
+            "",
+            block("🔴", "NO", no_names),
+        ])
+
+    total = len(yes_names) + len(no_names) + len(both_names) + len(unavailable_names)
     return "\n".join([
         f"🏏 *{session_name}* ({date_str})",
+        f"📊 *{total} voted* · Saturday {len(yes_names)} · Sunday {len(no_names)} · Both {len(both_names)} · Not available {len(unavailable_names)}",
         "",
-        block("✅", "IN", yes_names),
+        block("🟢", "SATURDAY", yes_names),
         "",
-        block("❌", "OUT", no_names),
+        block("🔵", "SUNDAY", no_names),
+        "",
+        block("🟣", "BOTH", both_names),
+        "",
+        block("🔴", "NOT AVAILABLE", unavailable_names),
     ])
 
 

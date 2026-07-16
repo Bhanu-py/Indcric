@@ -148,9 +148,12 @@ class ActivityEmitTests(TestCase):
         )
 
     def _poll(self):
+        saturday = date(2026, 6, 20)
+        sunday = date(2026, 6, 21)
         s = Session.objects.create(
             name="Sunday Nets", duration=Decimal("2"),
-            date=date(2026, 6, 21), time=time(18, 0), location="Hall",
+            date=saturday, date_option_1=saturday, date_option_2=sunday,
+            time=time(18, 0), location="Hall",
         )
         return Poll.objects.create(session=s)
 
@@ -159,7 +162,7 @@ class ActivityEmitTests(TestCase):
         ev = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_RSVP).first()
         self.assertIsNotNone(ev)
         self.assertIn("Riya", ev.body)
-        self.assertIn("in for", ev.body)
+        self.assertIn("picked Saturday", ev.body)
         self.assertEqual(ev.actor, self.donor)
 
     def test_vote_change_refreshes_single_row(self):
@@ -168,7 +171,7 @@ class ActivityEmitTests(TestCase):
         v.save()
         rows = ActivityEvent.objects.filter(kind=ActivityEvent.KIND_RSVP)
         self.assertEqual(rows.count(), 1)          # deduped on the vote, not spammed
-        self.assertIn("out of", rows.first().body)
+        self.assertIn("picked Sunday", rows.first().body)
 
     def test_vote_withdraw_removes_row(self):
         v = Vote.objects.create(poll=self._poll(), user=self.donor, choice='yes')
@@ -338,9 +341,12 @@ class MetaPathCharacterizationTests(TestCase):
         self.member = User.objects.create_user(username="rohan", first_name="Rohan", password="x")
         self.member.phone = "+32470000001"
         self.member.save()
+        saturday = date(2026, 6, 20)
+        sunday = date(2026, 6, 21)
         self.session = Session.objects.create(
             name="Sunday Nets", duration=Decimal("2"),
-            date=date(2026, 6, 21), time=time(18, 0), location="Hall",
+            date=saturday, date_option_1=saturday, date_option_2=sunday,
+            time=time(18, 0), location="Hall",
         )
         self.poll = Poll.objects.create(session=self.session)
 
@@ -370,9 +376,12 @@ class GroupInboundTests(TestCase):
         self.member = User.objects.create_user(username="rohan", first_name="Rohan", password="x")
         self.member.phone = "+32470000001"
         self.member.save()
+        saturday = date(2026, 6, 20)
+        sunday = date(2026, 6, 21)
         self.session = Session.objects.create(
             name="Sunday Nets", duration=Decimal("2"),
-            date=date(2026, 6, 21), time=time(18, 0), location="Hall",
+            date=saturday, date_option_1=saturday, date_option_2=sunday,
+            time=time(18, 0), location="Hall",
         )
         self.poll = Poll.objects.create(session=self.session)
         self.url = reverse('bot_inbound')
@@ -407,6 +416,28 @@ class GroupInboundTests(TestCase):
         mock_send.assert_not_called()
 
     @patch("apps.notifications.services.send_text_message")
+    def test_group_status_reports_all_availability_counts(self, mock_send):
+        sunday = User.objects.create_user(username="sam", first_name="Sam", password="x")
+        both = User.objects.create_user(username="jaya", first_name="Jaya", password="x")
+        Vote.objects.create(poll=self.poll, user=self.member, choice='yes')
+        Vote.objects.create(poll=self.poll, user=sunday, choice='no')
+        Vote.objects.create(poll=self.poll, user=both, choice='all')
+        unavailable = User.objects.create_user(username="lee", first_name="Lee", password="x")
+        Vote.objects.create(poll=self.poll, user=unavailable, choice='out')
+
+        resp = self._post({'from': '32470000001', 'wa_message_id': 'g-status', 'text': 'status', 'kind': 'text'})
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['result'], {'kind': 'command', 'command': 'status'})
+        msg = OutboundMessage.objects.get(target='community')
+        self.assertIn("*4 voted* · Saturday 1 · Sunday 1 · Both 1 · Not available 1", msg.body)
+        self.assertIn("*SATURDAY* (1)", msg.body)
+        self.assertIn("*SUNDAY* (1)", msg.body)
+        self.assertIn("*BOTH* (1)", msg.body)
+        self.assertIn("*NOT AVAILABLE* (1)", msg.body)
+        mock_send.assert_not_called()
+
+    @patch("apps.notifications.services.send_text_message")
     def test_reaction_on_bot_message_records_yes_and_reacts(self, mock_send):
         resp = self._post({'from': '32470000001', 'wa_message_id': 'g2c', 'kind': 'reaction', 'emoji': '👍'})
         self.assertEqual(resp.status_code, 200)
@@ -426,10 +457,38 @@ class GroupInboundTests(TestCase):
         mock_send.assert_not_called()
 
     def test_poll_vote_records_no(self):
-        self._post({'from': '32470000001', 'wa_message_id': 'g4', 'kind': 'poll_vote', 'selected': ['No ❌']})
+        resp = self._post({'from': '32470000001', 'wa_message_id': 'g4', 'kind': 'poll_vote', 'selected': ['Sunday']})
         self.assertTrue(
             Vote.objects.filter(poll=self.poll, user=self.member, choice='no').exists()
         )
+        self.assertEqual(resp.json()['actions'][0]['emoji'], '✅')
+
+    def test_poll_vote_records_not_available(self):
+        resp = self._post({'from': '32470000001', 'wa_message_id': 'g4out', 'kind': 'poll_vote', 'selected': ['Not available']})
+        self.assertTrue(
+            Vote.objects.filter(poll=self.poll, user=self.member, choice='out').exists()
+        )
+        self.assertEqual(resp.json()['actions'][0]['emoji'], '❌')
+
+    @patch("apps.notifications.services.send_text_message")
+    def test_one_day_poll_vote_no_records_no_and_reacts_cross(self, mock_send):
+        self.poll.is_open = False
+        self.poll.save(update_fields=['is_open'])
+        sunday = timezone.localdate() + timedelta(days=1)
+        one_day = Session.objects.create(
+            name="Sunday Only", duration=Decimal("2"),
+            date=sunday, date_option_2=sunday, final_play_day='sun',
+            time=time(18, 0), location="Hall",
+        )
+        poll = Poll.objects.create(session=one_day)
+
+        resp = self._post({'from': '32470000001', 'wa_message_id': 'g4b', 'kind': 'poll_vote', 'selected': ['No']})
+
+        self.assertTrue(
+            Vote.objects.filter(poll=poll, user=self.member, choice='no').exists()
+        )
+        self.assertEqual(resp.json()['actions'][0]['emoji'], '❌')
+        mock_send.assert_not_called()
 
     def test_group_vote_matched_by_wa_name_learns_lid(self):
         # First-ever vote from a member: no wa_lid yet, but the roster set their
@@ -440,7 +499,7 @@ class GroupInboundTests(TestCase):
         resp = self._post({
             'from': '+267418135986186', 'lid': '267418135986186',
             'author_name': 'Bhanu Angam', 'wa_message_id': 'gname1',
-            'kind': 'poll_vote', 'selected': ['Yes ✅'],
+            'kind': 'poll_vote', 'selected': ['Saturday'],
         })
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(
@@ -457,7 +516,7 @@ class GroupInboundTests(TestCase):
         self.member.save()
         resp = self._post({
             'from': '+267418135986186', 'lid': '267418135986186',
-            'wa_message_id': 'glid1', 'kind': 'poll_vote', 'selected': ['Yes ✅'],
+            'wa_message_id': 'glid1', 'kind': 'poll_vote', 'selected': ['Saturday'],
         })
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(
@@ -571,13 +630,25 @@ class AutoPostEnqueueTests(TestCase):
         return Session.objects.create(**defaults)
 
     def test_poll_open_enqueues_native_poll(self):
-        s = self._session()
+        saturday = timezone.localdate() + timedelta(days=6)
+        sunday = timezone.localdate() + timedelta(days=7)
+        s = self._session(date=saturday, date_option_1=saturday, date_option_2=sunday)
         Poll.objects.create(session=s)
         m = OutboundMessage.objects.filter(dedup_key=f'poll_opened:{s.poll.id}').first()
         self.assertIsNotNone(m)
         self.assertEqual(m.kind, OutboundMessage.POLL)
-        self.assertEqual(m.poll_options, ['Yes ✅', 'No ❌'])
+        self.assertEqual(m.poll_options, ['Saturday', 'Sunday', 'Both', 'Not available'])
         self.assertIn("Sunday Nets", m.body)
+
+    def test_one_day_poll_open_enqueues_yes_no_native_poll(self):
+        sunday = timezone.localdate() + timedelta(days=7)
+        s = self._session(date=sunday, date_option_2=sunday, final_play_day='sun')
+        Poll.objects.create(session=s)
+        m = OutboundMessage.objects.filter(dedup_key=f'poll_opened:{s.poll.id}').first()
+        self.assertIsNotNone(m)
+        self.assertEqual(m.kind, OutboundMessage.POLL)
+        self.assertEqual(m.poll_options, ['Yes', 'No'])
+        self.assertIn("can you play on Sunday", m.body)
 
     def test_past_session_poll_does_not_enqueue(self):
         s = self._session(date=date(2020, 1, 1))
