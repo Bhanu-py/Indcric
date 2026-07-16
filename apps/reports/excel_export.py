@@ -212,15 +212,19 @@ class TaxComplianceExcelExport:
         # Add totals row
         ws.append([])  # Blank row
         
-        # Calculate totals
+        # Calculate totals - fetch all payments at once for efficiency
         total_invoice = Decimal('0')
         total_paid = Decimal('0')
         total_outstanding = Decimal('0')
         
-        for session in self._get_sessions():
+        sessions = list(self._get_sessions())
+        all_payments = Payment.objects.filter(session__in=sessions)
+        payment_map = {(p.user_id, p.session_id): p for p in all_payments}
+        
+        for session in sessions:
             session_players = SessionPlayer.objects.filter(session=session).select_related('user')
             for sp in session_players:
-                payment = Payment.objects.filter(user=sp.user, session=session).first()
+                payment = payment_map.get((sp.user_id, session.id))
                 
                 if payment:
                     total_invoice += payment.amount
