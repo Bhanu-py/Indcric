@@ -99,8 +99,6 @@ def _eligible_voters_for_play_day(session, summary):
             return summary['saturday_voters'] + summary['both_voters']
         if play_day == 'sun':
             return summary['sunday_voters'] + summary['both_voters']
-        if play_day == 'both':
-            return summary['saturday_voters'] + summary['sunday_voters'] + summary['both_voters']
         return summary['saturday_voters'] + summary['sunday_voters'] + summary['both_voters']
     return summary['saturday_voters']
 
@@ -726,7 +724,7 @@ def finalize_play_day_view(request, session_id):
         return redirect('session_detail', session_id=session.id)
 
     choice = (request.POST.get('play_day') or '').strip().lower()
-    allowed_choices = {'sat', 'sun', 'both'} if session.has_two_date_options else {session.single_play_day}
+    allowed_choices = {'sat', 'sun'} if session.has_two_date_options else {session.single_play_day}
     if choice not in allowed_choices:
         messages.error(request, 'Please choose one of the available play days.')
         return redirect('session_detail', session_id=session.id)

@@ -7,7 +7,6 @@ class Session(models.Model):
     PLAY_DAY_CHOICES = [
         ('sat', 'Saturday'),
         ('sun', 'Sunday'),
-        ('both', 'Both days'),
     ]
 
     name = models.CharField(max_length=100)

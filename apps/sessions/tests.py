@@ -141,6 +141,27 @@ class AvailabilityModeTests(TestCase):
         self.client.post(reverse("vote_session", args=[poll.id]), {"choice": "sun"})
         self.assertTrue(Vote.objects.filter(poll=poll, user=user, choice="sun").exists())
 
+    def test_finalize_play_day_rejects_both(self):
+        saturday = timezone.localdate() + timedelta(days=5)
+        sunday = timezone.localdate() + timedelta(days=6)
+        session = Session.objects.create(
+            name="Weekend",
+            duration=Decimal("2"),
+            date=saturday,
+            date_option_1=saturday,
+            date_option_2=sunday,
+            time=time(18, 0),
+            location="Hall",
+        )
+
+        resp = self.client.post(reverse("finalize_play_day", args=[session.id]), {
+            "play_day": "both",
+        })
+
+        self.assertEqual(resp.status_code, 302)
+        session.refresh_from_db()
+        self.assertIsNone(session.final_play_day)
+
     def test_one_day_web_vote_keeps_yes_no_codes(self):
         user = User.objects.create_user(username="oneday", password="x")
         self.client.force_login(user)
