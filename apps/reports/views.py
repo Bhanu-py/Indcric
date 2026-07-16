@@ -66,9 +66,10 @@ def tax_report_download(request):
     db_venues = list(Session.objects.filter(location__isnull=False).values_list('location', flat=True).distinct())
     all_venues = sorted(set(hardcoded_venues + db_venues))
     
-    # Default date range: last 30 days
-    to_date = timezone.now().date()
-    from_date = to_date - timedelta(days=30)
+    # Default date range: full current year (01-01 to 31-12)
+    today = timezone.now().date()
+    from_date = today.replace(month=1, day=1)
+    to_date = today.replace(month=12, day=31)
     
     context = {
         'venues': all_venues,

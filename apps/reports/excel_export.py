@@ -110,11 +110,16 @@ class TaxComplianceExcelExport:
         ).select_related('team', 'user')
         all_attendances = Attendance.objects.filter(match_player__session__in=sessions)
         
-        # Build lookup maps
-        player_team_map = {(mp.user_id, mp.team.match.session_id): mp.team.name 
-                          for mp in all_match_players if mp.team and mp.team.match}
-        attendance_map = {sp.id: a for a in all_attendances for sp in all_session_players 
-                         if a.match_player_id == sp.id}
+        # Build lookup maps efficiently
+        player_team_map = {}
+        for mp in all_match_players:
+            if mp.team and mp.team.match:
+                key = (mp.user_id, mp.team.match.session_id)
+                player_team_map[key] = mp.team.name
+        
+        attendance_map = {}
+        for attendance in all_attendances:
+            attendance_map[attendance.match_player_id] = attendance
         
         for session in sessions:
             session_players = [sp for sp in all_session_players if sp.session_id == session.id]
