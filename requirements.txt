@@ -18,3 +18,4 @@ requests
 PyJWT[crypto]
 cloudinary
 django-cloudinary-storage
+openpyxl

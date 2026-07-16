@@ -101,18 +101,40 @@ def inbound_message(request):
             lid=lid, defaults={'name': wa_name} if wa_name else {},
         )
 
-    # Normalise reactions / poll votes into the YES/NO text the dispatcher parses.
+    # Normalise reactions / poll votes into the vote text the dispatcher parses.
     if kind == 'reaction':
         choice = _REACTION_CHOICE.get(_normalize_emoji(data.get('emoji', '')))
         if choice is None:
             return JsonResponse({'ok': True, 'ignored': 'non_vote_reaction'})
-        text = 'YES' if choice == 'yes' else 'NO'
+        if choice == 'yes':
+            text = 'Saturday'
+        elif choice == 'no':
+            poll = nviews._next_open_poll()
+            text = 'Out' if poll and poll.session.has_two_date_options else 'No'
+        else:
+            text = 'Both'
     elif kind == 'poll_vote':
         selected = data.get('selected') or []
         if not selected:
             # Deselection / withdrawal — handled in Phase 2 (vote retract).
             return JsonResponse({'ok': True, 'ignored': 'poll_deselect'})
-        text = 'YES' if str(selected[0]).lower().startswith('yes') else 'NO'
+        selected_text = str(selected[0]).strip().lower()
+        poll = nviews._next_open_poll()
+        is_two_day = bool(poll and poll.session.has_two_date_options)
+        if selected_text.startswith(('not available', 'unavailable', 'out', 'na')):
+            text = 'Out'
+        elif selected_text.startswith('sat'):
+            text = 'Saturday'
+        elif selected_text.startswith('yes') and not is_two_day:
+            text = 'Yes'
+        elif selected_text.startswith('sun'):
+            text = 'Sunday'
+        elif selected_text.startswith('no') and not is_two_day:
+            text = 'No'
+        elif selected_text.startswith(('both', 'all')):
+            text = 'Both'
+        else:
+            text = str(selected[0])
     else:
         text = (data.get('text') or '').strip()
 
@@ -130,9 +152,17 @@ def inbound_message(request):
 
     actions = []
     if result and result.get('kind') == 'rsvp' and result.get('recorded'):
+        if result.get('choice') == 'out':
+            emoji = '❌'
+        elif result.get('choice') == 'all':
+            emoji = '☑️'
+        elif result.get('choice') == 'no' and not result.get('is_two_day'):
+            emoji = '❌'
+        else:
+            emoji = '✅'
         actions.append({
             'type': 'react',
-            'emoji': '✅' if result.get('choice') == 'yes' else '❌',
+            'emoji': emoji,
             'message_id': wa_message_id,
         })
 

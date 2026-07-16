@@ -29,6 +29,11 @@
                     <span class="hidden sm:inline">Support</span>
                 </a>
 
+                <a href="{% url 'jersey-orders' %}" title="Jersey order" class="flex items-center gap-1.5 h-10 px-2.5 sm:px-3 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium">
+                    <svg class="w-5 h-5 sm:w-4 sm:h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 3h12l2 5-3 2v11H7V10L4 8l2-5z"/></svg>
+                    <span class="hidden sm:inline">Jerseys</span>
+                </a>
+
                 {% if request.user.is_staff %}
                 <div x-data="{ open: false }" class="relative">
                     <button @click="open = !open" @click.away="open = false" title="Manage"
@@ -53,10 +58,18 @@
                             <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                             Payments
                         </a>
+                        <a href="{% url 'reports:tax_report_download' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
+                            <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            Financial Report
+                        </a>
                         <div class="my-1 border-t border-stone-100"></div>
                         <a href="{% url 'manage-users' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
                             <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                             Users
+                        </a>
+                        <a href="{% url 'jersey-orders-admin' %}" class="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-stone-50 transition-colors">
+                            <svg class="w-4 h-4 text-pitch-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 3h12l2 5-3 2v11H7V10L4 8l2-5z"/></svg>
+                            Jersey Orders
                         </a>
                     </div>
                 </div>

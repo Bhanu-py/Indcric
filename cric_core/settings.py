@@ -98,6 +98,8 @@ INSTALLED_APPS = [
     "apps.notifications",
     "apps.donations",
     "apps.banking",
+    "apps.reports",
+    "apps.jerseys",
     "apps.gdpr",
 ]
 SITE_ID = 1

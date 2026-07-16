@@ -18,7 +18,12 @@ from .activity import FEED_TABS, KIND_STYLE, RSVP_NO_STYLE, TAB_KINDS
 from .models import ActivityEvent, ActivityFeedState, BotEvent, seen_at_for
 
 
-RSVP_PATTERN = re.compile(r'^\s*(yes|no|y|n|✅|❌|1|2)\s*(?:[#\s]*(\d+))?\s*$', re.IGNORECASE)
+RSVP_PATTERN = re.compile(
+    r'^\s*(yes|no|y|n|sat|saturday|sun|sunday|both|all|out|unavailable|not available|na|✅|❌|1|2|3|4)\s*(?:[#\s]*(\d+))?\s*$',
+    re.IGNORECASE,
+)
+
+GENERIC_YES_NO_TOKENS = {'yes', 'y', 'no', 'n', '1', '2', '✅', '❌'}
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -191,6 +196,20 @@ def _dm_sink(phone):
     return _send
 
 
+def _choice_from_rsvp_token(token):
+    if token in ('sat', 'saturday'):
+        return 'sat'
+    if token in ('sun', 'sunday'):
+        return 'sun'
+    if token in ('yes', 'y', '✅', '1'):
+        return 'yes'
+    if token in ('no', 'n', '❌', '2'):
+        return 'no'
+    if token in ('out', 'unavailable', 'not available', 'na', '4'):
+        return 'out'
+    return 'all'
+
+
 def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None,
                      allow_text_rsvp=True, reply_unknown=True, lid='', wa_name=''):
     """Shared inbound parser + dispatcher for BOTH the Meta Cloud-API webhook
@@ -202,7 +221,7 @@ def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None
     dict describing what happened so the group endpoint can translate an RSVP
     into an emoji reaction (✅/❌) instead of a text post.
 
-    `allow_text_rsvp`: when False, typed 'yes'/'no' is NOT counted as a vote.
+    `allow_text_rsvp`: when False, typed vote text is NOT counted as a vote.
     Used for GROUP text — members say "yes"/"no" in normal conversation, so free
     text must not record RSVPs. Group votes come ONLY from native poll votes and
     reactions on the bot's own message (the endpoint forwards those as a vote
@@ -224,11 +243,11 @@ def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None
         if rsvp:
             token = rsvp.group(1).lower()
             session_id = int(rsvp.group(2)) if rsvp.group(2) else None
-            choice = 'yes' if token in ('yes', 'y', '✅', '1') else 'no'
+            choice = _choice_from_rsvp_token(token)
             result = _handle_rsvp(
                 wa_message_id, phone, choice, raw,
                 session_id=session_id, reply=reply, chat=chat,
-                lid=lid, wa_name=wa_name,
+                lid=lid, wa_name=wa_name, raw_choice_token=token,
             )
             return {'kind': 'rsvp', **(result or {})}
 
@@ -270,7 +289,7 @@ def _process_message(msg, value):
 
 
 def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None, reply=None,
-                 chat='dm', lid='', wa_name=''):
+                 chat='dm', lid='', wa_name='', raw_choice_token=''):
     """Record an inbound RSVP. Confirms via the reply sink on the DM path; on the
     group path stays silent here (the /api/bot/inbound/ endpoint reacts ✅/❌ to
     the member's message — per-vote text would flood the group).
@@ -327,17 +346,34 @@ def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None, reply=None,
         reply(bot_messages.no_active_poll())
         return {'recorded': False, 'reason': 'no_poll', 'choice': choice}
 
+    session = poll_obj.session
+    if session.has_two_date_options and raw_choice_token in GENERIC_YES_NO_TOKENS:
+        reply(bot_messages.invalid_availability_choice(is_two_day=True))
+        return {
+            'recorded': False,
+            'reason': 'ambiguous_choice',
+            'choice': choice,
+            'is_two_day': True,
+        }
+
+    if choice in {'sat', 'sun', 'all', 'out'} and not session.has_two_date_options:
+        reply(bot_messages.invalid_availability_choice(is_two_day=False))
+        return {'recorded': False, 'reason': 'invalid_choice', 'choice': choice}
+
     Vote.objects.update_or_create(
         poll=poll_obj, user=user, defaults={'choice': choice}
     )
 
     if chat != 'community':
-        session = poll_obj.session
         date_str = session.date.strftime("%a %d %b")
-        yes_names, no_names = _poll_voter_names(poll_obj)
-        reply(bot_messages.rsvp_recorded(choice, session.name, date_str, yes_names, no_names))
+        yes_names, no_names, both_names, unavailable_names = _poll_voter_names(poll_obj)
+        reply(bot_messages.rsvp_recorded(
+            choice, session.name, date_str, yes_names, no_names, both_names,
+            unavailable_names,
+            is_two_day=session.has_two_date_options,
+        ))
 
-    return {'recorded': True, 'choice': choice}
+    return {'recorded': True, 'choice': choice, 'is_two_day': session.has_two_date_options}
 
 
 def _log_inbound(wa_message_id, phone, user, action, payload):
@@ -432,15 +468,17 @@ def _display_name(user):
 
 
 def _poll_voter_names(poll):
-    """(yes_names, no_names) display-name lists for a poll, name-sorted."""
-    def names(choice):
+    """Display-name lists for a poll, name-sorted."""
+    def names(*choices):
         return [
             _display_name(v.user)
-            for v in poll.votes.filter(choice=choice)
+            for v in poll.votes.filter(choice__in=choices)
             .select_related('user')
             .order_by('user__first_name', 'user__username')
         ]
-    return names('yes'), names('no')
+    if poll.session.has_two_date_options:
+        return names('sat', 'yes'), names('sun', 'no'), names('all'), names('out')
+    return names('yes'), names('no'), names('all'), names('out')
 
 
 def _handle_status(wa_message_id, phone, raw, reply=None):
@@ -466,9 +504,11 @@ def _handle_status(wa_message_id, phone, raw, reply=None):
 
     session = poll.session
     date_str = session.date.strftime("%a %d %b")
-    yes_names, no_names = _poll_voter_names(poll)
+    yes_names, no_names, both_names, unavailable_names = _poll_voter_names(poll)
     reply(bot_messages.status(
-        session.name, date_str, yes_names, no_names,
+        session.name, date_str, yes_names, no_names, both_names,
+        unavailable_names,
+        is_two_day=session.has_two_date_options,
     ))
 
 
