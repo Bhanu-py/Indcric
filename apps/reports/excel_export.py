@@ -103,7 +103,7 @@ class TaxComplianceExcelExport:
         sessions = self._get_sessions()
         
         for session in sessions:
-            session_players = SessionPlayer.objects.filter(session=session).select_related('user', 'team')
+            session_players = SessionPlayer.objects.filter(session=session).select_related('user')
             
             if not session_players.exists():
                 # If no session players, add a blank row
@@ -121,7 +121,14 @@ class TaxComplianceExcelExport:
                     # Get attendance status
                     attendance = Attendance.objects.filter(match_player=sp).first()
                     attended = 'Yes' if attendance and attendance.attended else 'No'
-                    team_name = sp.team.name if sp.team else 'Not assigned'
+                    
+                    # Get team assignment from Player model (through Match -> Team)
+                    from apps.matches.models import Player as MatchPlayer
+                    player_team = MatchPlayer.objects.filter(
+                        user=sp.user,
+                        team__match__session=session
+                    ).first()
+                    team_name = player_team.team.name if player_team and player_team.team else 'Not assigned'
                     
                     # Only show session info on first player row
                     if idx == 0:
