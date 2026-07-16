@@ -46,12 +46,26 @@ class JerseyOrder(models.Model):
         ('round_full', '180 GSM Round Neck Full Sleeve'),
         ('pant', '220 GSM 4-Way Lycra Pant'),
         ('shorts', '220 GSM 4-Way Lycra Shorts'),
-        ('umpire_cap', 'Umpire Hat'),
+        ('umpire_cap', 'Wide-Brim Hat'),
         ('player_cap', 'Player Cap'),
     ]
     SHIRT_ITEMS = {'collar_half', 'collar_full', 'round_half', 'round_full'}
+    PANT_ITEMS = {'pant', 'shorts'}
+    HEADWEAR_ITEMS = {'umpire_cap', 'player_cap'}
+    FREE_SIZE = 'FS'
+    ITEM_META = {
+        'collar_half': {'visual': 'Polo', 'group': 'T-shirt', 'note': 'Collar, half sleeve'},
+        'collar_full': {'visual': 'Polo', 'group': 'T-shirt', 'note': 'Collar, full sleeve'},
+        'round_half': {'visual': 'Tee', 'group': 'T-shirt', 'note': 'Round neck, half sleeve'},
+        'round_full': {'visual': 'Tee', 'group': 'T-shirt', 'note': 'Round neck, full sleeve'},
+        'pant': {'visual': 'Pant', 'group': 'Bottom wear', 'note': '4-way lycra pant'},
+        'shorts': {'visual': 'Short', 'group': 'Bottom wear', 'note': '4-way lycra shorts'},
+        'umpire_cap': {'visual': 'Hat', 'group': 'Headwear', 'note': 'Wide-brim hat, not umpire-only'},
+        'player_cap': {'visual': 'Cap', 'group': 'Headwear', 'note': 'Player cap'},
+    }
 
-    SIZE_CHOICES = [(str(size), str(size)) for size in (20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44)]
+    NUMERIC_SIZES = (20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44)
+    SIZE_CHOICES = [(str(size), str(size)) for size in NUMERIC_SIZES] + [(FREE_SIZE, 'Free size - cap/hat only')]
     SIZE_MEASUREMENTS = [
         {'size': '20', 'full_chest': '22', 'half_chest': '11', 'length': '16', 'shoulder': '10'},
         {'size': '22', 'full_chest': '24', 'half_chest': '12', 'length': '17', 'shoulder': '11'},
@@ -66,6 +80,10 @@ class JerseyOrder(models.Model):
         {'size': '40', 'full_chest': '40', 'half_chest': '20', 'length': '28', 'shoulder': '16'},
         {'size': '42', 'full_chest': '42', 'half_chest': '21', 'length': '28', 'shoulder': '17'},
         {'size': '44', 'full_chest': '44', 'half_chest': '22', 'length': '29', 'shoulder': '17'},
+    ]
+    PANT_SIZE_MEASUREMENTS = [
+        {'size': str(size), 'uk_waist': f'W{size}', 'waist': str(size), 'outseam': 'Confirm', 'inseam': 'Confirm'}
+        for size in NUMERIC_SIZES
     ]
 
     user = models.ForeignKey(
@@ -113,3 +131,5 @@ class JerseyOrder(models.Model):
             raise ValidationError({'quantity': 'Quantity must be at least 1.'})
         if self.jersey_number and not self.jersey_number.isdigit():
             raise ValidationError({'jersey_number': 'Use numbers only.'})
+        if self.size == self.FREE_SIZE and self.item_type and self.item_type not in self.HEADWEAR_ITEMS:
+            raise ValidationError({'size': 'Free size is only for cap/hat orders.'})

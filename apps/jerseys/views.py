@@ -13,24 +13,41 @@ from .models import JerseyOrder
 
 
 def _catalog():
-    return [
-        {
+    catalog = []
+    for code, label in JerseyOrder.ITEM_CHOICES:
+        meta = JerseyOrder.ITEM_META.get(code, {})
+        catalog.append({
             'code': code,
             'label': label,
             'rate': JerseyOrder.rate_for(code),
             'is_shirt': code in JerseyOrder.SHIRT_ITEMS,
-        }
-        for code, label in JerseyOrder.ITEM_CHOICES
-    ]
+            'visual': meta.get('visual', 'Item'),
+            'group': meta.get('group', 'Kit'),
+            'note': meta.get('note', ''),
+        })
+    return catalog
 
 
 def _taken_numbers():
-    return list(
-        JerseyOrder.objects.exclude(jersey_number='')
+    references = {}
+    orders = (
+        JerseyOrder.objects
+        .exclude(jersey_number='')
         .select_related('user')
-        .order_by('jersey_number', 'wearer_name')
-        .values('jersey_number', 'wearer_name', 'gender', 'user__username')
+        .order_by('jersey_number', 'wearer_name', 'user__username')
     )
+    for order in orders:
+        key = (order.jersey_number, order.wearer_name.strip().lower(), order.user_id)
+        if key not in references:
+            references[key] = {
+                'jersey_number': order.jersey_number,
+                'wearer_name': order.wearer_name,
+                'gender': order.get_gender_display(),
+                'user__username': order.user.username,
+                'item_count': 0,
+            }
+        references[key]['item_count'] += 1
+    return list(references.values())
 
 
 def _summary():
@@ -42,6 +59,7 @@ def _summary():
     )
     item_labels = dict(JerseyOrder.ITEM_CHOICES)
     gender_labels = dict(JerseyOrder.GENDER_CHOICES)
+    size_labels = dict(JerseyOrder.SIZE_CHOICES)
     grouped = defaultdict(list)
     grand_total = 0
     total_quantity = 0
@@ -53,7 +71,7 @@ def _summary():
         total_quantity += quantity
         grouped[row['item_type']].append({
             'item': item_labels.get(row['item_type'], row['item_type']),
-            'size': row['size'],
+            'size': size_labels.get(row['size'], row['size']),
             'gender': gender_labels.get(row['gender'], row['gender']),
             'quantity': quantity,
             'rate': rate,
@@ -81,7 +99,8 @@ def jersey_orders_view(request):
         'own_orders': own_orders,
         'catalog': _catalog(),
         'item_rows': form.item_rows(),
-        'size_measurements': JerseyOrder.SIZE_MEASUREMENTS,
+        'shirt_size_measurements': JerseyOrder.SIZE_MEASUREMENTS,
+        'pant_size_measurements': JerseyOrder.PANT_SIZE_MEASUREMENTS,
         'taken_numbers': _taken_numbers(),
     }
     return render(request, 'jerseys/order_form.html', context)
@@ -141,7 +160,7 @@ def export_jersey_orders_view(request):
             order.get_gender_display(),
             order.wearer_name,
             order.get_item_type_display(),
-            order.size,
+            order.get_size_display(),
             order.quantity,
             order.jersey_number,
             order.unit_price,

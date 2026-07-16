@@ -3,6 +3,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .models import JerseyOrder
+from .views import _taken_numbers
 
 User = get_user_model()
 
@@ -60,6 +61,69 @@ class JerseyOrderTests(TestCase):
 
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(JerseyOrder.objects.filter(jersey_number='10').count(), 2)
+
+    def test_free_size_is_allowed_for_headwear_only(self):
+        cap_resp = self.client.post(reverse('jersey-orders'), {
+            'for_person': 'family',
+            'gender': 'unisex',
+            'wearer_name': 'Family',
+            'item_types': ['umpire_cap'],
+            'size': JerseyOrder.FREE_SIZE,
+            'quantity_umpire_cap': '1',
+            'jersey_number': '7',
+            'notes': '',
+        })
+
+        self.assertEqual(cap_resp.status_code, 302)
+        self.assertEqual(JerseyOrder.objects.get(item_type='umpire_cap').size, JerseyOrder.FREE_SIZE)
+
+        shirt_resp = self.client.post(reverse('jersey-orders'), {
+            'for_person': 'self',
+            'gender': 'male',
+            'wearer_name': 'Member',
+            'item_types': ['collar_half'],
+            'size': JerseyOrder.FREE_SIZE,
+            'quantity_collar_half': '1',
+            'jersey_number': '',
+            'notes': '',
+        })
+
+        self.assertEqual(shirt_resp.status_code, 200)
+        self.assertContains(shirt_resp, 'Free size is only for cap/hat')
+        self.assertEqual(JerseyOrder.objects.count(), 1)
+
+    def test_number_reference_deduplicates_multiple_items_for_same_wearer(self):
+        for item_type in ['collar_half', 'collar_full', 'player_cap']:
+            JerseyOrder.objects.create(
+                user=self.user,
+                for_person='self',
+                gender='male',
+                wearer_name='Akhil Reddy',
+                item_type=item_type,
+                size='40',
+                quantity=1,
+                jersey_number='8',
+            )
+
+        resp = self.client.get(reverse('jersey-orders'))
+        references = _taken_numbers()
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(references), 1)
+        self.assertEqual(references[0]['jersey_number'], '8')
+        self.assertEqual(references[0]['wearer_name'], 'Akhil Reddy')
+        self.assertEqual(references[0]['item_count'], 3)
+        self.assertContains(resp, '1 shown')
+        self.assertContains(resp, '3 items')
+
+    def test_order_page_shows_product_and_size_guides(self):
+        resp = self.client.get(reverse('jersey-orders'))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Wide-Brim Hat')
+        self.assertContains(resp, 'Family/kids may reuse the same number')
+        self.assertContains(resp, 'T-shirt maker size chart')
+        self.assertContains(resp, 'Pants/shorts maker size template')
 
     def test_staff_can_export_orders(self):
         staff = User.objects.create_user(username='staff', password='x', is_staff=True)

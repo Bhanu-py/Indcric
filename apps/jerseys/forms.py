@@ -60,10 +60,15 @@ class JerseyOrderForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         item_types = cleaned.get('item_types') or []
+        size = cleaned.get('size')
         for item_type in item_types:
             field_name = f'quantity_{item_type}'
             if not cleaned.get(field_name):
                 self.add_error(field_name, 'Enter quantity.')
+        if size == JerseyOrder.FREE_SIZE and any(
+            item_type not in JerseyOrder.HEADWEAR_ITEMS for item_type in item_types
+        ):
+            self.add_error('size', 'Free size is only for cap/hat. Choose a numeric size for shirts, pants or shorts.')
         return cleaned
 
     def clean_jersey_number(self):

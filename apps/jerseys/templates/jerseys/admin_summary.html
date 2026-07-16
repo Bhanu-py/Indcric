@@ -31,7 +31,7 @@
             <p class="text-2xl font-extrabold text-stone-900 mt-1">₹{{ grand_total }}</p>
         </div>
         <div class="card p-4">
-            <p class="text-xs font-semibold text-stone-500 uppercase tracking-wide">Numbers entered</p>
+            <p class="text-xs font-semibold text-stone-500 uppercase tracking-wide">Number references</p>
             <p class="text-2xl font-extrabold text-stone-900 mt-1">{{ taken_numbers|length }}</p>
         </div>
     </div>
@@ -101,7 +101,7 @@
                         <td class="px-4 py-3">{{ order.get_gender_display }}</td>
                         <td class="px-4 py-3 font-semibold">{{ order.wearer_name }}</td>
                         <td class="px-4 py-3">{{ order.get_item_type_display }}</td>
-                        <td class="px-4 py-3">{{ order.size }}</td>
+                        <td class="px-4 py-3">{{ order.get_size_display }}</td>
                         <td class="px-4 py-3 text-right">{{ order.quantity }}</td>
                         <td class="px-4 py-3">{% if order.jersey_number %}#{{ order.jersey_number }}{% else %}-{% endif %}</td>
                         <td class="px-4 py-3 text-right font-semibold">₹{{ order.line_total }}</td>
