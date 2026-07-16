@@ -1,8 +1,13 @@
+from io import BytesIO
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
+from openpyxl import load_workbook
 
-from .models import JerseyOrder
+from .models import JerseyOrder, JerseyOrderWindow
 from .views import _taken_numbers
 
 User = get_user_model()
@@ -125,6 +130,47 @@ class JerseyOrderTests(TestCase):
         self.assertContains(resp, 'T-shirt maker size chart')
         self.assertContains(resp, 'Pants/shorts maker size template')
 
+    def test_closed_ordering_window_blocks_member_changes(self):
+        JerseyOrderWindow.objects.create(
+            name='Closed window',
+            is_enabled=True,
+            opens_at=timezone.now() - timedelta(days=7),
+            closes_at=timezone.now() - timedelta(days=1),
+        )
+
+        create_resp = self.client.post(reverse('jersey-orders'), {
+            'for_person': 'self',
+            'gender': 'male',
+            'wearer_name': 'Late',
+            'item_types': ['collar_half'],
+            'size': '38',
+            'quantity_collar_half': '1',
+            'jersey_number': '11',
+            'notes': '',
+        })
+
+        self.assertEqual(create_resp.status_code, 302)
+        self.assertEqual(JerseyOrder.objects.count(), 0)
+
+        order = JerseyOrder.objects.create(
+            user=self.user,
+            for_person='self',
+            gender='male',
+            wearer_name='Existing',
+            item_type='collar_half',
+            size='38',
+            quantity=1,
+            jersey_number='12',
+        )
+        delete_resp = self.client.post(reverse('jersey-order-delete', args=[order.id]))
+
+        self.assertEqual(delete_resp.status_code, 302)
+        self.assertTrue(JerseyOrder.objects.filter(id=order.id).exists())
+
+        page_resp = self.client.get(reverse('jersey-orders'))
+        self.assertContains(page_resp, 'Jersey ordering is closed.')
+        self.assertContains(page_resp, 'Locked')
+
     def test_staff_can_export_orders(self):
         staff = User.objects.create_user(username='staff', password='x', is_staff=True)
         JerseyOrder.objects.create(
@@ -142,6 +188,14 @@ class JerseyOrderTests(TestCase):
         resp = self.client.get(reverse('jersey-orders-export'))
 
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp['Content-Type'], 'text/csv')
-        self.assertContains(resp, 'Kid')
-        self.assertContains(resp, 'Girl')
+        self.assertEqual(
+            resp['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        self.assertIn('jersey_orders.xlsx', resp['Content-Disposition'])
+
+        workbook = load_workbook(BytesIO(resp.content))
+        worksheet = workbook['Jersey Orders']
+        self.assertEqual(worksheet['A1'].value, 'Member')
+        self.assertEqual(worksheet['D2'].value, 'Kid')
+        self.assertEqual(worksheet['C2'].value, 'Girl')

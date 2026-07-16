@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 
 class JerseyOrder(models.Model):
@@ -133,3 +134,60 @@ class JerseyOrder(models.Model):
             raise ValidationError({'jersey_number': 'Use numbers only.'})
         if self.size == self.FREE_SIZE and self.item_type and self.item_type not in self.HEADWEAR_ITEMS:
             raise ValidationError({'size': 'Free size is only for cap/hat orders.'})
+
+
+class JerseyOrderWindow(models.Model):
+    name = models.CharField(max_length=80, default='Jersey order window')
+    is_enabled = models.BooleanField(
+        default=False,
+        help_text='Enable this to restrict member ordering to the dates below.',
+    )
+    opens_at = models.DateTimeField(blank=True, null=True)
+    closes_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at', '-id']
+        verbose_name = 'Jersey order window'
+        verbose_name_plural = 'Jersey order window'
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def current(cls):
+        return cls.objects.first()
+
+    @classmethod
+    def ordering_is_open(cls, at=None):
+        window = cls.current()
+        if not window:
+            return True
+        return window.is_open(at=at)
+
+    def is_open(self, at=None):
+        if not self.is_enabled:
+            return True
+        at = at or timezone.now()
+        if self.opens_at and at < self.opens_at:
+            return False
+        if self.closes_at and at > self.closes_at:
+            return False
+        return True
+
+    def status_text(self, at=None):
+        if not self.is_enabled:
+            return 'Ordering is open. No cutoff period is currently enabled.'
+        at = at or timezone.now()
+        if self.opens_at and at < self.opens_at:
+            return f'Ordering opens on {timezone.localtime(self.opens_at).strftime("%d %b %Y, %H:%M")}.'
+        if self.closes_at and at > self.closes_at:
+            return f'Ordering closed on {timezone.localtime(self.closes_at).strftime("%d %b %Y, %H:%M")}.'
+        if self.closes_at:
+            return f'Ordering is open until {timezone.localtime(self.closes_at).strftime("%d %b %Y, %H:%M")}.'
+        return 'Ordering is open.'
+
+    def clean(self):
+        super().clean()
+        if self.opens_at and self.closes_at and self.opens_at >= self.closes_at:
+            raise ValidationError({'closes_at': 'Close time must be after open time.'})

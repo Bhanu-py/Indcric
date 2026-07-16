@@ -1,4 +1,4 @@
-import csv
+from io import BytesIO
 from collections import defaultdict
 
 from django.contrib import messages
@@ -7,9 +7,11 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill
 
 from .forms import JerseyOrderForm
-from .models import JerseyOrder
+from .models import JerseyOrder, JerseyOrderWindow
 
 
 def _catalog():
@@ -83,7 +85,17 @@ def _summary():
 @login_required
 def jersey_orders_view(request):
     form = JerseyOrderForm(user=request.user)
+    order_window = JerseyOrderWindow.current()
+    ordering_open = JerseyOrderWindow.ordering_is_open()
+    ordering_status = (
+        order_window.status_text()
+        if order_window
+        else 'Ordering is open. Admin can set an order cutoff from Django admin.'
+    )
     if request.method == 'POST':
+        if not ordering_open:
+            messages.error(request, 'Jersey ordering is closed. No new orders can be added now.')
+            return redirect('jersey-orders')
         form = JerseyOrderForm(request.POST, user=request.user)
         if form.is_valid():
             orders = form.save_orders()
@@ -102,6 +114,8 @@ def jersey_orders_view(request):
         'shirt_size_measurements': JerseyOrder.SIZE_MEASUREMENTS,
         'pant_size_measurements': JerseyOrder.PANT_SIZE_MEASUREMENTS,
         'taken_numbers': _taken_numbers(),
+        'ordering_open': ordering_open,
+        'ordering_status': ordering_status,
     }
     return render(request, 'jerseys/order_form.html', context)
 
@@ -112,6 +126,9 @@ def delete_jersey_order_view(request, order_id):
     if not request.user.is_staff and order.user_id != request.user.id:
         messages.error(request, "You cannot delete another member's order.")
         return redirect('jersey-orders')
+    if not request.user.is_staff and not JerseyOrderWindow.ordering_is_open():
+        messages.error(request, 'Jersey ordering is closed. Existing orders can no longer be changed.')
+        return redirect('jersey-orders')
     if request.method == 'POST':
         order.delete()
         messages.success(request, 'Order line removed.')
@@ -121,6 +138,7 @@ def delete_jersey_order_view(request, order_id):
 @staff_member_required
 def jersey_orders_admin_view(request):
     summary, total_quantity, grand_total = _summary()
+    order_window = JerseyOrderWindow.current()
     orders = JerseyOrder.objects.select_related('user').order_by(
         'user__first_name',
         'user__username',
@@ -132,15 +150,16 @@ def jersey_orders_admin_view(request):
         'total_quantity': total_quantity,
         'grand_total': grand_total,
         'taken_numbers': _taken_numbers(),
+        'ordering_status': order_window.status_text() if order_window else 'Ordering is open.',
     })
 
 
 @staff_member_required
 def export_jersey_orders_view(request):
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="jersey_orders.csv"'
-    writer = csv.writer(response)
-    writer.writerow([
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = 'Jersey Orders'
+    headers = [
         'Member',
         'For',
         'Gender',
@@ -152,9 +171,15 @@ def export_jersey_orders_view(request):
         'Unit price',
         'Line total',
         'Notes',
-    ])
+    ]
+    worksheet.append(headers)
+    header_fill = PatternFill(fill_type='solid', fgColor='D9EAD3')
+    for cell in worksheet[1]:
+        cell.font = Font(bold=True)
+        cell.fill = header_fill
+
     for order in JerseyOrder.objects.select_related('user').order_by('user__username', 'wearer_name'):
-        writer.writerow([
+        worksheet.append([
             order.user.get_full_name() or order.user.username,
             order.get_for_person_display(),
             order.get_gender_display(),
@@ -167,4 +192,17 @@ def export_jersey_orders_view(request):
             order.line_total,
             order.notes,
         ])
+
+    for column_cells in worksheet.columns:
+        width = max(len(str(cell.value or '')) for cell in column_cells) + 2
+        worksheet.column_dimensions[column_cells[0].column_letter].width = min(width, 40)
+
+    output = BytesIO()
+    workbook.save(output)
+    output.seek(0)
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = 'attachment; filename="jersey_orders.xlsx"'
     return response
