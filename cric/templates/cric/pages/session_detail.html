@@ -434,6 +434,7 @@
                                     class="flex flex-col items-start gap-1 p-3.5 rounded-2xl border-2 bg-white active:scale-[.98] transition-all text-left {{ c.card }}">
                                 <span class="flex items-center gap-2 text-sm font-bold text-stone-800">
                                     <span class="w-2 h-2 rounded-full {{ c.dot }}"></span>{{ c.label }}
+                                    {% if c.status == 'finalized' %}<span class="rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Finalized</span>{% elif c.status == 'cancelled' %}<span class="rounded-full bg-stone-200 text-stone-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Cancelled</span>{% endif %}
                                 </span>
                                 {% if session.time %}<span class="text-xs text-stone-400">{{ session.time|time:"H:i" }} start</span>{% endif %}
                                 <span class="text-xs font-semibold {{ c.text }}">{{ c.count }} going</span>
@@ -514,8 +515,8 @@
                             <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3">
                                 {% for c in poll_choices %}
                                 <div class="flex items-center justify-between text-[13px]">
-                                    <span class="flex items-center gap-1.5 font-medium text-stone-600"><span class="w-2 h-2 rounded-full {{ c.dot }}"></span>{{ c.label }}</span>
-                                    <span class="font-bold text-stone-800 tabular-nums">{{ c.count }}</span>
+                                    <span class="flex items-center gap-1.5 font-medium text-stone-600 min-w-0"><span class="w-2 h-2 rounded-full {{ c.dot }} shrink-0"></span><span class="truncate">{{ c.label }}</span>{% if c.status == 'finalized' %}<span class="shrink-0 rounded-full bg-emerald-100 text-emerald-700 px-1.5 py-0.5 text-[9px] font-bold uppercase">Final</span>{% elif c.status == 'cancelled' %}<span class="shrink-0 rounded-full bg-stone-200 text-stone-500 px-1.5 py-0.5 text-[9px] font-bold uppercase">Cancelled</span>{% endif %}</span>
+                                    <span class="font-bold text-stone-800 tabular-nums shrink-0">{{ c.count }}</span>
                                 </div>
                                 {% endfor %}
                             </div>
@@ -545,7 +546,8 @@
             </div>
             {% endif %}
 
-            {% if user.is_staff and session.poll and not is_past %}
+            {# Finalize card: two-day sessions only, hidden once play starts (matches/attendance). #}
+            {% if user.is_staff and session.poll and availability.show_both and not is_past and not matches and not session.attendance_confirmed %}
             <div class="card overflow-hidden">
                 <div class="card-header flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                     <div class="flex items-center gap-2 min-w-0">
@@ -556,10 +558,9 @@
                         <span class="badge badge-stone shrink-0">Not selected</span>
                         {% endif %}
                     </div>
-                    <span class="text-[11px] text-stone-400">{% if availability.show_both %}Team balance unlocks after choosing one day{% else %}Single-day session{% endif %}</span>
+                    <span class="text-[11px] text-stone-400">Team balance unlocks after choosing one day</span>
                 </div>
                 <div class="card-body">
-                    {% if availability.show_both %}
                     <p class="text-sm text-stone-600 mb-4">
                         Choose the day the session will actually be played.
                     </p>
@@ -580,12 +581,6 @@
                     </form>
                     {% if session.final_play_day %}
                     <p class="mt-3 text-xs text-stone-500">Locked as {{ session.final_play_day_label }}. You can resave to change it.</p>
-                    {% endif %}
-                    {% else %}
-                    <p class="text-sm text-stone-600">
-                        This session has one date option, so it is fixed as {{ session.final_play_day_label }}.
-                        Members vote Yes or No for that day.
-                    </p>
                     {% endif %}
                 </div>
             </div>

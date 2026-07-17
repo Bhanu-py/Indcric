@@ -483,8 +483,17 @@ def session_detail_view(request, session_id):
         for key, label, date, count, pct, voters, accent, primary in _defs:
             poll_choices.append({
                 'key': key, 'label': label, 'date': date, 'count': count,
-                'percentage': pct, 'voters': voters, 'primary': primary, **_accent[accent],
+                'percentage': pct, 'voters': voters, 'primary': primary,
+                'status': '', **_accent[accent],
             })
+        # Once a two-day session's play day is finalized, tag the chosen date
+        # 'finalized' and the other date 'cancelled' (poll stays open regardless).
+        if availability['is_two_day'] and session.final_play_day:
+            for c in poll_choices:
+                if c['key'] == session.final_play_day:
+                    c['status'] = 'finalized'
+                elif c['key'] in ('sat', 'sun'):
+                    c['status'] = 'cancelled'
         user_choice = next((c for c in poll_choices if c['key'] == user_vote), None)
         other_choices = [c for c in poll_choices if c['key'] != user_vote]
 
@@ -793,13 +802,12 @@ def finalize_play_day_view(request, session_id):
     session.final_play_day = choice
     session.save(update_fields=['final_play_day'])
 
-    if hasattr(session, 'poll') and session.poll.is_open:
-        session.poll.is_open = False
-        session.poll.save(update_fields=['is_open'])
+    # Keep the poll open after finalizing so members can still change their
+    # availability response (staff can close it manually if needed).
 
     messages.success(
         request,
-        f"Play day set to {session.final_play_day_label}. Team balance is now open."
+        f"Play day set to {session.final_play_day_label}. Team balance is now open. The poll stays open."
     )
     return redirect('session_detail', session_id=session.id)
 
