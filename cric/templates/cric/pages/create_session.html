@@ -16,44 +16,62 @@
             <p class="text-xs text-stone-400 mt-0.5">Schedule a cricket session for the club</p>
         </div>
         <div class="card-body">
-            <form method="post" id="create-session-form" class="space-y-5">
+            <form method="post" id="create-session-form" class="space-y-5" x-data="{ mode: 'two' }">
                 {% csrf_token %}
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div class="sm:col-span-2">
-                        <label class="form-label" for="name">Session Name</label>
-                        <input class="form-input" id="name" name="name" type="text"
-                               value="Cricket this week"
-                               placeholder="Cricket this week">
-                    </div>
+                <div>
+                    <label class="form-label" for="name">Session Name</label>
+                    <input class="form-input" id="name" name="name" type="text"
+                           value="Cricket this week"
+                           placeholder="Cricket this week">
+                </div>
 
+                {# Date-mode toggle drives which date fields show. #}
+                <div>
+                    <label class="form-label">How many date options?</label>
+                    <div class="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-stone-100 border border-stone-200" role="group">
+                        <button type="button" @click="mode='one'"
+                                :class="mode==='one' ? 'bg-white shadow-sm text-stone-900' : 'text-stone-500'"
+                                class="rounded-xl py-3 text-sm font-bold transition-all">One date</button>
+                        <button type="button" @click="mode='two'"
+                                :class="mode==='two' ? 'bg-white shadow-sm text-stone-900' : 'text-stone-500'"
+                                class="rounded-xl py-3 text-sm font-bold transition-all">Two dates (poll)</button>
+                    </div>
+                    <p class="text-xs text-stone-400 mt-1.5">Set one fixed date, or offer two and let the club vote on their preferred day.</p>
+                </div>
+
+                {# Hidden second date is :disabled so it isn't submitted. #}
+                <div class="grid gap-4" :class="mode==='two' ? 'sm:grid-cols-2' : 'grid-cols-1'">
                     <div>
-                        <label class="form-label" for="date_option_1">Saturday option</label>
+                        <label class="form-label" for="date_option_1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1.5 align-middle"></span>
+                            <span x-text="mode==='two' ? 'Date option 1' : 'Date'"></span>
+                        </label>
                         <input class="form-input" id="date_option_1" name="date_option_1" type="date">
-                        <p class="text-xs text-stone-400 mt-1">Leave empty for a Sunday-only session.</p>
                     </div>
-
-                    <div>
-                        <label class="form-label" for="date_option_2">Sunday option</label>
-                        <input class="form-input" id="date_option_2" name="date_option_2" type="date">
-                        <p class="text-xs text-stone-400 mt-1">Leave empty for a Saturday-only session.</p>
+                    <div x-show="mode === 'two'">
+                        <label class="form-label" for="date_option_2">
+                            <span class="inline-block w-2 h-2 rounded-full bg-sky-500 mr-1.5 align-middle"></span>Date option 2
+                        </label>
+                        <input class="form-input" id="date_option_2" name="date_option_2" type="date" :disabled="mode!=='two'">
                     </div>
+                </div>
 
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
                         <label class="form-label" for="time">Start Time</label>
                         <input class="form-input" id="time" name="time" type="time">
                     </div>
-
                     <div>
                         <label class="form-label" for="duration">Duration (hours)</label>
                         <input class="form-input" id="duration" name="duration" type="number"
-                               placeholder="3" value="3" min="1" max="12">
+                               inputmode="numeric" placeholder="3" value="3" min="1" max="12">
                     </div>
 
                     <div>
                         <label class="form-label" for="cost">Total Cost (&euro;)</label>
                         <input class="form-input" id="cost" name="cost" type="number"
-                               step="0.01" placeholder="80.00" value="80">
+                               inputmode="decimal" step="0.01" placeholder="80.00" value="80">
                     </div>
 
                     <div class="sm:col-span-2">

@@ -28,16 +28,20 @@ def _vote_choice(choice, session=None):
 def _availability_context(session):
     is_two_day = session.has_two_date_options
     single_label = session.single_play_day_label or 'session'
+    # Labels are date-derived, not fixed weekday words — a session can fall on any
+    # two days. The internal choice keys ('sat'/'sun') are unchanged for the DB.
+    date1 = session.date_option_1_label
+    date2 = session.date_option_2_label
     return {
         'is_two_day': is_two_day,
         'single_label': single_label,
-        'question': 'Which day works for you?' if is_two_day else f'Can you play on {single_label}?',
-        'yes_label': 'Saturday' if is_two_day else 'Yes',
-        'no_label': 'Sunday' if is_two_day else 'No',
-        'all_label': 'Both',
+        'question': 'Which date works for you?' if is_two_day else f'Can you play on {single_label}?',
+        'yes_label': date1 if is_two_day else 'Yes',
+        'no_label': date2 if is_two_day else 'No',
+        'all_label': 'Either date',
         'out_label': 'Not available',
-        'summary_label': 'Sat' if is_two_day else 'Yes',
-        'secondary_summary_label': 'Sun' if is_two_day else 'No',
+        'summary_label': date1 if is_two_day else 'Yes',
+        'secondary_summary_label': date2 if is_two_day else 'No',
         'show_both': is_two_day,
         'show_unavailable': is_two_day,
     }
@@ -412,6 +416,9 @@ def session_detail_view(request, session_id):
     team_pool_voters = []
     eligible_voter_users = []
     summary = None
+    poll_choices = []
+    user_choice = None
+    other_choices = []
     if hasattr(session, 'poll'):
         poll = session.poll
         vote = Vote.objects.filter(poll=poll, user=request.user).first()
@@ -437,6 +444,49 @@ def session_detail_view(request, session_id):
             {'user': u, 'team_assigned': False, **_player_skills(u)}
             for u in eligible_voter_users
         ]
+
+        # Single source of truth for the poll UI: one metadata row per choice so
+        # the template renders vote buttons, the voted status, the switch row, and
+        # the results bar from one loop instead of five duplicated branches.
+        # Full literal class strings per accent — Tailwind can't build class names
+        # from fragments, so every combination the template needs is spelled out.
+        _accent = {
+            'emerald': {'dot': 'bg-emerald-500', 'text': 'text-emerald-700', 'bar': 'bg-emerald-500',
+                        'chip': 'bg-emerald-50 border-emerald-100 text-emerald-700', 'solid': 'bg-emerald-500',
+                        'card': 'border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50',
+                        'soft': 'hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700'},
+            'sky':     {'dot': 'bg-sky-500', 'text': 'text-sky-700', 'bar': 'bg-sky-500',
+                        'chip': 'bg-sky-50 border-sky-100 text-sky-700', 'solid': 'bg-sky-500',
+                        'card': 'border-sky-200 hover:border-sky-400 hover:bg-sky-50',
+                        'soft': 'hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700'},
+            'purple':  {'dot': 'bg-purple-500', 'text': 'text-purple-700', 'bar': 'bg-purple-500',
+                        'chip': 'bg-purple-50 border-purple-100 text-purple-700', 'solid': 'bg-purple-500',
+                        'card': 'border-purple-200 hover:border-purple-400 hover:bg-purple-50',
+                        'soft': 'hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700'},
+            'red':     {'dot': 'bg-red-400', 'text': 'text-red-700', 'bar': 'bg-red-400',
+                        'chip': 'bg-red-50 border-red-100 text-red-700', 'solid': 'bg-red-500',
+                        'card': 'border-red-200 hover:border-red-400 hover:bg-red-50',
+                        'soft': 'hover:border-red-300 hover:bg-red-50 hover:text-red-700'},
+        }
+        if availability['is_two_day']:
+            _defs = [
+                ('sat', session.date_option_1_label, session.date_option_1, saturday_votes,    summary['saturday_percentage'],    summary['saturday_voters'],    'emerald', True),
+                ('sun', session.date_option_2_label, session.date_option_2, sunday_votes,      summary['sunday_percentage'],      summary['sunday_voters'],      'sky',     True),
+                ('all', 'Either date',               None,                  both_votes,        summary['both_percentage'],        summary['both_voters'],        'purple',  False),
+                ('out', "Can't make it",             None,                  unavailable_votes, summary['unavailable_percentage'], summary['unavailable_voters'], 'red',     False),
+            ]
+        else:
+            _defs = [
+                ('yes', 'Yes', session.date, yes_votes, summary['saturday_percentage'], summary['saturday_voters'], 'emerald', True),
+                ('no',  'No',  session.date, no_votes,  summary['sunday_percentage'],   summary['sunday_voters'],   'red',     True),
+            ]
+        for key, label, date, count, pct, voters, accent, primary in _defs:
+            poll_choices.append({
+                'key': key, 'label': label, 'date': date, 'count': count,
+                'percentage': pct, 'voters': voters, 'primary': primary, **_accent[accent],
+            })
+        user_choice = next((c for c in poll_choices if c['key'] == user_vote), None)
+        other_choices = [c for c in poll_choices if c['key'] != user_vote]
 
     matches = list(
         session.matches.prefetch_related('teams__players__user', 'innings').order_by('id')
@@ -639,6 +689,9 @@ def session_detail_view(request, session_id):
         'cost_split_count': cost_split_count,
         'cost_split_label': cost_split_label,
         'availability': availability,
+        'poll_choices': poll_choices,
+        'user_choice': user_choice,
+        'other_choices': other_choices,
         'cost_per_person_est': cost_per_person_est,
         'addable_pool': addable_pool,
         'matches': matches,
