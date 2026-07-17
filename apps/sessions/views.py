@@ -794,6 +794,12 @@ def finalize_play_day_view(request, session_id):
         return redirect('session_detail', session_id=session.id)
 
     choice = (request.POST.get('play_day') or '').strip().lower()
+    # Allow un-choosing: clear the finalized day back to "not selected".
+    if choice == 'clear':
+        session.final_play_day = None
+        session.save(update_fields=['final_play_day'])
+        messages.success(request, "Play day cleared. The poll stays open.")
+        return redirect('session_detail', session_id=session.id)
     allowed_choices = {'sat', 'sun'} if session.has_two_date_options else {session.single_play_day}
     if choice not in allowed_choices:
         messages.error(request, 'Please choose one of the available play days.')
