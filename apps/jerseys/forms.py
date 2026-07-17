@@ -61,10 +61,10 @@ class JerseyOrderForm(forms.ModelForm):
         for code, label in JerseyOrder.ITEM_CHOICES:
             self.fields[f'quantity_{code}'] = forms.IntegerField(
                 required=False,
-                min_value=1,
+                min_value=0,
                 widget=forms.NumberInput(attrs={
                     'class': 'form-input text-center',
-                    'min': '1',
+                    'min': '0',
                     'step': '1',
                     'inputmode': 'numeric',
                     'pattern': '[0-9]*',
@@ -81,8 +81,9 @@ class JerseyOrderForm(forms.ModelForm):
         has_pant = any(item_type in JerseyOrder.PANT_ITEMS for item_type in item_types)
         for item_type in item_types:
             field_name = f'quantity_{item_type}'
-            if not cleaned.get(field_name):
-                self.add_error(field_name, 'Enter quantity.')
+            qty = cleaned.get(field_name)
+            if not qty or qty < 1:
+                self.add_error(field_name, 'Enter quantity at least 1.')
         if is_kid:
             if has_shirt:
                 self._require_fields(cleaned, [

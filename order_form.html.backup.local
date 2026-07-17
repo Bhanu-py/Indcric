@@ -958,317 +958,6 @@ ul.errorlist li { display: none !important; }
         </div>
     </div>
 
-    <script>
-function showNotification(message, type = 'error') {
-    // Remove existing notification if any
-    const existingNotif = document.querySelector('.notification-popup');
-    if (existingNotif) {
-        existingNotif.remove();
-    }
-    
-    // Create notification element
-    const notif = document.createElement('div');
-    notif.className = 'notification-popup';
-    notif.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'error' ? '#fee' : '#efe'};
-        border-left: 4px solid ${type === 'error' ? '#d32f2f' : '#10b981'};
-        color: ${type === 'error' ? '#991b1b' : '#186754'};
-        padding: 16px 24px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 9999;
-        font-weight: 600;
-        font-size: 0.95rem;
-        max-width: 400px;
-        animation: slideInRight 0.3s ease;
-    `;
-    notif.textContent = message;
-    document.body.appendChild(notif);
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        notif.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => notif.remove(), 300);
-    }, 5000);
-}
-
-// Add CSS for animations
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-    
-    @keyframes slideOutRight {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-    }
-`;
-document.head.appendChild(style);
-
-function validateSubmit(e) {
-    console.log('validateSubmit called - removing validation, letting Django handle it');
-    // Just let the form submit - Django will validate everything
-    return true;
-}
-
-function incrementQtyProduct(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    const controls = e.target.closest('.product-qty-controls');
-    if (controls) {
-        const input = controls.querySelector('input[type="number"]');
-        if (input) {
-            input.value = Math.max(0, (parseInt(input.value) || 0) + 1);
-            const card = e.target.closest('.product-card');
-            if (card) {
-                const checkbox = card.querySelector('input[type="checkbox"][name="item_types"]');
-                if (checkbox) {
-                    checkbox.checked = true;
-                    updateItemSelection(checkbox);
-                }
-            }
-            input.dispatchEvent(new Event('change'));
-            updateOrderSummary();
-        }
-    }
-}
-
-function decrementQtyProduct(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    const controls = e.target.closest('.product-qty-controls');
-    if (controls) {
-        const input = controls.querySelector('input[type="number"]');
-        if (input) {
-            const newVal = Math.max(0, (parseInt(input.value) || 0) - 1);
-            input.value = newVal;
-            if (newVal === 0) {
-                const card = e.target.closest('.product-card');
-                if (card) {
-                    const checkbox = card.querySelector('input[type="checkbox"][name="item_types"]');
-                    if (checkbox) {
-                        checkbox.checked = false;
-                        updateItemSelection(checkbox);
-                    }
-                }
-            }
-            input.dispatchEvent(new Event('change'));
-            updateOrderSummary();
-        }
-    }
-}
-
-function incrementQty(e) {
-    e.preventDefault();
-    const input = e.target.parentElement.querySelector('input[type="number"]');
-    input.value = Math.max(0, (parseInt(input.value) || 0) + 1);
-    updateOrderSummary();
-}
-
-function decrementQty(e) {
-    e.preventDefault();
-    const input = e.target.parentElement.querySelector('input[type="number"]');
-    input.value = Math.max(0, (parseInt(input.value) || 0) - 1);
-    updateOrderSummary();
-}
-
-function updateItemSelection(checkbox) {
-    const item = checkbox.closest('.product-card');
-    if (item) {
-        if (checkbox.checked) {
-            item.classList.add('checked');
-        } else {
-            item.classList.remove('checked');
-        }
-    }
-    updateOrderSummary();
-}
-
-function updateOrderSummary() {
-    let total = 0;
-    const items = [];
-    let hasSelectedItems = false;
-    
-    document.querySelectorAll('.product-card').forEach(card => {
-        const checkbox = card.querySelector('input[type="checkbox"][name="item_types"]');
-        const quantityInput = card.querySelector('input[type="number"]');
-        
-        if (checkbox && quantityInput) {
-            const qty = parseInt(quantityInput.value) || 0;
-            if (checkbox.checked) {
-                hasSelectedItems = true;
-            }
-            if (qty > 0) {
-                const label = card.querySelector('.product-name').textContent.trim();
-                const priceText = card.querySelector('.product-price').textContent;
-                const price = parseFloat(priceText.replace('₹', '').trim());
-                const itemTotal = price * qty;
-                total += itemTotal;
-                
-                items.push({
-                    name: label,
-                    qty: qty,
-                    price: price,
-                    total: itemTotal
-                });
-            }
-        }
-    });
-
-    const summaryDiv = document.getElementById('orderSummaryItems');
-    if (items.length === 0) {
-        summaryDiv.innerHTML = '<p style="text-align: center; padding: 1rem; color: #a0aec0;">Select items to see summary</p>';
-    } else {
-        summaryDiv.innerHTML = items.map(item => `
-            <div class="order-item">
-                <span class="order-item-name">${item.name}</span>
-                <span class="order-item-qty">×${item.qty}</span>
-                <span class="order-item-price">₹${item.total.toFixed(2)}</span>
-            </div>
-        `).join('');
-    }
-    
-    document.getElementById('totalAmount').textContent = `₹${total.toFixed(2)}`;
-}
-
-function toggleSizeCharts() {
-    const container = document.getElementById('sizeChartsContainer');
-    const icon = document.getElementById('chartToggleIcon');
-    
-    if (container.style.display === 'none') {
-        container.style.display = 'block';
-        icon.style.transform = 'rotate(180deg)';
-    } else {
-        container.style.display = 'none';
-        icon.style.transform = 'rotate(0deg)';
-    }
-}
-
-function toggleShirtChart() {
-    const content = document.getElementById('shirtChartContent');
-    const icon = document.getElementById('shirtChartIcon');
-    
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        icon.style.transform = 'rotate(180deg)';
-    } else {
-        content.style.display = 'none';
-        icon.style.transform = 'rotate(0deg)';
-    }
-}
-
-function togglePantChart() {
-    const content = document.getElementById('pantChartContent');
-    const icon = document.getElementById('pantChartIcon');
-    
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        icon.style.transform = 'rotate(180deg)';
-    } else {
-        content.style.display = 'none';
-        icon.style.transform = 'rotate(0deg)';
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const forPersonSelect = document.querySelector('select[name="for_person"]');
-    if (forPersonSelect) {
-        function updateSizeDisplay() {
-            const selectedValue = forPersonSelect.value;
-            const adultSection = document.getElementById('adultSizeSection');
-            const kidsSection = document.getElementById('kidsSizeSection');
-            
-            if (selectedValue && selectedValue !== 'kid') {
-                adultSection.style.display = 'block';
-                kidsSection.style.display = 'none';
-            } 
-            else if (selectedValue === 'kid') {
-                adultSection.style.display = 'none';
-                kidsSection.style.display = 'block';
-            }
-            else {
-                adultSection.style.display = 'none';
-                kidsSection.style.display = 'none';
-            }
-        }
-        
-        updateSizeDisplay();
-        forPersonSelect.addEventListener('change', updateSizeDisplay);
-    }
-    
-    document.querySelectorAll('input[type="number"]').forEach(input => {
-        input.addEventListener('change', updateOrderSummary);
-        input.addEventListener('input', updateOrderSummary);
-    });
-    
-    document.querySelectorAll('input[type="checkbox"][name="item_types"]').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            updateItemSelection(this);
-        });
-    });
-    
-    const form = document.querySelector('form[method="post"]');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            console.log('=== FORM SUBMISSION START ===');
-            const checkboxes = form.querySelectorAll('input[type="checkbox"][name="item_types"]:checked');
-            console.log('Checked items:', checkboxes.length);
-            checkboxes.forEach(cb => {
-                const code = cb.value;
-                const qty = form.querySelector(`input[name="quantity_${code}"]`)?.value;
-                console.log(`  - ${code}: qty=${qty}`);
-            });
-            
-            const formData = new FormData(form);
-            console.log('Form data (item_types):', formData.getAll('item_types'));
-            console.log('=== FORM SUBMISSION END ===');
-        });
-    }
-    
-    updateOrderSummary();
-    
-    setTimeout(function() {
-        const form = document.querySelector('form[method="post"]');
-        if (!form) return;
-        
-        const errorLists = form.querySelectorAll('ul.errorlist, .errorlist');
-        let errorCount = 0;
-        
-        errorLists.forEach(errorList => {
-            const errorItems = errorList.querySelectorAll('li');
-            errorItems.forEach(errorItem => {
-                const errorText = errorItem.textContent.trim();
-                if (errorText && errorText.length > 0) {
-                    showNotification(errorText, 'error');
-                    errorCount++;
-                }
-            });
-        });
-        
-        if (errorCount > 0) {
-            form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-    }, 100);
-});
-</script>
-
     <!-- Main Layout -->
     <div class="main-layout">
         <!-- Left: Main Content -->
@@ -1279,7 +968,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p class="showcase-subtitle">Choose items and quantities directly</p>
                 
                 <!-- Single Form Wrapper -->
-                <form method="post" action="{% url 'jersey-orders' %}">
+                <form method="post" onsubmit="return validateSubmit(event)">
                     {% csrf_token %}
                     
                     <!-- Browse Section - Items -->
@@ -1328,37 +1017,37 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="form-row">
                                 <div class="form-group">
                                     <label class="form-label">For <span class="required">*</span></label>
-                                    {{ form.for_person }}
-                                    {{ form.for_person.errors }}
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Gender / Fit <span class="required">*</span></label>
-                                    {{ form.gender }}
-                                    {{ form.gender.errors }}
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Wearer Name <span class="required">*</span></label>
-                                    {{ form.wearer_name }}
-                                    {{ form.wearer_name.errors }}
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Jersey Number</label>
-                                    {{ form.jersey_number }}
-                                    <p class="text-sm text-gray mt-1">Optional. Family & kids can reuse numbers.</p>
-                                    {{ form.jersey_number.errors }}
-                                </div>
+                                {{ form.for_person }}
+                                {{ form.for_person.errors }}
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Gender / Fit <span class="required">*</span></label>
+                                {{ form.gender }}
+                                {{ form.gender.errors }}
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Wearer Name <span class="required">*</span></label>
+                                {{ form.wearer_name }}
+                                {{ form.wearer_name.errors }}
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Jersey Number</label>
+                                {{ form.jersey_number }}
+                                <p class="text-sm text-gray mt-1">Optional. Family & kids can reuse numbers.</p>
+                                {{ form.jersey_number.errors }}
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Step 2: Size Selection -->
-                        <div class="form-step">
-                            <div class="form-step-title">
-                                <span class="step-number">2</span>
-                                Choose Size
-                            </div>
-                            
-                            <!-- Adult Size Section -->
-                            <div id="adultSizeSection" style="background: linear-gradient(135deg, #f0f8ff, #e3f2fd); border: 2px solid #b3d9ff; border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; display: none;">
+                    <!-- Step 2: Size Selection -->
+                    <div class="form-step">
+                        <div class="form-step-title">
+                            <span class="step-number">2</span>
+                            Choose Size
+                        </div>
+                        
+                        <!-- Adult Size Section -->
+                        <div id="adultSizeSection" style="background: linear-gradient(135deg, #f0f8ff, #e3f2fd); border: 2px solid #b3d9ff; border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; display: none;">
                             <h4 style="font-weight: 700; color: #003D5C; margin-bottom: 0.8rem; font-size: 0.85rem;">👔 Adult Standard Sizes</h4>
                             <div class="form-row">
                                 <div class="form-group">
@@ -1427,7 +1116,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary" style="margin-top: 1.5rem; width: 100%;">✨ Submit Order</button>
+                        <button type="submit" class="btn btn-primary">✨ Submit Order</button>
+                    </div>
                     {% endif %}
                 </form>
             </div>
@@ -1466,7 +1156,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         {% if ordering_open %}
                         <form method="post" action="{% url 'jersey-order-delete' order.id %}" style="display: inline;">
                             {% csrf_token %}
-                            <input type="hidden" name="next" value="{% url 'jersey-orders' %}">
                             <button type="submit" class="btn btn-danger" style="padding: 0.5rem 0.75rem; font-size: 0.75rem;">🗑️ Remove</button>
                         </form>
                         {% else %}
@@ -1484,4 +1173,426 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+<script>
+function showNotification(message, type = 'error') {
+    // Remove existing notification if any
+    const existingNotif = document.querySelector('.notification-popup');
+    if (existingNotif) {
+        existingNotif.remove();
+    }
+    
+    // Create notification element
+    const notif = document.createElement('div');
+    notif.className = 'notification-popup';
+    notif.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'error' ? '#fee' : '#efe'};
+        border-left: 4px solid ${type === 'error' ? '#d32f2f' : '#10b981'};
+        color: ${type === 'error' ? '#991b1b' : '#186754'};
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 9999;
+        font-weight: 600;
+        font-size: 0.95rem;
+        max-width: 400px;
+        animation: slideInRight 0.3s ease;
+    `;
+    notif.textContent = message;
+    document.body.appendChild(notif);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        notif.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => notif.remove(), 300);
+    }, 5000);
+}
+
+// Add CSS for animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+function validateSubmit(e) {
+    // Sync checkboxes with quantities first
+    document.querySelectorAll('.product-card').forEach(card => {
+        const checkbox = card.querySelector('input[type="checkbox"][name="item_types"]');
+        const quantityInput = card.querySelector('input[type="number"]');
+        
+        if (checkbox && quantityInput) {
+            const qty = parseInt(quantityInput.value) || 0;
+            if (qty > 0) {
+                checkbox.checked = true;
+            } else {
+                checkbox.checked = false;
+            }
+        }
+    });
+    
+    // Now check if at least one item is selected
+    const selectedCheckboxes = document.querySelectorAll('input[type="checkbox"][name="item_types"]:checked');
+    
+    if (selectedCheckboxes.length === 0) {
+        e.preventDefault();
+        showNotification('⚠️ Please select at least one item with quantity > 0', 'error');
+        return false;
+    }
+    
+    // Verify all selected items have quantities
+    for (let checkbox of selectedCheckboxes) {
+        const card = checkbox.closest('.product-card');
+        const quantityInput = card.querySelector('input[type="number"]');
+        const qty = parseInt(quantityInput.value) || 0;
+        
+        if (qty < 1) {
+            e.preventDefault();
+            showNotification('⚠️ All selected items must have quantity at least 1', 'error');
+            return false;
+        }
+    }
+    
+    // Check conditional size requirements based on selected items
+    const genderSelect = document.querySelector('select[name="gender"]');
+    const gender = genderSelect ? genderSelect.value : '';
+    
+    // Determine which sizes are needed based on selected items
+    let needsShirtSize = false;
+    let needsPantSize = false;
+    
+    document.querySelectorAll('input[type="checkbox"][name="item_types"]:checked').forEach(checkbox => {
+        const card = checkbox.closest('.product-card');
+        const itemType = checkbox.value; // This should be 'Shirt', 'Pant', etc.
+        
+        if (itemType && itemType.toLowerCase().includes('shirt')) {
+            needsShirtSize = true;
+        }
+        if (itemType && itemType.toLowerCase().includes('pant')) {
+            needsPantSize = true;
+        }
+    });
+    
+    // Validate shirt size if shirt is selected
+    if (needsShirtSize) {
+        if (gender === 'Adult') {
+            const shirtSize = document.querySelector('select[name="shirt_size"]');
+            if (!shirtSize || shirtSize.value === '' || shirtSize.value === 'None') {
+                e.preventDefault();
+                showNotification('⚠️ Shirt Size is required when Adult Shirt is selected', 'error');
+                return false;
+            }
+        } else if (gender === 'Kids') {
+            const kidShirtChest = document.querySelector('input[name="kid_shirt_full_chest"]');
+            if (!kidShirtChest || kidShirtChest.value.trim() === '') {
+                e.preventDefault();
+                showNotification('⚠️ Kids Shirt Full Chest measurement is required when Kids Shirt is selected', 'error');
+                return false;
+            }
+        }
+    }
+    
+    // Validate pant size if pant is selected
+    if (needsPantSize) {
+        if (gender === 'Adult') {
+            const pantSize = document.querySelector('select[name="pant_size"]');
+            if (!pantSize || pantSize.value === '' || pantSize.value === 'None') {
+                e.preventDefault();
+                showNotification('⚠️ Pant Size is required when Adult Pant is selected', 'error');
+                return false;
+            }
+        } else if (gender === 'Kids') {
+            const kidPantLength = document.querySelector('input[name="kid_pant_length"]');
+            if (!kidPantLength || kidPantLength.value.trim() === '') {
+                e.preventDefault();
+                showNotification('⚠️ Kids Pant Length is required when Kids Pant is selected', 'error');
+                return false;
+            }
+        }
+    }
+    
+    return true;
+}
+
+function incrementQtyProduct(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const controls = e.target.closest('.product-qty-controls');
+    if (controls) {
+        const input = controls.querySelector('input[type="number"]');
+        if (input) {
+            input.value = Math.max(0, (parseInt(input.value) || 0) + 1);
+            // Auto-check the checkbox when quantity is set
+            const card = e.target.closest('.product-card');
+            if (card) {
+                const checkbox = card.querySelector('input[type="checkbox"][name="item_types"]');
+                if (checkbox) {
+                    checkbox.checked = true;
+                    updateItemSelection(checkbox);
+                }
+            }
+            input.dispatchEvent(new Event('change'));
+            updateOrderSummary();
+        }
+    }
+}
+
+function decrementQtyProduct(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const controls = e.target.closest('.product-qty-controls');
+    if (controls) {
+        const input = controls.querySelector('input[type="number"]');
+        if (input) {
+            const newVal = Math.max(0, (parseInt(input.value) || 0) - 1);
+            input.value = newVal;
+            // If quantity is now 0, uncheck the checkbox
+            if (newVal === 0) {
+                const card = e.target.closest('.product-card');
+                if (card) {
+                    const checkbox = card.querySelector('input[type="checkbox"][name="item_types"]');
+                    if (checkbox) {
+                        checkbox.checked = false;
+                        updateItemSelection(checkbox);
+                    }
+                }
+            }
+            input.dispatchEvent(new Event('change'));
+            updateOrderSummary();
+        }
+    }
+}
+
+function incrementQty(e) {
+    e.preventDefault();
+    const input = e.target.parentElement.querySelector('input[type="number"]');
+    input.value = Math.max(0, (parseInt(input.value) || 0) + 1);
+    updateOrderSummary();
+}
+
+function decrementQty(e) {
+    e.preventDefault();
+    const input = e.target.parentElement.querySelector('input[type="number"]');
+    input.value = Math.max(0, (parseInt(input.value) || 0) - 1);
+    updateOrderSummary();
+}
+
+function updateItemSelection(checkbox) {
+    const item = checkbox.closest('.product-card');
+    if (item) {
+        if (checkbox.checked) {
+            item.classList.add('checked');
+        } else {
+            item.classList.remove('checked');
+        }
+    }
+    updateOrderSummary();
+}
+
+function updateOrderSummary() {
+    let total = 0;
+    const items = [];
+    let hasSelectedItems = false;
+    
+    // Get items from product cards (Browse section)
+    document.querySelectorAll('.product-card').forEach(card => {
+        const checkbox = card.querySelector('input[type="checkbox"][name="item_types"]');
+        const quantityInput = card.querySelector('input[type="number"]');
+        
+        if (checkbox && quantityInput) {
+            const qty = parseInt(quantityInput.value) || 0;
+            if (checkbox.checked) {
+                hasSelectedItems = true;
+            }
+            if (qty > 0) {
+                const label = card.querySelector('.product-name').textContent.trim();
+                const priceText = card.querySelector('.product-price').textContent;
+                const price = parseFloat(priceText.replace('₹', '').trim());
+                const itemTotal = price * qty;
+                total += itemTotal;
+                
+                items.push({
+                    name: label,
+                    qty: qty,
+                    price: price,
+                    total: itemTotal
+                });
+            }
+        }
+    });
+
+    const summaryDiv = document.getElementById('orderSummaryItems');
+    if (items.length === 0) {
+        summaryDiv.innerHTML = '<p style="text-align: center; padding: 1rem; color: #a0aec0;">Select items to see summary</p>';
+    } else {
+        summaryDiv.innerHTML = items.map(item => `
+            <div class="order-item">
+                <span class="order-item-name">${item.name}</span>
+                <span class="order-item-qty">×${item.qty}</span>
+                <span class="order-item-price">₹${item.total.toFixed(2)}</span>
+            </div>
+        `).join('');
+    }
+    
+    document.getElementById('totalAmount').textContent = `₹${total.toFixed(2)}`;
+}
+
+// Toggle size charts visibility
+function toggleSizeCharts() {
+    const container = document.getElementById('sizeChartsContainer');
+    const icon = document.getElementById('chartToggleIcon');
+    
+    if (container.style.display === 'none') {
+        container.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        container.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+
+// Toggle Adult Shirt chart visibility
+function toggleShirtChart() {
+    const content = document.getElementById('shirtChartContent');
+    const icon = document.getElementById('shirtChartIcon');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+
+// Toggle Adult Pant chart visibility
+function togglePantChart() {
+    const content = document.getElementById('pantChartContent');
+    const icon = document.getElementById('pantChartIcon');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle "For" selection to show/hide size sections
+    const forPersonSelect = document.querySelector('select[name="for_person"]');
+    if (forPersonSelect) {
+        function updateSizeDisplay() {
+            const selectedValue = forPersonSelect.value;
+            const adultSection = document.getElementById('adultSizeSection');
+            const kidsSection = document.getElementById('kidsSizeSection');
+            
+            // Show Adult section for Self, Family, Guest
+            if (selectedValue && selectedValue !== 'kid') {
+                adultSection.style.display = 'block';
+                kidsSection.style.display = 'none';
+            } 
+            // Show Kids section only for Kid
+            else if (selectedValue === 'kid') {
+                adultSection.style.display = 'none';
+                kidsSection.style.display = 'block';
+            }
+            // Hide both if not selected
+            else {
+                adultSection.style.display = 'none';
+                kidsSection.style.display = 'none';
+            }
+        }
+        
+        // Trigger on page load
+        updateSizeDisplay();
+        
+        // Trigger on change
+        forPersonSelect.addEventListener('change', updateSizeDisplay);
+    }
+    
+    // Monitor all quantity inputs
+    document.querySelectorAll('input[type="number"]').forEach(input => {
+        input.addEventListener('change', updateOrderSummary);
+        input.addEventListener('input', updateOrderSummary);
+    });
+    
+    // Monitor checkboxes
+    document.querySelectorAll('input[type="checkbox"][name="item_types"]').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            updateItemSelection(this);
+        });
+    });
+    
+    // Add form submission debugging
+    const form = document.querySelector('form[method="post"]');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            console.log('=== FORM SUBMISSION START ===');
+            const checkboxes = form.querySelectorAll('input[type="checkbox"][name="item_types"]:checked');
+            console.log('Checked items:', checkboxes.length);
+            checkboxes.forEach(cb => {
+                const code = cb.value;
+                const qty = form.querySelector(`input[name="quantity_${code}"]`)?.value;
+                console.log(`  - ${code}: qty=${qty}`);
+            });
+            
+            const formData = new FormData(form);
+            console.log('Form data (item_types):', formData.getAll('item_types'));
+            console.log('=== FORM SUBMISSION END ===');
+        });
+    }
+    
+    updateOrderSummary();
+    
+    // Handle Django form errors - show them as popups instead of inline
+    setTimeout(function() {
+        const form = document.querySelector('form[method="post"]');
+        if (!form) return;
+        
+        // Find all error messages by looking for ul.errorlist within form-group or form itself
+        const errorLists = form.querySelectorAll('ul.errorlist, .errorlist');
+        let errorCount = 0;
+        
+        errorLists.forEach(errorList => {
+            const errorItems = errorList.querySelectorAll('li');
+            errorItems.forEach(errorItem => {
+                const errorText = errorItem.textContent.trim();
+                if (errorText && errorText.length > 0) {
+                    showNotification(errorText, 'error');
+                    errorCount++;
+                }
+            });
+        });
+        
+        // If we found errors, scroll to the form
+        if (errorCount > 0) {
+            form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }, 100);
+});
+</script>
 {% endblock %}
