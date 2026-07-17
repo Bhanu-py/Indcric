@@ -9,7 +9,7 @@
     {% endif %}
     
     {% if user %}
-    <form method="post" action="{% url 'edit_user' user.id %}">
+    <form method="post" action="{% url 'edit-user' user.id %}">
         {% csrf_token %}
         <h2 class="text-xl font-bold mb-4">Edit User</h2>
         

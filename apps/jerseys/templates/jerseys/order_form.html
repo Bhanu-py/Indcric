@@ -16,27 +16,44 @@
     </div>
 
     <div class="card p-4 mb-5 bg-amber-50 border-amber-100">
-        <p class="text-sm font-semibold text-amber-900">Prices are in Indian rupees (&#8377;) and exclude postal/courier charges.</p>
-        <p class="text-xs text-amber-800 mt-1">Family and kids can reuse a jersey number. The number list is only a reference, not a reservation system.</p>
-        <p class="text-xs font-semibold text-amber-900 mt-2">Ordering status: {{ ordering_status }}</p>
-        {% if ordering_deadline %}
-        <p class="text-sm text-amber-950 mt-2">Order close date: <strong class="font-extrabold">{{ ordering_deadline }}</strong></p>
-        {% endif %}
+        <div class="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+                <p class="text-sm font-semibold text-amber-900">Prices are in Indian rupees (&#8377;) and exclude postal/courier charges.</p>
+                <p class="text-xs text-amber-800 mt-1">Family and kids can reuse a jersey number. The number list is only a reference, not a reservation system.</p>
+            </div>
+            <div class="rounded-xl border px-3 py-2 {% if ordering_open %}border-emerald-200 bg-emerald-50 text-emerald-900{% else %}border-red-200 bg-red-50 text-red-900{% endif %}">
+                <p class="text-[11px] font-extrabold uppercase tracking-wide">Ordering status</p>
+                {% if ordering_deadline %}
+                <p class="text-sm font-semibold mt-1">
+                    {% if ordering_open %}
+                    <span class="font-extrabold text-emerald-700">Open</span>
+                    <span class="text-emerald-800"> — will close on </span>
+                    {% else %}
+                    <span class="font-extrabold text-red-700">Closed</span>
+                    <span class="text-red-800"> — closed on </span>
+                    {% endif %}
+                    <strong class="font-extrabold">{{ ordering_deadline }}</strong>{% if ordering_open %}. Please order before that.{% else %}.{% endif %}
+                </p>
+                {% else %}
+                <p class="text-xs font-semibold mt-1">{{ ordering_status }}</p>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
     <div class="card p-4 mb-5">
         <h2 class="text-sm font-bold text-stone-800">How to choose the right size</h2>
         <p class="text-sm text-stone-500 mt-1">The maker chart uses garment measurements in inches. Compare it with a shirt or pant that already fits well.</p>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
-            <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
+            <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-3 shadow-sm">
                 <p class="text-sm font-bold text-emerald-800">Adult shirt</p>
                 <p class="text-xs text-emerald-700 mt-1">Choose standard shirt size mainly from <b>Full chest</b> and <b>Length</b>. Shoulder is a cross-check.</p>
             </div>
-            <div class="rounded-xl bg-sky-50 border border-sky-100 p-3">
+            <div class="rounded-xl bg-sky-50 border border-sky-200 p-3 shadow-sm">
                 <p class="text-sm font-bold text-sky-800">Adult pant / shorts</p>
                 <p class="text-xs text-sky-700 mt-1">Choose standard pant size mainly from <b>Length</b> and <b>Relaxed waist</b>. Half hip is a cross-check.</p>
             </div>
-            <div class="rounded-xl bg-purple-50 border border-purple-100 p-3">
+            <div class="rounded-xl bg-purple-50 border border-purple-200 p-3 shadow-sm">
                 <p class="text-sm font-bold text-purple-800">Kids</p>
                 <p class="text-xs text-purple-700 mt-1">Measure a well-fitting item and enter the exact inches. The maker can use those measurements directly.</p>
             </div>
@@ -272,8 +289,17 @@
             </div>
 
             <div class="card overflow-hidden">
-                <div class="card-header">
-                    <h2 class="text-sm font-bold text-stone-800">Your order</h2>
+                <div class="card-header flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-sm font-bold text-stone-800">Your order</h2>
+                        <p class="text-xs text-stone-400 mt-1">{{ own_order_quantity }} item{{ own_order_quantity|pluralize }} selected</p>
+                    </div>
+                    {% if own_orders %}
+                    <div class="text-right">
+                        <p class="text-[11px] font-bold uppercase tracking-wide text-stone-400">Cart total</p>
+                        <p class="text-lg font-extrabold text-pitch-700">&#8377;{{ own_order_total }}</p>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="divide-y divide-stone-100">
                     {% for order in own_orders %}
@@ -286,6 +312,7 @@
                         {% if ordering_open %}
                         <form method="post" action="{% url 'jersey-order-delete' order.id %}">
                             {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
                             <button type="submit" class="btn btn-ghost btn-sm text-red-600">Remove</button>
                         </form>
                         {% else %}

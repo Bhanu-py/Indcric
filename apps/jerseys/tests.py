@@ -165,6 +165,75 @@ class JerseyOrderTests(TestCase):
         self.assertContains(resp, '1 shown')
         self.assertContains(resp, '3 items')
 
+    def test_member_page_shows_cart_total(self):
+        JerseyOrder.objects.create(
+            user=self.user,
+            for_person='self',
+            gender='male',
+            wearer_name='Member',
+            item_type='collar_half',
+            size='38',
+            quantity=2,
+            jersey_number='7',
+        )
+        JerseyOrder.objects.create(
+            user=self.user,
+            for_person='self',
+            gender='unisex',
+            wearer_name='Member',
+            item_type='player_cap',
+            size=JerseyOrder.FREE_SIZE,
+            quantity=1,
+            jersey_number='7',
+        )
+
+        resp = self.client.get(reverse('jersey-orders'))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, '3 items selected')
+        self.assertContains(resp, 'Cart total')
+        self.assertContains(resp, '&#8377;1160.00')
+
+    def test_staff_delete_from_member_page_returns_to_member_form(self):
+        staff = User.objects.create_user(username='staff-owner', password='x', is_staff=True)
+        self.client.force_login(staff)
+        order = JerseyOrder.objects.create(
+            user=staff,
+            for_person='self',
+            gender='male',
+            wearer_name='Staff',
+            item_type='collar_half',
+            size='38',
+            quantity=1,
+            jersey_number='17',
+        )
+
+        resp = self.client.post(reverse('jersey-order-delete', args=[order.id]), {
+            'next': reverse('jersey-orders'),
+        })
+
+        self.assertRedirects(resp, reverse('jersey-orders'))
+        self.assertFalse(JerseyOrder.objects.filter(id=order.id).exists())
+
+    def test_staff_delete_without_next_still_returns_to_admin(self):
+        staff = User.objects.create_user(username='staff-admin', password='x', is_staff=True)
+        self.client.force_login(staff)
+        order = JerseyOrder.objects.create(
+            user=staff,
+            for_person='self',
+            gender='male',
+            wearer_name='Staff',
+            item_type='collar_half',
+            size='38',
+            quantity=1,
+            jersey_number='18',
+        )
+
+        resp = self.client.post(reverse('jersey-order-delete', args=[order.id]))
+
+        self.assertRedirects(resp, reverse('jersey-orders-admin'))
+        self.assertFalse(JerseyOrder.objects.filter(id=order.id).exists())
+
     def test_order_page_shows_product_and_size_guides(self):
         resp = self.client.get(reverse('jersey-orders'))
 
@@ -236,12 +305,14 @@ class JerseyOrderTests(TestCase):
         self.client.force_login(self.user)
         page_resp = self.client.get(reverse('jersey-orders'))
 
-        self.assertContains(page_resp, 'Order close date:')
+        self.assertContains(page_resp, 'Open')
+        self.assertContains(page_resp, 'Please order before that.')
         self.assertContains(
             page_resp,
             f'<strong class="font-extrabold">{window.closes_at_label()}</strong>',
             html=True,
         )
+        self.assertNotContains(page_resp, 'Order close date:')
 
     def test_staff_can_export_orders(self):
         staff = User.objects.create_user(username='staff', password='x', is_staff=True)

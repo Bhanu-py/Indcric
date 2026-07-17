@@ -99,7 +99,8 @@ class AvailabilityModeTests(TestCase):
         self.client.force_login(self.staff)
 
     def test_create_session_allows_sunday_only_yes_no_poll(self):
-        sunday = timezone.localdate() + timedelta(days=4)
+        today = timezone.localdate()
+        sunday = today + timedelta(days=(6 - today.weekday()) % 7 or 7)
 
         resp = self.client.post(reverse("create_session"), {
             "name": "",
@@ -117,7 +118,7 @@ class AvailabilityModeTests(TestCase):
         self.assertEqual(session.date_option_2, sunday)
         self.assertEqual(session.date, sunday)
         self.assertEqual(session.final_play_day, "sun")
-        self.assertEqual(session.poll.question, "Can you play on Sunday?")
+        self.assertEqual(session.poll.question, f"Can you play on {session.single_play_day_label}?")
 
     def test_two_day_web_vote_stores_sat_sun_codes(self):
         user = User.objects.create_user(username="voter", password="x")
@@ -205,8 +206,8 @@ class AvailabilityModeTests(TestCase):
         resp = self.client.get(reverse("session_detail", args=[session.id]))
 
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "2 selected")
-        self.assertContains(resp, "1 selected")
+        self.assertContains(resp, "2 Yes")
+        self.assertContains(resp, "1 No")
 
     def test_attendance_defaults_to_final_play_day_voters(self):
         saturday_user = User.objects.create_user(username="sat", password="x")

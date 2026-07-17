@@ -9,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 
@@ -124,10 +125,14 @@ def jersey_orders_view(request):
             )
             return redirect('jersey-orders')
 
-    own_orders = JerseyOrder.objects.filter(user=request.user).order_by('-created_at')
+    own_orders = list(JerseyOrder.objects.filter(user=request.user).order_by('-created_at'))
+    own_order_total = sum((order.line_total for order in own_orders), start=0)
+    own_order_quantity = sum((order.quantity for order in own_orders), start=0)
     context = {
         'form': form,
         'own_orders': own_orders,
+        'own_order_total': own_order_total,
+        'own_order_quantity': own_order_quantity,
         'catalog': _catalog(),
         'item_rows': form.item_rows(),
         'shirt_size_measurements': JerseyOrder.SIZE_MEASUREMENTS,
@@ -144,6 +149,7 @@ def jersey_orders_view(request):
 @jersey_ordering_enabled
 def delete_jersey_order_view(request, order_id):
     order = get_object_or_404(JerseyOrder, id=order_id)
+    next_url = request.POST.get('next') or request.GET.get('next')
     if not request.user.is_staff and order.user_id != request.user.id:
         messages.error(request, "You cannot delete another member's order.")
         return redirect('jersey-orders')
@@ -153,6 +159,12 @@ def delete_jersey_order_view(request, order_id):
     if request.method == 'POST':
         order.delete()
         messages.success(request, 'Order line removed.')
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return redirect(next_url)
     return redirect('jersey-orders-admin' if request.user.is_staff else 'jersey-orders')
 
 
@@ -180,6 +192,7 @@ def jersey_orders_admin_view(request):
         'total_quantity': total_quantity,
         'grand_total': grand_total,
         'taken_numbers': _taken_numbers(),
+        'ordering_open': JerseyOrderWindow.ordering_is_open(),
         'ordering_status': order_window.status_text() if order_window else 'Ordering is open.',
         'ordering_deadline': (
             order_window.closes_at_label()
