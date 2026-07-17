@@ -1279,7 +1279,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p class="showcase-subtitle">Choose items and quantities directly</p>
                 
                 <!-- Single Form Wrapper -->
-                <form method="post" action="{% url 'jersey-orders' %}" onsubmit="return validateSubmit(event)">
+                <form method="post" action="{% url 'jersey-orders' %}">
                     {% csrf_token %}
                     
                     <!-- Browse Section - Items -->
