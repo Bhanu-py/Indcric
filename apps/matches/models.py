@@ -74,6 +74,18 @@ class Match(models.Model):
     man_of_match = models.ForeignKey(
         'Player', on_delete=models.SET_NULL, related_name='+', null=True, blank=True
     )
+    # When ball-by-ball scoring started (first innings) and ended (result
+    # finalized). Null until each event happens; both set server-side.
+    scoring_started_at = models.DateTimeField(null=True, blank=True)
+    scoring_ended_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def scoring_duration_minutes(self):
+        """Whole minutes from scoring start to end, or None if not both set."""
+        if self.scoring_started_at and self.scoring_ended_at:
+            delta = self.scoring_ended_at - self.scoring_started_at
+            return max(0, int(delta.total_seconds() // 60))
+        return None
 
     @property
     def is_completed(self):

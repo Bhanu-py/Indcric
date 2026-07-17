@@ -506,6 +506,14 @@ def session_detail_view(request, session_id):
         completed = len(innings) >= 2 and all(i.is_closed for i in innings)
         match.is_live = bool(innings) and not completed
         match.has_scorecard = match.id in scored_match_ids
+        # #69: overs bowled per team (from its batting innings), shown next to the score.
+        overs_by_team = {}
+        for inn in innings:
+            sc = match_scoring.innings_score(inn)
+            if sc['legal_balls'] or sc['runs']:
+                overs_by_team[inn.batting_team_id] = sc['overs']
+        for team in match.teams.all():
+            team.overs = overs_by_team.get(team.id)
         # Cap holders, tagged on the player chips once the match has a result.
         match.orange_cap_user_id = match.purple_cap_user_id = None
         if completed:
