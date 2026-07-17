@@ -1116,7 +1116,7 @@ ul.errorlist li { display: none !important; }
                         </div>
                     </div>
 
-                        <button type="submit" class="btn btn-primary">✨ Submit Order</button>
+                    <button type="submit" class="btn btn-primary" style="margin-top: 1.5rem; width: 100%;">✨ Submit Order</button>
                     </div>
                     {% endif %}
                 </form>
@@ -1156,6 +1156,7 @@ ul.errorlist li { display: none !important; }
                         {% if ordering_open %}
                         <form method="post" action="{% url 'jersey-order-delete' order.id %}" style="display: inline;">
                             {% csrf_token %}
+                            <input type="hidden" name="next" value="{% url 'jersey-orders' %}">
                             <button type="submit" class="btn btn-danger" style="padding: 0.5rem 0.75rem; font-size: 0.75rem;">🗑️ Remove</button>
                         </form>
                         {% else %}
