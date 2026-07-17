@@ -1239,6 +1239,8 @@ style.textContent = `
 document.head.appendChild(style);
 
 function validateSubmit(e) {
+    console.log('validateSubmit called');
+    
     // Sync checkboxes with quantities first
     document.querySelectorAll('.product-card').forEach(card => {
         const checkbox = card.querySelector('input[type="checkbox"][name="item_types"]');
@@ -1256,10 +1258,12 @@ function validateSubmit(e) {
     
     // Now check if at least one item is selected
     const selectedCheckboxes = document.querySelectorAll('input[type="checkbox"][name="item_types"]:checked');
+    console.log('Selected checkboxes:', selectedCheckboxes.length);
     
     if (selectedCheckboxes.length === 0) {
         e.preventDefault();
         showNotification('⚠️ Please select at least one item with quantity > 0', 'error');
+        console.log('No items selected, preventing submission');
         return false;
     }
     
@@ -1272,6 +1276,7 @@ function validateSubmit(e) {
         if (qty < 1) {
             e.preventDefault();
             showNotification('⚠️ All selected items must have quantity at least 1', 'error');
+            console.log('Item quantity is 0, preventing submission');
             return false;
         }
     }
@@ -1279,14 +1284,15 @@ function validateSubmit(e) {
     // Check conditional size requirements based on selected items
     const genderSelect = document.querySelector('select[name="gender"]');
     const gender = genderSelect ? genderSelect.value : '';
+    console.log('Gender selected:', gender);
     
     // Determine which sizes are needed based on selected items
     let needsShirtSize = false;
     let needsPantSize = false;
     
     document.querySelectorAll('input[type="checkbox"][name="item_types"]:checked').forEach(checkbox => {
-        const card = checkbox.closest('.product-card');
-        const itemType = checkbox.value; // This should be 'Shirt', 'Pant', etc.
+        const itemType = checkbox.value;
+        console.log('Checking item type:', itemType);
         
         if (itemType && itemType.toLowerCase().includes('shirt')) {
             needsShirtSize = true;
@@ -1296,6 +1302,8 @@ function validateSubmit(e) {
         }
     });
     
+    console.log('Needs shirt size:', needsShirtSize, 'Needs pant size:', needsPantSize);
+    
     // Validate shirt size if shirt is selected
     if (needsShirtSize) {
         if (gender === 'Adult') {
@@ -1303,6 +1311,7 @@ function validateSubmit(e) {
             if (!shirtSize || shirtSize.value === '' || shirtSize.value === 'None') {
                 e.preventDefault();
                 showNotification('⚠️ Shirt Size is required when Adult Shirt is selected', 'error');
+                console.log('Adult shirt size not selected, preventing submission');
                 return false;
             }
         } else if (gender === 'Kids') {
@@ -1310,6 +1319,7 @@ function validateSubmit(e) {
             if (!kidShirtChest || kidShirtChest.value.trim() === '') {
                 e.preventDefault();
                 showNotification('⚠️ Kids Shirt Full Chest measurement is required when Kids Shirt is selected', 'error');
+                console.log('Kids shirt measurement not filled, preventing submission');
                 return false;
             }
         }
@@ -1322,6 +1332,7 @@ function validateSubmit(e) {
             if (!pantSize || pantSize.value === '' || pantSize.value === 'None') {
                 e.preventDefault();
                 showNotification('⚠️ Pant Size is required when Adult Pant is selected', 'error');
+                console.log('Adult pant size not selected, preventing submission');
                 return false;
             }
         } else if (gender === 'Kids') {
@@ -1329,11 +1340,13 @@ function validateSubmit(e) {
             if (!kidPantLength || kidPantLength.value.trim() === '') {
                 e.preventDefault();
                 showNotification('⚠️ Kids Pant Length is required when Kids Pant is selected', 'error');
+                console.log('Kids pant length not filled, preventing submission');
                 return false;
             }
         }
     }
     
+    console.log('Validation passed, allowing submission');
     return true;
 }
 
