@@ -16,6 +16,7 @@ Cricket conventions used here:
   * Balls faced by a batter exclude wides (no-balls count as faced).
 """
 from django.db import transaction
+from django.utils import timezone
 
 from .models import Innings, Delivery, Match, Player, Retirement
 
@@ -591,8 +592,13 @@ def undo_last(innings):
     return last
 
 
+@transaction.atomic
 def start_innings(match, *, number, batting_team, bowling_team, striker, non_striker, bowler):
     """Create an innings and set the opening working-state."""
+    # Stamp the match's scoring start once, when the first innings begins.
+    if match.scoring_started_at is None:
+        match.scoring_started_at = timezone.now()
+        match.save(update_fields=['scoring_started_at'])
     return Innings.objects.create(
         match=match, number=number,
         batting_team=batting_team, bowling_team=bowling_team,
@@ -672,7 +678,10 @@ def finalize_match_result(match):
     scored.sort(key=lambda t: t[1], reverse=True)
     winner = scored[0][0] if scored[0][1] > scored[1][1] else None
     match.winner = winner
-    match.save(update_fields=['winner'])
+    # Stamp scoring end once the result is finalized.
+    if match.scoring_ended_at is None:
+        match.scoring_ended_at = timezone.now()
+    match.save(update_fields=['winner', 'scoring_ended_at'])
     from .rating_engine import compute_match_ratings
     compute_match_ratings(match)
     return winner

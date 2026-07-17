@@ -15,6 +15,9 @@
         Back to Dashboard
     </a>
 
+    <!-- ── Messages ── -->
+    {% include "includes/messages.html" %}
+
     <!-- ═══════════════════════════════════
          HERO CARD — gradient strip + date tile + name + meta
     ═══════════════════════════════════ -->
@@ -194,7 +197,7 @@
                 {% with cost_str=session.cost|stringformat:"s" %}
                     {% include "_components/stat_column.html" with dot="stone" label="Venue fee" value="€"|add:cost_str first=True %}
                 {% endwith %}
-                {% include "_components/stat_column.html" with dot="sky" label="Available" value=eligible_vote_count %}
+                {% include "_components/stat_column.html" with dot="sky" label=cost_split_label value=cost_split_count %}
                 {% if session.cost_per_person != None %}
                     {% with pp_str=session.cost_per_person|floatformat:2 %}
                         {% include "_components/stat_column.html" with dot="pitch" label="Per player" value="€"|add:pp_str %}
@@ -228,7 +231,7 @@
             </div>
             <div class="flex items-center gap-2">
                 {% if attendance_roster %}
-                <span class="font-mono text-[10px] text-stone-500 uppercase tracking-[0.08em]">{{ attendance_present_ids|length }}/{{ attendance_roster|length }} present</span>
+                <span class="font-mono text-[10px] text-stone-500 uppercase tracking-[0.08em]">{{ attendance_present_ids|length }}/{{ attendance_roster|length }} present · {{ attendance_chargeable_ids|length }} charged</span>
                 {% endif %}
                 {% if session.attendance_confirmed %}
                     {% include "_components/badge.html" with variant="green" label="Confirmed" %}
@@ -239,9 +242,42 @@
         </button>
         <div x-show="expanded" x-cloak>
 
-        {% if not attendance_roster %}
+        {% if user.is_staff and addable_users %}
+        <div x-data="{ open: false }" class="px-5 py-3 border-b border-stone-100 bg-stone-50">
+            <button type="button" @click="open = !open"
+                    class="w-full flex items-center justify-between gap-2 text-sm font-medium text-pitch-700 hover:text-pitch-900 py-2 min-h-[44px]"
+                    :aria-expanded="open">
+                <span class="inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    Add walk-in player
+                </span>
+                <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <form x-show="open" x-cloak method="post" action="{% url 'session_add_attendee' session.id %}" class="mt-2 flex flex-col sm:flex-row gap-2">
+                {% csrf_token %}
+                <select name="user_id" required class="form-select flex-1">
+                    <option value="">Select a player…</option>
+                    {% for u in addable_users %}
+                    <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }} (@{{ u.username }})</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary btn-md sm:w-auto">
+                    Add to roster
+                </button>
+            </form>
+            <p x-show="open" x-cloak class="font-mono text-[10px] text-stone-500 uppercase tracking-[0.08em] mt-2">
+                For players who showed up without voting. Save attendance afterwards to apply the cost split.
+            </p>
+        </div>
+        {% endif %}
+
+        {% if attendance_waiting_for_play_day %}
         <div class="card-body">
-            <p class="text-sm text-stone-500">No one voted Yes on the poll, so there's no roster to mark. Add players via the Team balance section above.</p>
+            <p class="text-sm text-stone-500">Choose the actual play day first. Attendance and cost split are calculated only after the play date is confirmed.</p>
+        </div>
+        {% elif not attendance_roster %}
+        <div class="card-body">
+            <p class="text-sm text-stone-500">No scorecard players or eligible voters yet, so there's no roster to mark.{% if user.is_staff and addable_users %} Add walk-in players above.{% endif %}</p>
         </div>
         {% else %}
         <form method="post" action="{% url 'session_attendance_detail' session.id %}">
@@ -249,10 +285,10 @@
 
             <div class="px-5 py-3 border-b border-stone-100 flex items-center justify-between">
                 <span class="font-mono text-[10px] font-medium text-stone-500 uppercase tracking-[0.08em]">
-                    {{ attendance_present_ids|length }} of {{ attendance_roster|length }} present
+                    {{ attendance_present_ids|length }} of {{ attendance_roster|length }} present · {{ attendance_chargeable_ids|length }} in cost split
                 </span>
                 {% if user.is_staff and not session.attendance_confirmed %}
-                <span class="font-mono text-[10px] text-stone-400 uppercase tracking-[0.08em]">Tick those who showed up</span>
+                <span class="font-mono text-[10px] text-stone-400 uppercase tracking-[0.08em]">Tick present and untick charge for guests</span>
                 {% endif %}
             </div>
 
@@ -280,8 +316,21 @@
                     <div class="flex items-center gap-2.5 shrink-0">
                         {% if sp.id in attendance_present_ids %}
                             {% include "_components/badge.html" with variant="green" label="Present" %}
+                            {% if sp.id in attendance_chargeable_ids %}
+                                {% include "_components/badge.html" with variant="sky" label="Charged" %}
+                            {% else %}
+                                {% include "_components/badge.html" with variant="stone" label="No charge" %}
+                            {% endif %}
                         {% else %}
                             {% include "_components/badge.html" with variant="stone" label="Absent" %}
+                        {% endif %}
+                        {% if user.is_staff %}
+                        <span class="inline-flex items-center gap-1 font-mono text-[10px] text-stone-500 uppercase tracking-[0.08em]" onclick="event.stopPropagation()">
+                            <input type="checkbox" name="chargeable" value="{{ sp.id }}"
+                                   class="w-4 h-4 rounded border-stone-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                                   {% if sp.id in attendance_chargeable_ids %}checked{% endif %}>
+                            Charge
+                        </span>
                         {% endif %}
                         <input type="checkbox" name="present" value="{{ sp.id }}" id="att_sp_{{ sp.id }}"
                                class="w-4 h-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500 cursor-pointer"
@@ -296,7 +345,7 @@
             <div class="px-5 py-4 border-t border-stone-100 flex items-center justify-between gap-3 flex-wrap bg-stone-50">
                 {% if user.is_staff %}
                 <p class="font-mono text-[10px] text-stone-500 uppercase tracking-[0.08em]">
-                    Saving revises the per-player split and syncs payment records.
+                    Saving revises the split from charged players only and syncs payment records.
                 </p>
                 {% endif %}
                 <div class="flex items-center gap-2 flex-wrap {% if not user.is_staff %}w-full{% endif %}">
@@ -334,37 +383,21 @@
 
             <!-- Poll card -->
             {% if session.poll %}
-            <div class="card overflow-hidden" x-data="{ expanded: {% if user_vote %}false{% else %}true{% endif %} }">
-                {% if user_vote %}
-                {# Voted → header doubles as the summary + a toggle for the controls/voters below. #}
+            <div class="card overflow-hidden" x-data="{ expanded: {% if session.poll.is_open and not is_past %}true{% else %}false{% endif %} }">
+
+                {# Header — after voting it doubles as a summary strip + collapse toggle. #}
+                {% if user_choice %}
                 <button type="button" @click="expanded = !expanded"
                         class="card-header w-full flex items-center justify-between gap-2 text-left">
                     <div class="flex items-center gap-2 min-w-0">
                         <h2 class="text-sm font-bold text-stone-800 shrink-0">Availability</h2>
-                        {% if user_vote == 'yes' %}
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-semibold shrink-0">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                            {{ availability.yes_label }}
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border {{ user_choice.chip }} text-[11px] font-semibold shrink-0">
+                            <span class="w-1.5 h-1.5 rounded-full {{ user_choice.dot }}"></span>
+                            {{ user_choice.label }}
                         </span>
-                        {% else %}
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full {% if user_vote == 'out' %}bg-red-100 text-red-600{% elif availability.show_both %}bg-sky-100 text-sky-700{% else %}bg-red-100 text-red-600{% endif %} text-[11px] font-semibold shrink-0">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                {% if availability.show_both and user_vote != 'out' %}
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
-                                {% else %}
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/>
-                                {% endif %}
-                            </svg>
-                            {% if user_vote == 'no' %}{{ availability.no_label }}{% elif user_vote == 'all' %}{{ availability.all_label }}{% elif user_vote == 'out' %}{{ availability.out_label }}{% else %}Out{% endif %}
-                        </span>
-                        {% endif %}
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
-                        {% if availability.show_both %}
-                        <span class="text-xs text-stone-400"><b class="text-emerald-600">{{ saturday_votes }}</b> Sat · {{ sunday_votes }} Sun · {{ both_votes }} Both · {{ unavailable_votes }} Out</span>
-                        {% else %}
-                        <span class="text-xs text-stone-400"><b class="text-emerald-600">{{ yes_votes }}</b> Yes · {{ no_votes }} No</span>
-                        {% endif %}
+                        <span class="text-xs text-stone-400">{{ total_votes }} responded</span>
                         <svg class="w-4 h-4 text-stone-400 transition-transform" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     </div>
                 </button>
@@ -391,266 +424,75 @@
                 <div class="card-body" x-show="expanded" x-cloak>
 
                     {% if session.poll.is_open and not user_vote and not is_past %}
-                    <!-- ── Not voted yet ── -->
+                    {# ── Cast a vote — date options lead; Either/Not available are secondary ── #}
                     <p class="text-sm font-medium text-stone-700 mb-4">{{ availability.question }}</p>
                     <form method="POST" action="{% url 'vote_session' session.poll.id %}">
                         {% csrf_token %}
-                        <div class="grid grid-cols-1 {% if availability.show_both %}sm:grid-cols-4{% else %}sm:grid-cols-2{% endif %} gap-3">
-                            <button type="submit" name="choice" value="yes"
-                                    class="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl
-                                           bg-emerald-50 border-2 border-emerald-200 text-emerald-700 font-bold
-                                           hover:bg-emerald-100 hover:border-emerald-400 active:scale-95 transition-all">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                </svg>
-                                <span class="text-sm">{{ availability.yes_label }}</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {% for c in poll_choices %}{% if c.primary %}
+                            <button type="submit" name="choice" value="{{ c.key }}"
+                                    class="flex flex-col items-start gap-1 p-3.5 rounded-2xl border-2 bg-white active:scale-[.98] transition-all text-left {{ c.card }}">
+                                <span class="flex items-center gap-2 text-sm font-bold text-stone-800">
+                                    <span class="w-2 h-2 rounded-full {{ c.dot }}"></span>{{ c.label }}
+                                    {% if c.status == 'finalized' %}<span class="rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Finalized</span>{% elif c.status == 'cancelled' %}<span class="rounded-full bg-stone-200 text-stone-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Cancelled</span>{% endif %}
+                                </span>
+                                {% if session.time %}<span class="text-xs text-stone-400">{{ session.time|time:"H:i" }} start</span>{% endif %}
+                                <span class="text-xs font-semibold {{ c.text }}">{{ c.count }} going</span>
                             </button>
-                            <button type="submit" name="choice" value="no"
-                                    class="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl
-                                           {% if availability.show_both %}bg-sky-50 border-2 border-sky-200 text-sky-700 hover:bg-sky-100 hover:border-sky-400{% else %}bg-red-50 border-2 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-400{% endif %} font-bold
-                                           active:scale-95 transition-all">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    {% if availability.show_both %}
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                    {% else %}
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
-                                    {% endif %}
-                                </svg>
-                                <span class="text-sm">{{ availability.no_label }}</span>
-                            </button>
-                            {% if availability.show_both %}
-                            <button type="submit" name="choice" value="all"
-                                    class="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl
-                                           bg-purple-50 border-2 border-purple-200 text-purple-700 font-bold
-                                           hover:bg-purple-100 hover:border-purple-400 active:scale-95 transition-all">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                </svg>
-                                <span class="text-sm">Both</span>
-                            </button>
-                            <button type="submit" name="choice" value="out"
-                                    class="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl
-                                           bg-red-50 border-2 border-red-200 text-red-700 font-bold
-                                           hover:bg-red-100 hover:border-red-400 active:scale-95 transition-all">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                                <span class="text-sm">Not available</span>
-                            </button>
-                            {% endif %}
+                            {% endif %}{% endfor %}
                         </div>
+                        {% if availability.show_both %}
+                        <div class="flex gap-2.5 mt-2.5">
+                            {% for c in poll_choices %}{% if not c.primary %}
+                            <button type="submit" name="choice" value="{{ c.key }}"
+                                    class="flex-1 rounded-xl border-[1.5px] border-stone-200 bg-white py-2.5 text-center text-sm font-bold text-stone-500 transition-all {{ c.soft }}">
+                                {{ c.label }}
+                            </button>
+                            {% endif %}{% endfor %}
+                        </div>
+                        {% endif %}
                     </form>
 
-                    {% elif user_vote == 'yes' %}
-                    <!-- ── Voted Saturday ── -->
-                    <div class="bg-emerald-50 rounded-xl border border-emerald-200 mb-4 overflow-hidden">
-                        <div class="flex items-center gap-3 p-3.5">
-                            <div class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                    {% elif user_choice %}
+                    {# ── Voted — one status strip + one switch row (data-driven, no per-choice branches) ── #}
+                    <div class="rounded-2xl border p-3.5 {{ user_choice.chip }}">
+                        <div class="flex items-center gap-3">
+                            <span class="w-9 h-9 rounded-full {{ user_choice.solid }} flex items-center justify-center shrink-0">
                                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-sm font-bold text-emerald-800">{% if availability.show_both %}You're on Saturday!{% else %}You're marked Yes{% endif %}</p>
-                                <p class="text-xs text-emerald-600">Your availability response is saved</p>
-                            </div>
-                        </div>
-                        {% if session.poll.is_open and not is_past %}
-                        <div class="flex items-center gap-4 px-3.5 py-2 border-t border-emerald-200 bg-emerald-100/50">
-                            <form method="POST" action="{% url 'vote_session' session.poll.id %}">
-                                {% csrf_token %}
-                                <button type="submit" name="choice" value="no"
-                                        class="text-xs text-emerald-700 hover:text-red-600 font-medium transition-colors">
-                                    Switch to {{ availability.no_label }}
-                                </button>
-                            </form>
-                            {% if availability.show_both %}
-                            <span class="text-emerald-300">·</span>
-                            <form method="POST" action="{% url 'vote_session' session.poll.id %}">
-                                {% csrf_token %}
-                                <button type="submit" name="choice" value="all"
-                                        class="text-xs text-emerald-700 hover:text-purple-600 font-medium transition-colors">
-                                    Switch to Both
-                                </button>
-                            </form>
-                            {% endif %}
-                            {% if availability.show_both %}
-                            <span class="text-emerald-300">·</span>
-                            <form method="POST" action="{% url 'vote_session' session.poll.id %}">
-                                {% csrf_token %}
-                                <button type="submit" name="choice" value="out"
-                                        class="text-xs text-emerald-700 hover:text-red-600 font-medium transition-colors">
-                                    Switch to Not available
-                                </button>
-                            </form>
-                            {% endif %}
-                            <span class="text-emerald-300">·</span>
-                            <form method="POST" action="{% url 'vote_session' session.poll.id %}">
-                                {% csrf_token %}
-                                <button type="submit" name="choice" value="withdraw"
-                                        class="text-xs text-emerald-600/60 hover:text-red-500 transition-colors">
-                                    Remove response
-                                </button>
-                            </form>
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    {% elif user_vote == 'no' %}
-                    <!-- ── Voted Sunday ── -->
-                    <div class="{% if availability.show_both %}bg-sky-50 border-sky-200{% else %}bg-red-50 border-red-200{% endif %} rounded-xl border mb-4 overflow-hidden">
-                        <div class="flex items-center gap-3 p-3.5">
-                            <div class="w-8 h-8 rounded-full {% if availability.show_both %}bg-sky-500{% else %}bg-red-500{% endif %} flex items-center justify-center shrink-0">
-                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    {% if availability.show_both %}
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                    {% else %}
+                                    {% if user_choice.key == 'out' or user_choice.key == 'no' %}
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                                    {% else %}
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                                     {% endif %}
                                 </svg>
-                            </div>
-                            <div>
-                                <p class="text-sm font-bold {% if availability.show_both %}text-sky-800{% else %}text-red-800{% endif %}">{% if availability.show_both %}You're on Sunday!{% else %}You're marked No{% endif %}</p>
-                                <p class="text-xs {% if availability.show_both %}text-sky-600{% else %}text-red-600{% endif %}">Your availability response is saved</p>
-                            </div>
-                        </div>
-                        {% if session.poll.is_open and not is_past %}
-                        <div class="flex items-center gap-4 px-3.5 py-2 border-t {% if availability.show_both %}border-sky-200 bg-sky-100/50{% else %}border-red-200 bg-red-100/50{% endif %}">
-                            <form method="POST" action="{% url 'vote_session' session.poll.id %}">
-                                {% csrf_token %}
-                                <button type="submit" name="choice" value="yes"
-                                        class="text-xs {% if availability.show_both %}text-sky-700{% else %}text-red-700{% endif %} hover:text-emerald-600 font-medium transition-colors">
-                                    Switch to {{ availability.yes_label }}
-                                </button>
-                            </form>
-                            {% if availability.show_both %}
-                            <span class="text-sky-300">·</span>
-                            <form method="POST" action="{% url 'vote_session' session.poll.id %}">
-                                {% csrf_token %}
-                                <button type="submit" name="choice" value="all"
-                                        class="text-xs text-sky-700 hover:text-purple-600 font-medium transition-colors">
-                                    Switch to Both
-                                </button>
-                            </form>
-                            {% endif %}
-                            {% if availability.show_both %}
-                            <span class="text-sky-300">·</span>
-                            <form method="POST" action="{% url 'vote_session' session.poll.id %}">
-                                {% csrf_token %}
-                                <button type="submit" name="choice" value="out"
-                                        class="text-xs text-sky-700 hover:text-red-600 font-medium transition-colors">
-                                    Switch to Not available
-                                </button>
-                            </form>
-                            {% endif %}
-                            <span class="text-sky-300">·</span>
-                            <form method="POST" action="{% url 'vote_session' session.poll.id %}">
-                                {% csrf_token %}
-                                <button type="submit" name="choice" value="withdraw"
-                                        class="text-xs text-sky-600/60 hover:text-sky-500 transition-colors">
-                                    Remove response
-                                </button>
-                            </form>
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    {% elif user_vote == 'all' %}
-                    <!-- ── Voted both ── -->
-                    <div class="bg-purple-50 rounded-xl border border-purple-200 mb-4 overflow-hidden">
-                        <div class="flex items-center gap-3 p-3.5">
-                            <div class="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center shrink-0">
-                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-sm font-bold text-purple-800">You're available both days!</p>
-                                <p class="text-xs text-purple-600">Your date preference is saved</p>
+                            </span>
+                            <div class="min-w-0">
+                                <p class="text-sm font-bold {{ user_choice.text }}">
+                                    {% if user_choice.key == 'yes' %}You're in!
+                                    {% elif user_choice.key == 'all' %}You're free either date
+                                    {% elif user_choice.key == 'no' %}You said you can't play
+                                    {% elif user_choice.key == 'out' %}You're marked unavailable
+                                    {% else %}You're in for {{ user_choice.label }}{% endif %}
+                                </p>
+                                <p class="text-xs text-stone-500">{% if session.poll.is_open and not is_past %}Tap a chip below to change your response{% else %}Your response is saved{% endif %}</p>
                             </div>
                         </div>
                         {% if session.poll.is_open and not is_past %}
-                        <div class="flex items-center gap-4 px-3.5 py-2 border-t border-purple-200 bg-purple-100/50">
+                        <div class="flex flex-wrap gap-2 mt-3">
+                            {% for c in other_choices %}
                             <form method="POST" action="{% url 'vote_session' session.poll.id %}">
                                 {% csrf_token %}
-                                <button type="submit" name="choice" value="yes"
-                                        class="text-xs text-purple-700 hover:text-emerald-600 font-medium transition-colors">
-                                    Switch to Saturday
+                                <button type="submit" name="choice" value="{{ c.key }}"
+                                        class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 transition-colors {{ c.soft }}">
+                                    <span class="w-1.5 h-1.5 rounded-full {{ c.dot }}"></span>{{ c.label }}
                                 </button>
                             </form>
-                            <span class="text-purple-300">·</span>
-                            <form method="POST" action="{% url 'vote_session' session.poll.id %}">
-                                {% csrf_token %}
-                                <button type="submit" name="choice" value="no"
-                                        class="text-xs text-purple-700 hover:text-sky-600 font-medium transition-colors">
-                                    Switch to Sunday
-                                </button>
-                            </form>
-                            <span class="text-purple-300">·</span>
-                            <form method="POST" action="{% url 'vote_session' session.poll.id %}">
-                                {% csrf_token %}
-                                <button type="submit" name="choice" value="out"
-                                        class="text-xs text-purple-700 hover:text-red-600 font-medium transition-colors">
-                                    Switch to Not available
-                                </button>
-                            </form>
-                            <span class="text-purple-300">·</span>
+                            {% endfor %}
                             <form method="POST" action="{% url 'vote_session' session.poll.id %}">
                                 {% csrf_token %}
                                 <button type="submit" name="choice" value="withdraw"
-                                        class="text-xs text-purple-600/60 hover:text-purple-500 transition-colors">
-                                    Remove response
-                                </button>
-                            </form>
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    {% elif user_vote == 'out' and availability.show_both %}
-                    <!-- ── Not available this week ── -->
-                    <div class="bg-red-50 rounded-xl border border-red-200 mb-4 overflow-hidden">
-                        <div class="flex items-center gap-3 p-3.5">
-                            <div class="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center shrink-0">
-                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-sm font-bold text-red-800">You're not available this week</p>
-                                <p class="text-xs text-red-600">Your availability response is saved</p>
-                            </div>
-                        </div>
-                        {% if session.poll.is_open and not is_past %}
-                        <div class="flex items-center gap-4 px-3.5 py-2 border-t border-red-200 bg-red-100/50">
-                            <form method="POST" action="{% url 'vote_session' session.poll.id %}">
-                                {% csrf_token %}
-                                <button type="submit" name="choice" value="yes"
-                                        class="text-xs text-red-700 hover:text-emerald-600 font-medium transition-colors">
-                                    Switch to Saturday
-                                </button>
-                            </form>
-                            <span class="text-red-300">·</span>
-                            <form method="POST" action="{% url 'vote_session' session.poll.id %}">
-                                {% csrf_token %}
-                                <button type="submit" name="choice" value="no"
-                                        class="text-xs text-red-700 hover:text-sky-600 font-medium transition-colors">
-                                    Switch to Sunday
-                                </button>
-                            </form>
-                            <span class="text-red-300">·</span>
-                            <form method="POST" action="{% url 'vote_session' session.poll.id %}">
-                                {% csrf_token %}
-                                <button type="submit" name="choice" value="all"
-                                        class="text-xs text-red-700 hover:text-purple-600 font-medium transition-colors">
-                                    Switch to Both
-                                </button>
-                            </form>
-                            <span class="text-red-300">·</span>
-                            <form method="POST" action="{% url 'vote_session' session.poll.id %}">
-                                {% csrf_token %}
-                                <button type="submit" name="choice" value="withdraw"
-                                        class="text-xs text-red-600/60 hover:text-red-500 transition-colors">
-                                    Remove response
+                                        class="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-400 transition-colors hover:text-red-500 hover:border-red-200">
+                                    Remove
                                 </button>
                             </form>
                         </div>
@@ -658,103 +500,45 @@
                     </div>
                     {% endif %}
 
-                    <!-- Vote count summary — stays expanded while the poll is open so the squad is always visible -->
-                    <div x-data="{ open: {% if session.poll.is_open and not is_past %}true{% else %}false{% endif %} }" class="{% if session.poll.is_open and not user_vote %}mt-5{% endif %}">
-                        <button type="button" @click="open = !open" class="w-full text-left">
-                            <div class="flex items-center justify-between mb-2">
-                                {% if availability.show_both %}
-                                <div class="flex items-center gap-1.5">
-                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                    <span class="text-xs font-semibold text-stone-700">{{ saturday_votes }} Saturday</span>
-                                </div>
-                                <span class="text-xs text-stone-400">{{ total_votes }} responded · <span x-text="open ? 'tap to hide' : 'tap to see'"></span></span>
-                                <div class="flex items-center gap-1.5">
-                                    <span class="text-xs font-semibold text-stone-400">{{ sunday_votes }} Sunday · {{ both_votes }} Both · {{ unavailable_votes }} Out</span>
-                                    <span class="w-2 h-2 rounded-full bg-red-300"></span>
-                                </div>
-                                {% else %}
-                                <div class="flex items-center gap-1.5">
-                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                    <span class="text-xs font-semibold text-stone-700">{{ yes_votes }} Yes</span>
-                                </div>
-                                <span class="text-xs text-stone-400">{{ total_votes }} responded · <span x-text="open ? 'tap to hide' : 'tap to see'"></span></span>
-                                <div class="flex items-center gap-1.5">
-                                    <span class="text-xs font-semibold text-stone-400">{{ no_votes }} No</span>
-                                    <span class="w-2 h-2 rounded-full bg-red-300"></span>
-                                </div>
-                                {% endif %}
+                    {# ── Results — one stacked bar + legend, tap to reveal voters ── #}
+                    <div x-data="{ open: {% if session.poll.is_open and not is_past %}true{% else %}false{% endif %} }" class="{% if session.poll.is_open and not user_vote %}mt-5{% else %}mt-4{% endif %}">
+                        <button type="button" @click="open = !open" class="w-full rounded-2xl bg-stone-50/80 p-3 text-left ring-1 ring-stone-100 transition-colors hover:bg-stone-50">
+                            <div class="flex items-center justify-between gap-3 mb-2.5">
+                                <span class="text-xs font-bold uppercase tracking-wide text-stone-500">Responses</span>
+                                <span class="text-xs text-stone-400">{{ total_votes }} responded &middot; <span x-text="open ? 'tap to hide' : 'tap to see'"></span></span>
                             </div>
-                            <div class="vote-bar h-2.5 rounded-full flex">
-                                {% if total_votes > 0 %}
-                                    {% if availability.show_both %}
-                                    <div class="h-full bg-emerald-500 transition-all duration-500" style="width:{{ yes_percentage }}%"></div>
-                                    <div class="h-full bg-sky-500 transition-all duration-500" style="width:{{ no_percentage }}%"></div>
-                                    <div class="h-full bg-purple-500 transition-all duration-500" style="width:{{ both_percentage }}%"></div>
-                                    <div class="h-full bg-red-400 transition-all duration-500" style="width:{{ unavailable_percentage }}%"></div>
-                                    {% else %}
-                                    <div class="h-full bg-emerald-500 transition-all duration-500" style="width:{{ yes_percentage }}%"></div>
-                                    <div class="h-full bg-red-400 transition-all duration-500" style="width:{{ no_percentage }}%"></div>
-                                    {% endif %}
-                                {% endif %}
+                            <div class="vote-bar h-2.5 rounded-full flex overflow-hidden bg-stone-200">
+                                {% if total_votes > 0 %}{% for c in poll_choices %}
+                                <div class="h-full {{ c.bar }} transition-all duration-500" style="width:{{ c.percentage }}%"></div>
+                                {% endfor %}{% endif %}
+                            </div>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3">
+                                {% for c in poll_choices %}
+                                <div class="flex items-center justify-between text-[13px]">
+                                    <span class="flex items-center gap-1.5 font-medium text-stone-600 min-w-0"><span class="w-2 h-2 rounded-full {{ c.dot }} shrink-0"></span><span class="truncate">{{ c.label }}</span>{% if c.status == 'finalized' %}<span class="shrink-0 rounded-full bg-emerald-100 text-emerald-700 px-1.5 py-0.5 text-[9px] font-bold uppercase">Final</span>{% elif c.status == 'cancelled' %}<span class="shrink-0 rounded-full bg-stone-200 text-stone-500 px-1.5 py-0.5 text-[9px] font-bold uppercase">Cancelled</span>{% endif %}</span>
+                                    <span class="font-bold text-stone-800 tabular-nums shrink-0">{{ c.count }}</span>
+                                </div>
+                                {% endfor %}
                             </div>
                         </button>
 
-                        <!-- Voter names — compact wrapping chips so a long list stays short -->
-                        <div x-show="open" x-transition class="mt-3 space-y-3 text-xs">
+                        {# Voter names — compact wrapping chips per choice. #}
+                        <div x-show="open" x-transition class="mt-3 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+                            {% for c in poll_choices %}
                             <div>
-                                <p class="font-semibold text-emerald-700 mb-1.5">{{ availability.yes_label }} · {{ yes_votes }}</p>
+                                <p class="font-semibold {{ c.text }} mb-1.5">{{ c.label }} · {{ c.count }}</p>
                                 <div class="flex flex-wrap gap-1.5">
-                                    {% for v in yes_voters %}
-                                    <span class="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100">
-                                        {% if v.user.avatar %}<img src="{{ v.user.avatar.url }}" alt="{{ v.user.username }}" class="w-4 h-4 rounded-full object-cover" loading="lazy"/>{% else %}<span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[9px] font-bold">{{ v.user.username|first|upper }}</span>{% endif %}
-                                        <span class="text-emerald-800">{{ v.user.username }}</span>
+                                    {% for u in c.voters %}
+                                    <span class="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full border {{ c.chip }}">
+                                        {% if u.avatar %}<img src="{{ u.avatar.url }}" alt="{{ u.username }}" class="w-4 h-4 rounded-full object-cover" loading="lazy"/>{% else %}<span class="w-4 h-4 rounded-full {{ c.dot }} text-white flex items-center justify-center text-[9px] font-bold">{{ u.username|first|upper }}</span>{% endif %}
+                                        <span>{{ u.username }}</span>
                                     </span>
                                     {% empty %}
                                     <span class="text-stone-400">None yet</span>
                                     {% endfor %}
                                 </div>
                             </div>
-                            <div>
-                                <p class="font-semibold {% if availability.show_both %}text-sky-500{% else %}text-red-600{% endif %} mb-1.5">{{ availability.no_label }} · {{ no_votes }}</p>
-                                <div class="flex flex-wrap gap-1.5">
-                                    {% for u in no_voters %}
-                                    <span class="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full {% if availability.show_both %}bg-sky-50 border-sky-100{% else %}bg-red-50 border-red-100{% endif %} border">
-                                        {% if u.avatar %}<img src="{{ u.avatar.url }}" alt="{{ u.username }}" class="w-4 h-4 rounded-full object-cover" loading="lazy"/>{% else %}<span class="w-4 h-4 rounded-full {% if availability.show_both %}bg-sky-100 text-sky-500{% else %}bg-red-100 text-red-600{% endif %} flex items-center justify-center text-[9px] font-bold">{{ u.username|first|upper }}</span>{% endif %}
-                                        <span class="{% if availability.show_both %}text-sky-700{% else %}text-red-700{% endif %}">{{ u.username }}</span>
-                                    </span>
-                                    {% empty %}
-                                    <span class="text-stone-400">None yet</span>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% if availability.show_both %}
-                            <div>
-                                <p class="font-semibold text-purple-600 mb-1.5">Both · {{ both_votes }}</p>
-                                <div class="flex flex-wrap gap-1.5">
-                                    {% for u in both_voters %}
-                                    <span class="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full bg-purple-50 border border-purple-100">
-                                        {% if u.avatar %}<img src="{{ u.avatar.url }}" alt="{{ u.username }}" class="w-4 h-4 rounded-full object-cover" loading="lazy"/>{% else %}<span class="w-4 h-4 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-[9px] font-bold">{{ u.username|first|upper }}</span>{% endif %}
-                                        <span class="text-purple-700">{{ u.username }}</span>
-                                    </span>
-                                    {% empty %}
-                                    <span class="text-stone-400">None yet</span>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <div>
-                                <p class="font-semibold text-red-600 mb-1.5">Not available · {{ unavailable_votes }}</p>
-                                <div class="flex flex-wrap gap-1.5">
-                                    {% for u in unavailable_voters %}
-                                    <span class="inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full bg-red-50 border border-red-100">
-                                        {% if u.avatar %}<img src="{{ u.avatar.url }}" alt="{{ u.username }}" class="w-4 h-4 rounded-full object-cover" loading="lazy"/>{% else %}<span class="w-4 h-4 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-[9px] font-bold">{{ u.username|first|upper }}</span>{% endif %}
-                                        <span class="text-red-700">{{ u.username }}</span>
-                                    </span>
-                                    {% empty %}
-                                    <span class="text-stone-400">None yet</span>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% endif %}
+                            {% endfor %}
                         </div>
                     </div>
 
@@ -762,53 +546,46 @@
             </div>
             {% endif %}
 
-            {% if user.is_staff and session.poll and not is_past %}
-            <div class="card overflow-hidden">
-                <div class="card-header flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-2 min-w-0">
-                        <h2 class="text-sm font-bold text-stone-800 shrink-0">Finalize play day</h2>
-                        {% if session.final_play_day %}
-                        <span class="badge badge-green shrink-0">{{ session.final_play_day_label }}</span>
-                        {% else %}
-                        <span class="badge badge-stone shrink-0">Not selected</span>
-                        {% endif %}
+            {# Finalize card: two-day sessions only, hidden once play starts (matches/attendance). #}
+            {% if user.is_staff and session.poll and availability.show_both and not is_past and not matches and not session.attendance_confirmed %}
+            <div class="card overflow-hidden" x-data="{ open: {% if session.final_play_day %}false{% else %}true{% endif %} }">
+                <button type="button" @click="open = !open" class="card-header w-full flex items-center justify-between gap-2 text-left">
+                    <div class="flex flex-col items-start gap-1 min-w-0">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <h2 class="text-sm font-bold text-stone-800 shrink-0">Finalize play day</h2>
+                            {% if session.final_play_day %}
+                            <span class="badge badge-green shrink-0">{{ session.final_play_day_label }}</span>
+                            {% else %}
+                            <span class="badge badge-stone shrink-0">Not selected</span>
+                            {% endif %}
+                        </div>
+                        {% if not session.final_play_day %}<span class="text-[11px] text-stone-400">Team balance unlocks after choosing one day</span>{% endif %}
                     </div>
-                    <span class="text-[11px] text-stone-400">{% if availability.show_both %}Team balance unlocks after saving{% else %}Single-day session{% endif %}</span>
-                </div>
-                <div class="card-body">
-                    {% if availability.show_both %}
-                    <p class="text-sm text-stone-600 mb-4">
-                        Choose the day the session will actually be played.
-                    </p>
+                    <svg class="w-4 h-4 text-stone-400 transition-transform shrink-0" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="card-body" x-show="open" x-cloak>
                     <form method="POST" action="{% url 'finalize_play_day' session.id %}">
                         {% csrf_token %}
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="grid grid-cols-2 gap-2">
                             <button type="submit" name="play_day" value="sat"
-                                    class="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl border-2 font-bold transition-all {% if session.final_play_day == 'sat' %}bg-emerald-50 border-emerald-400 text-emerald-700{% else %}bg-white border-stone-200 text-stone-700 hover:bg-emerald-50 hover:border-emerald-300{% endif %}">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                                <span class="text-sm">Saturday</span>
+                                    class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 text-sm font-bold transition-all {% if session.final_play_day == 'sat' %}bg-emerald-50 border-emerald-400 text-emerald-700{% else %}bg-white border-stone-200 text-stone-700 hover:bg-emerald-50 hover:border-emerald-300{% endif %}">
+                                {% if session.final_play_day == 'sat' %}<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>{% endif %}
+                                {{ session.date_option_1_label }}
                             </button>
                             <button type="submit" name="play_day" value="sun"
-                                    class="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl border-2 font-bold transition-all {% if session.final_play_day == 'sun' %}bg-sky-50 border-sky-400 text-sky-700{% else %}bg-white border-stone-200 text-stone-700 hover:bg-sky-50 hover:border-sky-300{% endif %}">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                                <span class="text-sm">Sunday</span>
-                            </button>
-                            <button type="submit" name="play_day" value="both"
-                                    class="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl border-2 font-bold transition-all {% if session.final_play_day == 'both' %}bg-purple-50 border-purple-400 text-purple-700{% else %}bg-white border-stone-200 text-stone-700 hover:bg-purple-50 hover:border-purple-300{% endif %}">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                                <span class="text-sm">Both days</span>
+                                    class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 text-sm font-bold transition-all {% if session.final_play_day == 'sun' %}bg-sky-50 border-sky-400 text-sky-700{% else %}bg-white border-stone-200 text-stone-700 hover:bg-sky-50 hover:border-sky-300{% endif %}">
+                                {% if session.final_play_day == 'sun' %}<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>{% endif %}
+                                {{ session.date_option_2_label }}
                             </button>
                         </div>
+                        {% if session.final_play_day %}
+                        <div class="mt-2 flex items-center justify-between gap-2">
+                            <span class="text-xs text-stone-500">Locked as {{ session.final_play_day_label }}.</span>
+                            <button type="submit" name="play_day" value="clear"
+                                    class="text-xs font-semibold text-stone-400 hover:text-red-500 transition-colors">Clear</button>
+                        </div>
+                        {% endif %}
                     </form>
-                    {% if session.final_play_day %}
-                    <p class="mt-3 text-xs text-stone-500">Locked as {{ session.final_play_day_label }}. You can resave to change it.</p>
-                    {% endif %}
-                    {% else %}
-                    <p class="text-sm text-stone-600">
-                        This session has one date option, so it is fixed as {{ session.final_play_day_label }}.
-                        Members vote Yes or No for that day.
-                    </p>
-                    {% endif %}
                 </div>
             </div>
             {% endif %}
@@ -882,7 +659,8 @@
                             {% endif %}
                         {% endif %}
                         <a href="{% url 'session_detail' session.id %}?edit_match={{ match.id }}#team-editor"
-                           class="btn {% if edit_match and edit_match.id == match.id %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                           class="btn {% if edit_match and edit_match.id == match.id %}btn-primary{% else %}btn-secondary{% endif %} btn-sm"
+                           {% if session.attendance_confirmed %}disabled title="Attendance confirmed - teams cannot be edited"{% endif %}>
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                             {% if edit_match and edit_match.id == match.id %}Editing…{% else %}Edit Teams{% endif %}
                         </a>
@@ -898,7 +676,7 @@
                     {% endwith %}
                     {% endif %}
                 </div>
-                <div class="card-body" x-show="expanded" x-cloak>
+                <div class="card-body">
 
                     <!-- Compact team summary (always visible) -->
                     <div class="flex items-center gap-3 flex-wrap">
@@ -907,7 +685,7 @@
                             <span class="w-2 h-2 rounded-full shrink-0 {% if forloop.first %}bg-pitch-500{% else %}bg-amber-400{% endif %}"></span>
                             <span class="text-xs font-semibold {% if forloop.first %}text-pitch-800{% else %}text-amber-700{% endif %} truncate">{{ team.name }}</span>
                             {% if team.runs > 0 or team.wickets > 0 %}
-                            <span class="text-xs font-mono text-stone-600">{{ team.runs }}/{{ team.wickets }}</span>
+                            <span class="text-xs font-mono text-stone-600">{{ team.runs }}/{{ team.wickets }}{% if team.overs %} <span class="text-stone-400">({{ team.overs }}{% if match.overs_limit %}/{{ match.overs_limit }}{% endif %} ov)</span>{% endif %}</span>
                             {% endif %}
                         </div>
                         {% if forloop.first and mteams|length > 1 %}
@@ -915,6 +693,13 @@
                         {% endif %}
                         {% endfor %}
                     </div>
+
+                    <!-- Scoring start/end time (issue #68) -->
+                    {% if match.scoring_started_at %}
+                    <p class="text-[11px] text-stone-400 mt-1.5">
+                        Started {{ match.scoring_started_at|time:"H:i" }}{% if match.scoring_ended_at %} &middot; Ended {{ match.scoring_ended_at|time:"H:i" }}{% if match.scoring_duration_minutes is not None %} &middot; {{ match.scoring_duration_minutes }}m{% endif %}{% else %} &middot; in progress{% endif %}
+                    </p>
+                    {% endif %}
 
                     <!-- Action row -->
                     {% if match.innings.all or user.is_staff and mteams|length >= 2 %}
@@ -936,10 +721,17 @@
                     </div>
                     {% endif %}
 
-                    <!-- Player lists — always visible, sorted batsmen → all-rounders → bowlers.
-                         On mobile the grid is pulled out past the card padding (-mx-3) and the
-                         gap/box padding tightened, so player names get the most width. -->
-                    <div class="mt-3 grid grid-cols-2 gap-2 sm:gap-3 -mx-3 sm:mx-0">
+                    <!-- Squads — collapsible so the match header + score overview above stay
+                         visible. Sorted batsmen → all-rounders → bowlers. On mobile the grid is
+                         pulled past the card padding (-mx-3) so player names get the most width. -->
+                    <div class="mt-3">
+                        <button type="button" @click="expanded = !expanded"
+                                class="flex items-center gap-1.5 text-xs font-semibold text-stone-500 hover:text-stone-700 transition-colors">
+                            <svg class="w-3.5 h-3.5 transition-transform" :class="expanded ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            <span x-text="expanded ? 'Hide squads' : 'Show squads'"></span>
+                        </button>
+                    </div>
+                    <div x-show="expanded" x-cloak x-transition class="mt-2 grid grid-cols-2 gap-2 sm:gap-3 -mx-3 sm:mx-0">
                         {% for team in mteams %}
                         <div>
                             <div class="flex items-center gap-2 mb-1.5 pl-1.5 pr-[18px] sm:pr-5">

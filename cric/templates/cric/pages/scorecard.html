@@ -183,9 +183,9 @@
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
                         <span class="text-[13px] font-medium text-stone-900 truncate">{{ b.player.user.first_name|default:b.player.user.username }}</span>
-                        {% if not b.out and not b.how_out %}<span class="font-mono text-[10px] font-semibold text-emerald-700 tracking-[0.04em] hidden sm:inline">NOT OUT</span>{% endif %}
+                        {% if not b.out and not b.how_out %}<span class="font-mono text-[10px] font-semibold text-emerald-700 tracking-[0.04em]">NOT OUT</span>{% endif %}
                     </div>
-                    <span class="font-mono text-[11px] text-stone-400 block sm:hidden">{{ b.how_out|default:"—" }}</span>
+                    <span class="font-mono text-[11px] text-stone-400">{{ b.how_out|default:"—" }}</span>
                 </div>
                 <span class="w-8 text-right font-mono text-xs font-semibold text-stone-900 tabular-nums">{{ b.runs }}</span>
                 <span class="w-8 text-right font-mono text-xs text-stone-500 tabular-nums">{{ b.balls }}</span>

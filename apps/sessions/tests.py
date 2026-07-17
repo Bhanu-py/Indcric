@@ -13,6 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.matches.models import Delivery, Innings, Match, Player, Team
+from apps.payments.models import Payment
 from apps.polls.models import Poll, Vote
 from apps.sessions.models import Attendance, Session, SessionPlayer
 
@@ -118,6 +119,95 @@ class AvailabilityModeTests(TestCase):
         self.assertEqual(session.final_play_day, "sun")
         self.assertEqual(session.poll.question, "Can you play on Sunday?")
 
+    def test_two_day_web_vote_stores_sat_sun_codes(self):
+        user = User.objects.create_user(username="voter", password="x")
+        self.client.force_login(user)
+        saturday = timezone.localdate() + timedelta(days=5)
+        sunday = timezone.localdate() + timedelta(days=6)
+        session = Session.objects.create(
+            name="Weekend",
+            duration=Decimal("2"),
+            date=saturday,
+            date_option_1=saturday,
+            date_option_2=sunday,
+            time=time(18, 0),
+            location="Hall",
+        )
+        poll = Poll.objects.create(session=session)
+
+        self.client.post(reverse("vote_session", args=[poll.id]), {"choice": "sat"})
+        self.assertTrue(Vote.objects.filter(poll=poll, user=user, choice="sat").exists())
+
+        self.client.post(reverse("vote_session", args=[poll.id]), {"choice": "sun"})
+        self.assertTrue(Vote.objects.filter(poll=poll, user=user, choice="sun").exists())
+
+    def test_finalize_play_day_rejects_both(self):
+        saturday = timezone.localdate() + timedelta(days=5)
+        sunday = timezone.localdate() + timedelta(days=6)
+        session = Session.objects.create(
+            name="Weekend",
+            duration=Decimal("2"),
+            date=saturday,
+            date_option_1=saturday,
+            date_option_2=sunday,
+            time=time(18, 0),
+            location="Hall",
+        )
+
+        resp = self.client.post(reverse("finalize_play_day", args=[session.id]), {
+            "play_day": "both",
+        })
+
+        self.assertEqual(resp.status_code, 302)
+        session.refresh_from_db()
+        self.assertIsNone(session.final_play_day)
+
+    def test_one_day_web_vote_keeps_yes_no_codes(self):
+        user = User.objects.create_user(username="oneday", password="x")
+        self.client.force_login(user)
+        saturday = timezone.localdate() + timedelta(days=5)
+        session = Session.objects.create(
+            name="Saturday only",
+            duration=Decimal("2"),
+            date=saturday,
+            date_option_1=saturday,
+            final_play_day="sat",
+            time=time(18, 0),
+            location="Hall",
+        )
+        poll = Poll.objects.create(session=session)
+
+        self.client.post(reverse("vote_session", args=[poll.id]), {"choice": "yes"})
+        self.assertTrue(Vote.objects.filter(poll=poll, user=user, choice="yes").exists())
+
+        self.client.post(reverse("vote_session", args=[poll.id]), {"choice": "no"})
+        self.assertTrue(Vote.objects.filter(poll=poll, user=user, choice="no").exists())
+
+    def test_one_day_poll_buttons_show_yes_no_counts(self):
+        yes_user_1 = User.objects.create_user(username="yes1", password="x")
+        yes_user_2 = User.objects.create_user(username="yes2", password="x")
+        no_user = User.objects.create_user(username="no1", password="x")
+        saturday = timezone.localdate() + timedelta(days=5)
+        session = Session.objects.create(
+            name="Saturday only",
+            duration=Decimal("2"),
+            date=saturday,
+            date_option_1=saturday,
+            final_play_day="sat",
+            time=time(18, 0),
+            location="Hall",
+        )
+        poll = Poll.objects.create(session=session)
+        Vote.objects.create(poll=poll, user=yes_user_1, choice="yes")
+        Vote.objects.create(poll=poll, user=yes_user_2, choice="yes")
+        Vote.objects.create(poll=poll, user=no_user, choice="no")
+
+        resp = self.client.get(reverse("session_detail", args=[session.id]))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "2 selected")
+        self.assertContains(resp, "1 selected")
+
     def test_attendance_defaults_to_final_play_day_voters(self):
         saturday_user = User.objects.create_user(username="sat", password="x")
         sunday_user = User.objects.create_user(username="sun", password="x")
@@ -135,8 +225,8 @@ class AvailabilityModeTests(TestCase):
             cost=Decimal("30"),
         )
         poll = Poll.objects.create(session=session)
-        Vote.objects.create(poll=poll, user=saturday_user, choice="yes")
-        Vote.objects.create(poll=poll, user=sunday_user, choice="no")
+        Vote.objects.create(poll=poll, user=saturday_user, choice="sat")
+        Vote.objects.create(poll=poll, user=sunday_user, choice="sun")
         Vote.objects.create(poll=poll, user=both_user, choice="all")
         Vote.objects.create(poll=poll, user=out_user, choice="out")
 
@@ -148,9 +238,80 @@ class AvailabilityModeTests(TestCase):
             for row in Attendance.objects.select_related("match_player__user")
         }
         self.assertEqual(attendance_by_user, {
-            "sat": False,
             "sun": True,
             "both": True,
         })
-        self.assertEqual(SessionPlayer.objects.filter(session=session).count(), 3)
+        self.assertEqual(SessionPlayer.objects.filter(session=session).count(), 2)
+        self.assertFalse(SessionPlayer.objects.filter(session=session, user=saturday_user).exists())
         self.assertFalse(SessionPlayer.objects.filter(session=session, user=out_user).exists())
+
+    def test_two_day_attendance_waits_for_admin_play_day(self):
+        saturday_user = User.objects.create_user(username="sat_wait", password="x")
+        sunday_user = User.objects.create_user(username="sun_wait", password="x")
+        session = Session.objects.create(
+            name="Weekend pending",
+            duration=Decimal("2"),
+            date=timezone.localdate() - timedelta(days=1),
+            date_option_1=timezone.localdate() - timedelta(days=2),
+            date_option_2=timezone.localdate() - timedelta(days=1),
+            time=time(18, 0),
+            location="Hall",
+            cost=Decimal("30"),
+        )
+        poll = Poll.objects.create(session=session)
+        Vote.objects.create(poll=poll, user=saturday_user, choice="sat")
+        Vote.objects.create(poll=poll, user=sunday_user, choice="sun")
+
+        resp = self.client.get(reverse("session_detail", args=[session.id]))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.context["attendance_waiting_for_play_day"])
+        self.assertEqual(resp.context["attendance_roster"], [])
+        self.assertFalse(SessionPlayer.objects.filter(session=session).exists())
+
+    def test_scorecard_players_seed_attendance_and_chargeable_split(self):
+        charge_user = User.objects.create_user(username="charge", password="x")
+        guest_user = User.objects.create_user(username="guest", password="x")
+        session = Session.objects.create(
+            name="Scored game",
+            duration=Decimal("2"),
+            date=timezone.localdate() - timedelta(days=1),
+            date_option_1=timezone.localdate() - timedelta(days=2),
+            date_option_2=timezone.localdate() - timedelta(days=1),
+            final_play_day="sun",
+            time=time(18, 0),
+            location="Hall",
+            cost=Decimal("30"),
+        )
+        Poll.objects.create(session=session)
+        match = Match.objects.create(session=session, name="Match 1")
+        team = Team.objects.create(match=match, name="A")
+        Player.objects.create(user=charge_user, team=team, role="bat")
+        Player.objects.create(user=guest_user, team=team, role="bat")
+
+        self.client.get(reverse("session_detail", args=[session.id]))
+        session_players = {
+            sp.user.username: sp
+            for sp in SessionPlayer.objects.filter(session=session).select_related("user")
+        }
+
+        self.assertEqual(set(session_players), {"charge", "guest"})
+
+        resp = self.client.post(reverse("session_attendance_detail", args=[session.id]), {
+            "present": [str(session_players["charge"].id), str(session_players["guest"].id)],
+            "chargeable": [str(session_players["charge"].id)],
+        })
+
+        self.assertEqual(resp.status_code, 302)
+        session.refresh_from_db()
+        self.assertTrue(session.attendance_confirmed)
+        self.assertEqual(session.cost_per_person, Decimal("30.00"))
+        self.assertTrue(Payment.objects.filter(
+            session=session,
+            user=charge_user,
+            amount=Decimal("30.00"),
+            status="pending",
+        ).exists())
+        self.assertFalse(Payment.objects.filter(session=session, user=guest_user).exists())
+        self.assertFalse(Attendance.objects.get(match_player=session_players["charge"]).cost_exempt)
+        self.assertTrue(Attendance.objects.get(match_player=session_players["guest"]).cost_exempt)

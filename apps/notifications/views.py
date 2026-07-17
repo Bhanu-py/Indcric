@@ -23,6 +23,8 @@ RSVP_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+GENERIC_YES_NO_TOKENS = {'yes', 'y', 'no', 'n', '1', '2', '✅', '❌'}
+
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
@@ -194,6 +196,20 @@ def _dm_sink(phone):
     return _send
 
 
+def _choice_from_rsvp_token(token):
+    if token in ('sat', 'saturday'):
+        return 'sat'
+    if token in ('sun', 'sunday'):
+        return 'sun'
+    if token in ('yes', 'y', '✅', '1'):
+        return 'yes'
+    if token in ('no', 'n', '❌', '2'):
+        return 'no'
+    if token in ('out', 'unavailable', 'not available', 'na', '4'):
+        return 'out'
+    return 'all'
+
+
 def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None,
                      allow_text_rsvp=True, reply_unknown=True, lid='', wa_name=''):
     """Shared inbound parser + dispatcher for BOTH the Meta Cloud-API webhook
@@ -227,18 +243,11 @@ def dispatch_inbound(wa_message_id, phone, text, chat='dm', reply=None, raw=None
         if rsvp:
             token = rsvp.group(1).lower()
             session_id = int(rsvp.group(2)) if rsvp.group(2) else None
-            if token in ('yes', 'y', '✅', '1', 'sat', 'saturday'):
-                choice = 'yes'
-            elif token in ('no', 'n', '❌', '2', 'sun', 'sunday'):
-                choice = 'no'
-            elif token in ('out', 'unavailable', 'not available', 'na', '4'):
-                choice = 'out'
-            else:
-                choice = 'all'
+            choice = _choice_from_rsvp_token(token)
             result = _handle_rsvp(
                 wa_message_id, phone, choice, raw,
                 session_id=session_id, reply=reply, chat=chat,
-                lid=lid, wa_name=wa_name,
+                lid=lid, wa_name=wa_name, raw_choice_token=token,
             )
             return {'kind': 'rsvp', **(result or {})}
 
@@ -280,7 +289,7 @@ def _process_message(msg, value):
 
 
 def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None, reply=None,
-                 chat='dm', lid='', wa_name=''):
+                 chat='dm', lid='', wa_name='', raw_choice_token=''):
     """Record an inbound RSVP. Confirms via the reply sink on the DM path; on the
     group path stays silent here (the /api/bot/inbound/ endpoint reacts ✅/❌ to
     the member's message — per-vote text would flood the group).
@@ -338,7 +347,16 @@ def _handle_rsvp(wa_message_id, phone, choice, raw, session_id=None, reply=None,
         return {'recorded': False, 'reason': 'no_poll', 'choice': choice}
 
     session = poll_obj.session
-    if choice in {'all', 'out'} and not session.has_two_date_options:
+    if session.has_two_date_options and raw_choice_token in GENERIC_YES_NO_TOKENS:
+        reply(bot_messages.invalid_availability_choice(is_two_day=True))
+        return {
+            'recorded': False,
+            'reason': 'ambiguous_choice',
+            'choice': choice,
+            'is_two_day': True,
+        }
+
+    if choice in {'sat', 'sun', 'all', 'out'} and not session.has_two_date_options:
         reply(bot_messages.invalid_availability_choice(is_two_day=False))
         return {'recorded': False, 'reason': 'invalid_choice', 'choice': choice}
 
@@ -451,13 +469,15 @@ def _display_name(user):
 
 def _poll_voter_names(poll):
     """Display-name lists for a poll, name-sorted."""
-    def names(choice):
+    def names(*choices):
         return [
             _display_name(v.user)
-            for v in poll.votes.filter(choice=choice)
+            for v in poll.votes.filter(choice__in=choices)
             .select_related('user')
             .order_by('user__first_name', 'user__username')
         ]
+    if poll.session.has_two_date_options:
+        return names('sat', 'yes'), names('sun', 'no'), names('all'), names('out')
     return names('yes'), names('no'), names('all'), names('out')
 
 

@@ -6,6 +6,13 @@ from .models import Poll, Vote
 from .forms import PollForm
 
 
+def _choice_for_poll(choice, poll):
+    choice = Vote.normalize_choice(choice)
+    if poll.session.has_two_date_options:
+        return {'yes': 'sat', 'no': 'sun'}.get(choice, choice)
+    return {'sat': 'yes', 'sun': 'no'}.get(choice, choice)
+
+
 @login_required
 def poll_detail_view(request, poll_id):
     poll = get_object_or_404(Poll, id=poll_id)
@@ -13,21 +20,21 @@ def poll_detail_view(request, poll_id):
     if request.user.is_authenticated:
         vote = Vote.objects.filter(poll=poll, user=request.user).first()
         if vote:
-            user_vote = Vote.normalize_choice(vote.choice)
+            user_vote = _choice_for_poll(vote.choice, poll)
 
     if request.method == 'POST':
         if not poll.is_open:
             return HttpResponseForbidden("This poll is closed.")
-        choice = Vote.normalize_choice(request.POST.get('choice'))
-        valid_choices = ['yes', 'no', 'all', 'out'] if poll.session.has_two_date_options else ['yes', 'no']
+        choice = _choice_for_poll(request.POST.get('choice'), poll)
+        valid_choices = ['sat', 'sun', 'all', 'out'] if poll.session.has_two_date_options else ['yes', 'no']
         if choice in valid_choices:
             Vote.objects.update_or_create(
                 poll=poll, user=request.user, defaults={'choice': choice}
             )
         return redirect('poll_detail', poll_id=poll.id)
 
-    saturday_votes = poll.votes.filter(choice='yes').count()
-    sunday_votes = poll.votes.filter(choice='no').count()
+    saturday_votes = poll.votes.filter(choice__in=['sat', 'yes']).count()
+    sunday_votes = poll.votes.filter(choice__in=['sun', 'no']).count()
     both_votes = poll.votes.filter(choice='all').count()
     unavailable_votes = poll.votes.filter(choice='out').count()
     total_votes = saturday_votes + sunday_votes + both_votes + unavailable_votes

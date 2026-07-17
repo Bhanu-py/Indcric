@@ -18,23 +18,30 @@ from apps.payments.models import Payment, Wallet
 User = get_user_model()
 
 
-def _vote_choice(choice):
-    return Vote.normalize_choice(choice)
+def _vote_choice(choice, session=None):
+    choice = Vote.normalize_choice(choice)
+    if session and session.has_two_date_options:
+        return {'yes': 'sat', 'no': 'sun'}.get(choice, choice)
+    return {'sat': 'yes', 'sun': 'no'}.get(choice, choice)
 
 
 def _availability_context(session):
     is_two_day = session.has_two_date_options
     single_label = session.single_play_day_label or 'session'
+    # Labels are date-derived, not fixed weekday words — a session can fall on any
+    # two days. The internal choice keys ('sat'/'sun') are unchanged for the DB.
+    date1 = session.date_option_1_label
+    date2 = session.date_option_2_label
     return {
         'is_two_day': is_two_day,
         'single_label': single_label,
-        'question': 'Which day works for you?' if is_two_day else f'Can you play on {single_label}?',
-        'yes_label': 'Saturday' if is_two_day else 'Yes',
-        'no_label': 'Sunday' if is_two_day else 'No',
-        'all_label': 'Both',
+        'question': 'Which date works for you?' if is_two_day else f'Can you play on {single_label}?',
+        'yes_label': date1 if is_two_day else 'Yes',
+        'no_label': date2 if is_two_day else 'No',
+        'all_label': 'Either date',
         'out_label': 'Not available',
-        'summary_label': 'Sat' if is_two_day else 'Yes',
-        'secondary_summary_label': 'Sun' if is_two_day else 'No',
+        'summary_label': date1 if is_two_day else 'Yes',
+        'secondary_summary_label': date2 if is_two_day else 'No',
         'show_both': is_two_day,
         'show_unavailable': is_two_day,
     }
@@ -46,10 +53,10 @@ def _session_vote_summary(poll):
     both_voters = []
     unavailable_voters = []
     for vote in poll.votes.select_related('user').order_by('user__first_name', 'user__username'):
-        choice = _vote_choice(vote.choice)
-        if choice == 'yes':
+        choice = _vote_choice(vote.choice, poll.session)
+        if choice in ('sat', 'yes'):
             saturday_voters.append(vote.user)
-        elif choice == 'no':
+        elif choice in ('sun', 'no'):
             sunday_voters.append(vote.user)
         elif choice == 'all':
             both_voters.append(vote.user)
@@ -96,8 +103,6 @@ def _eligible_voters_for_play_day(session, summary):
             return summary['saturday_voters'] + summary['both_voters']
         if play_day == 'sun':
             return summary['sunday_voters'] + summary['both_voters']
-        if play_day == 'both':
-            return summary['saturday_voters'] + summary['sunday_voters'] + summary['both_voters']
         return summary['saturday_voters'] + summary['sunday_voters'] + summary['both_voters']
     return summary['saturday_voters']
 
@@ -167,7 +172,7 @@ def home(request):
             vote = Vote.objects.filter(
                 poll=next_session.poll, user=request.user
             ).first()
-            next_session_user_vote = vote.choice if vote else None
+            next_session_user_vote = _vote_choice(vote.choice, next_session) if vote else None
 
     context = {
         'upcoming_sessions': upcoming_sessions,
@@ -411,10 +416,13 @@ def session_detail_view(request, session_id):
     team_pool_voters = []
     eligible_voter_users = []
     summary = None
+    poll_choices = []
+    user_choice = None
+    other_choices = []
     if hasattr(session, 'poll'):
         poll = session.poll
         vote = Vote.objects.filter(poll=poll, user=request.user).first()
-        user_vote = _vote_choice(vote.choice) if vote else None
+        user_vote = _vote_choice(vote.choice, session) if vote else None
         summary = _session_vote_summary(poll)
         saturday_votes = summary['saturday_votes']
         sunday_votes = summary['sunday_votes']
@@ -437,6 +445,58 @@ def session_detail_view(request, session_id):
             for u in eligible_voter_users
         ]
 
+        # Single source of truth for the poll UI: one metadata row per choice so
+        # the template renders vote buttons, the voted status, the switch row, and
+        # the results bar from one loop instead of five duplicated branches.
+        # Full literal class strings per accent — Tailwind can't build class names
+        # from fragments, so every combination the template needs is spelled out.
+        _accent = {
+            'emerald': {'dot': 'bg-emerald-500', 'text': 'text-emerald-700', 'bar': 'bg-emerald-500',
+                        'chip': 'bg-emerald-50 border-emerald-100 text-emerald-700', 'solid': 'bg-emerald-500',
+                        'card': 'border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50',
+                        'soft': 'hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700'},
+            'sky':     {'dot': 'bg-sky-500', 'text': 'text-sky-700', 'bar': 'bg-sky-500',
+                        'chip': 'bg-sky-50 border-sky-100 text-sky-700', 'solid': 'bg-sky-500',
+                        'card': 'border-sky-200 hover:border-sky-400 hover:bg-sky-50',
+                        'soft': 'hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700'},
+            'purple':  {'dot': 'bg-purple-500', 'text': 'text-purple-700', 'bar': 'bg-purple-500',
+                        'chip': 'bg-purple-50 border-purple-100 text-purple-700', 'solid': 'bg-purple-500',
+                        'card': 'border-purple-200 hover:border-purple-400 hover:bg-purple-50',
+                        'soft': 'hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700'},
+            'red':     {'dot': 'bg-red-400', 'text': 'text-red-700', 'bar': 'bg-red-400',
+                        'chip': 'bg-red-50 border-red-100 text-red-700', 'solid': 'bg-red-500',
+                        'card': 'border-red-200 hover:border-red-400 hover:bg-red-50',
+                        'soft': 'hover:border-red-300 hover:bg-red-50 hover:text-red-700'},
+        }
+        if availability['is_two_day']:
+            _defs = [
+                ('sat', session.date_option_1_label, session.date_option_1, saturday_votes,    summary['saturday_percentage'],    summary['saturday_voters'],    'emerald', True),
+                ('sun', session.date_option_2_label, session.date_option_2, sunday_votes,      summary['sunday_percentage'],      summary['sunday_voters'],      'sky',     True),
+                ('all', 'Either date',               None,                  both_votes,        summary['both_percentage'],        summary['both_voters'],        'purple',  False),
+                ('out', "Can't make it",             None,                  unavailable_votes, summary['unavailable_percentage'], summary['unavailable_voters'], 'red',     False),
+            ]
+        else:
+            _defs = [
+                ('yes', 'Yes', session.date, yes_votes, summary['saturday_percentage'], summary['saturday_voters'], 'emerald', True),
+                ('no',  'No',  session.date, no_votes,  summary['sunday_percentage'],   summary['sunday_voters'],   'red',     True),
+            ]
+        for key, label, date, count, pct, voters, accent, primary in _defs:
+            poll_choices.append({
+                'key': key, 'label': label, 'date': date, 'count': count,
+                'percentage': pct, 'voters': voters, 'primary': primary,
+                'status': '', **_accent[accent],
+            })
+        # Once a two-day session's play day is finalized, tag the chosen date
+        # 'finalized' and the other date 'cancelled' (poll stays open regardless).
+        if availability['is_two_day'] and session.final_play_day:
+            for c in poll_choices:
+                if c['key'] == session.final_play_day:
+                    c['status'] = 'finalized'
+                elif c['key'] in ('sat', 'sun'):
+                    c['status'] = 'cancelled'
+        user_choice = next((c for c in poll_choices if c['key'] == user_vote), None)
+        other_choices = [c for c in poll_choices if c['key'] != user_vote]
+
     matches = list(
         session.matches.prefetch_related('teams__players__user', 'innings').order_by('id')
     )
@@ -455,6 +515,14 @@ def session_detail_view(request, session_id):
         completed = len(innings) >= 2 and all(i.is_closed for i in innings)
         match.is_live = bool(innings) and not completed
         match.has_scorecard = match.id in scored_match_ids
+        # #69: overs bowled per team (from its batting innings), shown next to the score.
+        overs_by_team = {}
+        for inn in innings:
+            sc = match_scoring.innings_score(inn)
+            if sc['legal_balls'] or sc['runs']:
+                overs_by_team[inn.batting_team_id] = sc['overs']
+        for team in match.teams.all():
+            team.overs = overs_by_team.get(team.id)
         # Cap holders, tagged on the player chips once the match has a result.
         match.orange_cap_user_id = match.purple_cap_user_id = None
         if completed:
@@ -516,61 +584,93 @@ def session_detail_view(request, session_id):
                 **_player_skills(u),
             })
 
-    cost_per_person_est = None
     eligible_vote_count = len(eligible_voter_users) if eligible_voter_users else yes_votes
-    if not session.cost_per_person and eligible_vote_count > 0 and session.cost:
-        cost_per_person_est = (session.cost / Decimal(eligible_vote_count)).quantize(Decimal('0.01'))
+    cost_split_count = eligible_vote_count
+    cost_split_label = 'Available'
+    cost_per_person_est = None
 
     # ── Attendance roster (only used by the embedded attendance card on past sessions) ──
     attendance_roster = []
     attendance_present_ids = []
+    attendance_chargeable_ids = []
+    attendance_waiting_for_play_day = False
     addable_users = []
     if is_past and hasattr(session, 'poll'):
-        # Auto-create SessionPlayer rows for poll voters so the roster is populated.
-        # Default "present" follows the final play day:
-        # Saturday => Saturday/Both voters, Sunday => Sunday/Both voters,
-        # one-date sessions => Yes voters only. Unavailable voters are excluded.
+        # Auto-create SessionPlayer rows for the attendance roster.
+        # Two-date sessions only build attendance after staff chooses the actual
+        # play day; otherwise Saturday/Sunday votes are only availability data.
         if summary is None:
             summary = _session_vote_summary(session.poll)
-        voter_user_ids = list(
-            session.poll.votes.exclude(choice='out').values_list('user_id', flat=True)
-        )
         unavailable_user_ids = set(
             session.poll.votes.filter(choice='out').values_list('user_id', flat=True)
         )
-        default_present_user_ids = {u.id for u in _eligible_voters_for_play_day(session, summary)}
-        for uid in voter_user_ids:
-            sp, _ = SessionPlayer.objects.get_or_create(session=session, user_id=uid)
-            should_attend = uid in default_present_user_ids
-            attendance, _ = Attendance.objects.get_or_create(
-                match_player=sp, defaults={'attended': should_attend}
+        if session.has_two_date_options and not session.final_play_day:
+            attendance_waiting_for_play_day = True
+        else:
+            scorecard_user_ids = set(
+                Player.objects
+                .filter(team__match__session=session)
+                .values_list('user_id', flat=True)
+                .distinct()
             )
-            if not session.attendance_confirmed and attendance.attended != should_attend:
-                attendance.attended = should_attend
-                attendance.save(update_fields=['attended'])
-        attendance_roster = list(
-            SessionPlayer.objects.filter(session=session)
-            .exclude(user_id__in=unavailable_user_ids)
-            .select_related('user')
-            .order_by('user__username')
-        )
-        attendance_present_ids = list(
-            Attendance.objects.filter(match_player__session=session, attended=True)
-            .values_list('match_player_id', flat=True)
-        )
-        if request.user.is_staff:
-            in_roster_ids = {sp.user_id for sp in attendance_roster}
-            # Get voters (who already voted yes/both - not "out")
-            voted_ids = set(
-                session.poll.votes.exclude(choice='out').values_list('user_id', flat=True)
+            eligible_user_ids = {u.id for u in _eligible_voters_for_play_day(session, summary)}
+            if scorecard_user_ids:
+                roster_user_ids = scorecard_user_ids
+                default_present_user_ids = scorecard_user_ids
+            else:
+                roster_user_ids = eligible_user_ids
+                default_present_user_ids = eligible_user_ids
+
+            for uid in roster_user_ids:
+                sp, _ = SessionPlayer.objects.get_or_create(session=session, user_id=uid)
+                should_attend = uid in default_present_user_ids
+                attendance, _ = Attendance.objects.get_or_create(
+                    match_player=sp, defaults={'attended': should_attend}
+                )
+                if not session.attendance_confirmed and attendance.attended != should_attend:
+                    attendance.attended = should_attend
+                    attendance.save(update_fields=['attended'])
+        if not attendance_waiting_for_play_day:
+            attendance_roster = list(
+                SessionPlayer.objects.filter(session=session)
+                .exclude(user_id__in=unavailable_user_ids)
+                .select_related('user')
+                .order_by('user__username')
             )
-            # Show only users who didn't vote (didn't vote = didn't commit, came to play unexpectedly)
-            addable_users = list(
-                User.objects.filter(is_active=True)
-                .exclude(id__in=in_roster_ids)
-                .exclude(id__in=voted_ids)
-                .order_by('username')
+            attendance_present_ids = list(
+                Attendance.objects.filter(match_player__session=session, attended=True)
+                .values_list('match_player_id', flat=True)
             )
+            attendance_chargeable_ids = list(
+                Attendance.objects.filter(
+                    match_player__session=session,
+                    attended=True,
+                    cost_exempt=False,
+                )
+                .values_list('match_player_id', flat=True)
+            )
+            if attendance_roster:
+                cost_split_count = len(attendance_chargeable_ids)
+                cost_split_label = 'Charged'
+            if request.user.is_staff:
+                in_roster_ids = {sp.user_id for sp in attendance_roster}
+                committed_vote_ids = set(
+                    session.poll.votes.exclude(choice__in=['no', 'out'])
+                    .values_list('user_id', flat=True)
+                )
+                addable_users = list(
+                    User.objects.filter(is_active=True)
+                    .exclude(id__in=in_roster_ids)
+                    .exclude(id__in=committed_vote_ids)
+                    .order_by('username')
+                )
+
+    if attendance_waiting_for_play_day:
+        cost_split_count = 0
+        cost_split_label = 'Charged'
+
+    if not session.cost_per_person and cost_split_count > 0 and session.cost:
+        cost_per_person_est = (session.cost / Decimal(cost_split_count)).quantize(Decimal('0.01'))
 
     whatsapp_share_url = ''
     if hasattr(session, 'poll'):
@@ -583,6 +683,8 @@ def session_detail_view(request, session_id):
         'is_past': is_past,
         'attendance_roster': attendance_roster,
         'attendance_present_ids': attendance_present_ids,
+        'attendance_chargeable_ids': attendance_chargeable_ids,
+        'attendance_waiting_for_play_day': attendance_waiting_for_play_day,
         'user_vote': user_vote,
         'yes_votes': yes_votes,
         'no_votes': no_votes,
@@ -601,7 +703,12 @@ def session_detail_view(request, session_id):
         'unavailable_voters': unavailable_voters,
         'team_pool_voters': team_pool_voters,
         'eligible_vote_count': eligible_vote_count,
+        'cost_split_count': cost_split_count,
+        'cost_split_label': cost_split_label,
         'availability': availability,
+        'poll_choices': poll_choices,
+        'user_choice': user_choice,
+        'other_choices': other_choices,
         'cost_per_person_est': cost_per_person_est,
         'addable_pool': addable_pool,
         'matches': matches,
@@ -632,14 +739,16 @@ def vote_session_view(request, poll_id):
             messages.error(request, "This session has already ended.")
             return redirect('session_detail', session_id=session.id)
 
-        choice = _vote_choice(request.POST.get('choice'))
-        valid_choices = ['yes', 'no', 'all', 'out'] if session.has_two_date_options else ['yes', 'no']
+        choice = _vote_choice(request.POST.get('choice'), session)
+        valid_choices = ['sat', 'sun', 'all', 'out'] if session.has_two_date_options else ['yes', 'no']
         if choice in valid_choices:
             Vote.objects.update_or_create(
                 poll=poll, user=request.user, defaults={'choice': choice}
             )
             availability = _availability_context(session)
             label = {
+                'sat': availability['yes_label'],
+                'sun': availability['no_label'],
                 'yes': availability['yes_label'],
                 'no': availability['no_label'],
                 'all': availability['all_label'],
@@ -685,7 +794,13 @@ def finalize_play_day_view(request, session_id):
         return redirect('session_detail', session_id=session.id)
 
     choice = (request.POST.get('play_day') or '').strip().lower()
-    allowed_choices = {'sat', 'sun', 'both'} if session.has_two_date_options else {session.single_play_day}
+    # Allow un-choosing: clear the finalized day back to "not selected".
+    if choice == 'clear':
+        session.final_play_day = None
+        session.save(update_fields=['final_play_day'])
+        messages.success(request, "Play day cleared. The poll stays open.")
+        return redirect('session_detail', session_id=session.id)
+    allowed_choices = {'sat', 'sun'} if session.has_two_date_options else {session.single_play_day}
     if choice not in allowed_choices:
         messages.error(request, 'Please choose one of the available play days.')
         return redirect('session_detail', session_id=session.id)
@@ -693,13 +808,12 @@ def finalize_play_day_view(request, session_id):
     session.final_play_day = choice
     session.save(update_fields=['final_play_day'])
 
-    if hasattr(session, 'poll') and session.poll.is_open:
-        session.poll.is_open = False
-        session.poll.save(update_fields=['is_open'])
+    # Keep the poll open after finalizing so members can still change their
+    # availability response (staff can close it manually if needed).
 
     messages.success(
         request,
-        f"Play day set to {session.final_play_day_label}. Team balance is now open."
+        f"Play day set to {session.final_play_day_label}. Team balance is now open. The poll stays open."
     )
     return redirect('session_detail', session_id=session.id)
 
@@ -874,6 +988,13 @@ def save_teams_view(request, session_id):
                 )
             except (User.DoesNotExist, ValueError):
                 pass
+
+        # Teams are now split — availability gathering is done, so close the
+        # poll. It stays open through voting and play-day finalization up to
+        # this point (see finalize_play_day_view, which no longer closes it).
+        if hasattr(session, 'poll') and session.poll.is_open:
+            session.poll.is_open = False
+            session.poll.save(update_fields=['is_open'])
 
         messages.success(request, f"Teams saved for {match.name}!")
 
@@ -1055,22 +1176,36 @@ def session_attendance_detail_view(request, session_id):
         return redirect('session_detail', session_id=session.id)
 
     present_sp_ids = set(request.POST.getlist('present'))
+    chargeable_sp_ids = set(request.POST.getlist('chargeable'))
 
     with transaction.atomic():
-        # 1. Sync each SessionPlayer's Attendance.attended.
+        # 1. Sync each SessionPlayer's attendance and cost-split inclusion.
         attendee_user_ids = []
+        chargeable_user_ids = []
         for sp in SessionPlayer.objects.filter(session=session).select_related('user'):
             is_present = str(sp.id) in present_sp_ids
+            is_chargeable = is_present and str(sp.id) in chargeable_sp_ids
             attendance, _ = Attendance.objects.get_or_create(
-                match_player=sp, defaults={'attended': is_present}
+                match_player=sp,
+                defaults={'attended': is_present, 'cost_exempt': is_present and not is_chargeable},
             )
+            cost_exempt = is_present and not is_chargeable
+            update_fields = []
             if attendance.attended != is_present:
                 attendance.attended = is_present
-                attendance.save(update_fields=['attended'])
+                update_fields.append('attended')
+            if attendance.cost_exempt != cost_exempt:
+                attendance.cost_exempt = cost_exempt
+                update_fields.append('cost_exempt')
+            if update_fields:
+                attendance.save(update_fields=update_fields)
             if is_present:
                 attendee_user_ids.append(sp.user_id)
+            if is_chargeable:
+                chargeable_user_ids.append(sp.user_id)
 
         present_count = len(attendee_user_ids)
+        chargeable_count = len(chargeable_user_ids)
 
         # Genuinely nobody present → clear attendance entirely.
         if present_count == 0:
@@ -1084,6 +1219,18 @@ def session_attendance_detail_view(request, session_id):
 
         # Attendees present but the session has no cost (free game) → still confirm
         # attendance, there's just nothing to split or collect.
+        if chargeable_count == 0:
+            session.cost_per_person = None
+            session.attendance_confirmed = True
+            session.save(update_fields=['cost_per_person', 'attendance_confirmed'])
+            Payment.objects.filter(session=session, status='pending').delete()
+            messages.success(
+                request,
+                f'Attendance saved: {present_count} present, 0 charged. '
+                'No payment split was created.'
+            )
+            return redirect('session_detail', session_id=session.id)
+
         if not session.cost:
             session.cost_per_person = None
             session.attendance_confirmed = True
@@ -1098,7 +1245,7 @@ def session_attendance_detail_view(request, session_id):
             return redirect('session_detail', session_id=session.id)
 
         # 2. Recompute the per-person split.
-        cost_per_person = (session.cost / Decimal(present_count)).quantize(Decimal('0.01'))
+        cost_per_person = (session.cost / Decimal(chargeable_count)).quantize(Decimal('0.01'))
         session.cost_per_person = cost_per_person
         session.attendance_confirmed = True
         session.save(update_fields=['cost_per_person', 'attendance_confirmed'])
@@ -1107,23 +1254,23 @@ def session_attendance_detail_view(request, session_id):
         #    - drop pending payments for users no longer attending
         #    - leave paid payments alone (historic record)
         #    - create/upsert pending payments for current attendees with the new amount
-        attendee_set = set(attendee_user_ids)
+        chargeable_set = set(chargeable_user_ids)
         pending_removed = Payment.objects.filter(
             session=session, status='pending'
-        ).exclude(user_id__in=attendee_set).delete()[0]
+        ).exclude(user_id__in=chargeable_set).delete()[0]
 
         # Warn about attendees being unchecked while a paid Payment exists.
         paid_unchecked = Payment.objects.filter(
             session=session, status='paid'
-        ).exclude(user_id__in=attendee_set).select_related('user')
+        ).exclude(user_id__in=chargeable_set).select_related('user')
         for p in paid_unchecked:
             messages.warning(
                 request,
                 f"{p.user.username} has already paid €{p.amount} for this session "
-                f"but is now unchecked. The paid record was kept; refund manually if needed."
+                f"but is now excluded from the split. The paid record was kept; refund manually if needed."
             )
 
-        for uid in attendee_set:
+        for uid in chargeable_set:
             payment, created = Payment.objects.get_or_create(
                 user_id=uid, session=session,
                 defaults={'amount': cost_per_person, 'status': 'pending', 'method': 'cash'},
@@ -1135,7 +1282,7 @@ def session_attendance_detail_view(request, session_id):
     suffix = f' Removed {pending_removed} pending payment(s).' if pending_removed else ''
     messages.success(
         request,
-        f'Attendance saved: {present_count} present, €{cost_per_person} per player.{suffix}'
+        f'Attendance saved: {present_count} present, {chargeable_count} charged, €{cost_per_person} per player.{suffix}'
     )
     return redirect('session_detail', session_id=session.id)
 
