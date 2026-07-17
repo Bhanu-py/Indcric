@@ -1023,50 +1023,8 @@ style.textContent = `
 document.head.appendChild(style);
 
 function validateSubmit(e) {
-    console.log('validateSubmit called');
-    
-    // Sync checkboxes with quantities first
-    document.querySelectorAll('.product-card').forEach(card => {
-        const checkbox = card.querySelector('input[type="checkbox"][name="item_types"]');
-        const quantityInput = card.querySelector('input[type="number"]');
-        
-        if (checkbox && quantityInput) {
-            const qty = parseInt(quantityInput.value) || 0;
-            if (qty > 0) {
-                checkbox.checked = true;
-            } else {
-                checkbox.checked = false;
-            }
-        }
-    });
-    
-    // Now check if at least one item is selected
-    const selectedCheckboxes = document.querySelectorAll('input[type="checkbox"][name="item_types"]:checked');
-    console.log('Selected checkboxes:', selectedCheckboxes.length);
-    
-    if (selectedCheckboxes.length === 0) {
-        e.preventDefault();
-        showNotification('⚠️ Please select at least one item with quantity > 0', 'error');
-        console.log('No items selected, preventing submission');
-        return false;
-    }
-    
-    // Verify all selected items have quantities
-    for (let checkbox of selectedCheckboxes) {
-        const card = checkbox.closest('.product-card');
-        const quantityInput = card.querySelector('input[type="number"]');
-        const qty = parseInt(quantityInput.value) || 0;
-        
-        if (qty < 1) {
-            e.preventDefault();
-            showNotification('⚠️ All selected items must have quantity at least 1', 'error');
-            console.log('Item quantity is 0, preventing submission');
-            return false;
-        }
-    }
-    
-    console.log('Validation passed, allowing submission to continue');
-    // Don't prevent default - let the form submit to the server
+    console.log('validateSubmit called - removing validation, letting Django handle it');
+    // Just let the form submit - Django will validate everything
     return true;
 }
 
