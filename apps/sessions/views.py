@@ -989,6 +989,13 @@ def save_teams_view(request, session_id):
             except (User.DoesNotExist, ValueError):
                 pass
 
+        # Teams are now split — availability gathering is done, so close the
+        # poll. It stays open through voting and play-day finalization up to
+        # this point (see finalize_play_day_view, which no longer closes it).
+        if hasattr(session, 'poll') and session.poll.is_open:
+            session.poll.is_open = False
+            session.poll.save(update_fields=['is_open'])
+
         messages.success(request, f"Teams saved for {match.name}!")
 
     return redirect('session_detail', session_id=session_id)
