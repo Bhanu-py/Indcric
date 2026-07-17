@@ -1,6 +1,8 @@
+from functools import wraps
 from io import BytesIO
 from collections import defaultdict
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
@@ -12,6 +14,18 @@ from openpyxl.styles import Font, PatternFill
 
 from .forms import JerseyOrderForm, JerseyOrderWindowForm
 from .models import JerseyOrder, JerseyOrderWindow
+
+
+def jersey_ordering_enabled(view):
+    """Gate a jersey view behind the JERSEY_ORDERING_ENABLED flag. When off
+    (e.g. prod until prices are final), redirect home instead of serving it."""
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        if not settings.JERSEY_ORDERING_ENABLED:
+            messages.info(request, "Jersey ordering isn't available yet.")
+            return redirect('home')
+        return view(request, *args, **kwargs)
+    return wrapper
 
 
 def _catalog():
@@ -82,6 +96,7 @@ def _summary():
 
 
 @login_required
+@jersey_ordering_enabled
 def jersey_orders_view(request):
     form = JerseyOrderForm(user=request.user)
     order_window = JerseyOrderWindow.current()
@@ -126,6 +141,7 @@ def jersey_orders_view(request):
 
 
 @login_required
+@jersey_ordering_enabled
 def delete_jersey_order_view(request, order_id):
     order = get_object_or_404(JerseyOrder, id=order_id)
     if not request.user.is_staff and order.user_id != request.user.id:
@@ -141,6 +157,7 @@ def delete_jersey_order_view(request, order_id):
 
 
 @staff_member_required
+@jersey_ordering_enabled
 def jersey_orders_admin_view(request):
     summary, total_quantity, grand_total = _summary()
     order_window = JerseyOrderWindow.current()
@@ -174,6 +191,7 @@ def jersey_orders_admin_view(request):
 
 
 @staff_member_required
+@jersey_ordering_enabled
 def export_jersey_orders_view(request):
     workbook = Workbook()
     worksheet = workbook.active

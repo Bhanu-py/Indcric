@@ -13,6 +13,9 @@ services:
         value: 3.13.3
       - key: DEBUG
         value: "False"
+      # Jersey ordering hidden in prod until kit prices are finalized.
+      - key: JERSEY_ORDERING_ENABLED
+        value: "False"
       - key: SECRET_KEY
         generateValue: true
       - key: ALLOWED_HOSTS
