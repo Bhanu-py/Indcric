@@ -53,7 +53,7 @@ class JerseyOrder(models.Model):
     SHIRT_ITEMS = {'collar_half', 'collar_full', 'round_half', 'round_full'}
     PANT_ITEMS = {'pant', 'shorts'}
     HEADWEAR_ITEMS = {'umpire_cap', 'player_cap'}
-    FREE_SIZE = 'FS'
+    FREE_SIZE = 'Free size - cap/hat'
     ITEM_META = {
         'collar_half': {'visual': 'Polo', 'group': 'T-shirt', 'note': 'Collar, half sleeve'},
         'collar_full': {'visual': 'Polo', 'group': 'T-shirt', 'note': 'Collar, full sleeve'},
@@ -66,7 +66,7 @@ class JerseyOrder(models.Model):
     }
 
     NUMERIC_SIZES = (20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44)
-    SIZE_CHOICES = [(str(size), str(size)) for size in NUMERIC_SIZES] + [(FREE_SIZE, 'Free size - cap/hat only')]
+    SHIRT_SIZE_CHOICES = [(str(size), str(size)) for size in NUMERIC_SIZES]
     SIZE_MEASUREMENTS = [
         {'size': '20', 'full_chest': '22', 'half_chest': '11', 'length': '16', 'shoulder': '10'},
         {'size': '22', 'full_chest': '24', 'half_chest': '12', 'length': '17', 'shoulder': '11'},
@@ -83,8 +83,34 @@ class JerseyOrder(models.Model):
         {'size': '44', 'full_chest': '44', 'half_chest': '22', 'length': '29', 'shoulder': '17'},
     ]
     PANT_SIZE_MEASUREMENTS = [
-        {'size': str(size), 'uk_waist': f'W{size}', 'waist': str(size), 'outseam': 'Confirm', 'inseam': 'Confirm'}
-        for size in NUMERIC_SIZES
+        {'size': '20', 'length': '20', 'relaxed_waist': '18', 'half_hip': '20'},
+        {'size': '22', 'length': '22', 'relaxed_waist': '18', 'half_hip': '22'},
+        {'size': '24', 'length': '24', 'relaxed_waist': '19', 'half_hip': '24'},
+        {'size': '26', 'length': '26', 'relaxed_waist': '20', 'half_hip': '26'},
+        {'size': '28', 'length': '28', 'relaxed_waist': '21', 'half_hip': '28'},
+        {'size': '30', 'length': '30', 'relaxed_waist': '22', 'half_hip': '30'},
+        {'size': '32', 'length': '32', 'relaxed_waist': '23', 'half_hip': '32'},
+        {'size': '34', 'length': '34', 'relaxed_waist': '24', 'half_hip': '34'},
+        {'size': '36', 'length': '36', 'relaxed_waist': '25', 'half_hip': '36'},
+        {'size': '38', 'length': '38', 'relaxed_waist': '26', 'half_hip': '38'},
+        {'size': '40', 'length': '40', 'relaxed_waist': '27', 'half_hip': '40'},
+        {'size': '42', 'length': '42', 'relaxed_waist': '28', 'half_hip': '42'},
+        {'size': '44', 'length': '42', 'relaxed_waist': '29', 'half_hip': '42'},
+    ]
+    PANT_SIZE_CHOICES = [
+        ('20', 'Size 20 - length 20", relaxed waist 18", half hip 20"'),
+        ('22', 'Size 22 - length 22", relaxed waist 18", half hip 22"'),
+        ('24', 'Size 24 - length 24", relaxed waist 19", half hip 24"'),
+        ('26', 'Size 26 - length 26", relaxed waist 20", half hip 26"'),
+        ('28', 'Size 28 - length 28", relaxed waist 21", half hip 28"'),
+        ('30', 'Size 30 - length 30", relaxed waist 22", half hip 30"'),
+        ('32', 'Size 32 - length 32", relaxed waist 23", half hip 32"'),
+        ('34', 'Size 34 - length 34", relaxed waist 24", half hip 34"'),
+        ('36', 'Size 36 - length 36", relaxed waist 25", half hip 36"'),
+        ('38', 'Size 38 - length 38", relaxed waist 26", half hip 38"'),
+        ('40', 'Size 40 - length 40", relaxed waist 27", half hip 40"'),
+        ('42', 'Size 42 - length 42", relaxed waist 28", half hip 42"'),
+        ('44', 'Size 44 - length 42", relaxed waist 29", half hip 42"'),
     ]
 
     user = models.ForeignKey(
@@ -96,7 +122,7 @@ class JerseyOrder(models.Model):
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, default=GENDER_UNISEX)
     wearer_name = models.CharField(max_length=80)
     item_type = models.CharField(max_length=20, choices=ITEM_CHOICES)
-    size = models.CharField(max_length=2, choices=SIZE_CHOICES)
+    size = models.CharField(max_length=160, blank=True)
     quantity = models.PositiveIntegerField(default=1)
     jersey_number = models.CharField(
         max_length=3,
@@ -125,15 +151,24 @@ class JerseyOrder(models.Model):
     def line_total(self):
         return self.unit_price * self.quantity
 
+    @property
+    def display_size(self):
+        if self.size == 'FS':
+            return self.FREE_SIZE
+        return self.size or '-'
+
     def clean(self):
         super().clean()
         self.jersey_number = (self.jersey_number or '').strip()
+        self.size = (self.size or '').strip()
         if self.quantity < 1:
             raise ValidationError({'quantity': 'Quantity must be at least 1.'})
         if self.jersey_number and not self.jersey_number.isdigit():
             raise ValidationError({'jersey_number': 'Use numbers only.'})
-        if self.size == self.FREE_SIZE and self.item_type and self.item_type not in self.HEADWEAR_ITEMS:
+        if self.size in (self.FREE_SIZE, 'FS') and self.item_type and self.item_type not in self.HEADWEAR_ITEMS:
             raise ValidationError({'size': 'Free size is only for cap/hat orders.'})
+        if self.item_type and self.item_type not in self.HEADWEAR_ITEMS and not self.size:
+            raise ValidationError({'size': 'Size or measurements are required for shirts, pants and shorts.'})
 
 
 class JerseyOrderWindow(models.Model):

@@ -24,7 +24,7 @@ class JerseyOrderTests(TestCase):
             'gender': 'male',
             'wearer_name': 'Kural',
             'item_types': ['collar_half', 'player_cap'],
-            'size': '38',
+            'shirt_size': '38',
             'quantity_collar_half': '2',
             'quantity_player_cap': '1',
             'jersey_number': '7',
@@ -36,9 +36,29 @@ class JerseyOrderTests(TestCase):
         order = JerseyOrder.objects.get(item_type='collar_half')
         self.assertEqual(order.user, self.user)
         self.assertEqual(order.gender, 'male')
+        self.assertEqual(order.size, '38')
         self.assertEqual(order.jersey_number, '7')
         self.assertEqual(order.line_total, JerseyOrder.rate_for('collar_half') * 2)
         self.assertEqual(JerseyOrder.objects.get(item_type='player_cap').quantity, 1)
+        self.assertEqual(JerseyOrder.objects.get(item_type='player_cap').size, JerseyOrder.FREE_SIZE)
+
+    def test_adult_shirt_and_pant_use_separate_standard_sizes(self):
+        resp = self.client.post(reverse('jersey-orders'), {
+            'for_person': 'self',
+            'gender': 'male',
+            'wearer_name': 'Adult',
+            'item_types': ['collar_half', 'pant'],
+            'shirt_size': '40',
+            'pant_size': '32',
+            'quantity_collar_half': '1',
+            'quantity_pant': '1',
+            'jersey_number': '9',
+            'notes': '',
+        })
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(JerseyOrder.objects.get(item_type='collar_half').size, '40')
+        self.assertEqual(JerseyOrder.objects.get(item_type='pant').size, '32')
 
     def test_duplicate_jersey_number_is_allowed(self):
         other = User.objects.create_user(username='other', password='x')
@@ -58,7 +78,10 @@ class JerseyOrderTests(TestCase):
             'gender': 'boy',
             'wearer_name': 'Kural',
             'item_types': ['round_half'],
-            'size': '40',
+            'kid_shirt_full_chest': '30',
+            'kid_shirt_half_chest': '15',
+            'kid_shirt_length': '21',
+            'kid_shirt_shoulder': '13',
             'quantity_round_half': '1',
             'jersey_number': '10',
             'notes': '',
@@ -67,13 +90,12 @@ class JerseyOrderTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(JerseyOrder.objects.filter(jersey_number='10').count(), 2)
 
-    def test_free_size_is_allowed_for_headwear_only(self):
+    def test_headwear_does_not_require_size(self):
         cap_resp = self.client.post(reverse('jersey-orders'), {
             'for_person': 'family',
             'gender': 'unisex',
             'wearer_name': 'Family',
             'item_types': ['umpire_cap'],
-            'size': JerseyOrder.FREE_SIZE,
             'quantity_umpire_cap': '1',
             'jersey_number': '7',
             'notes': '',
@@ -87,15 +109,37 @@ class JerseyOrderTests(TestCase):
             'gender': 'male',
             'wearer_name': 'Member',
             'item_types': ['collar_half'],
-            'size': JerseyOrder.FREE_SIZE,
             'quantity_collar_half': '1',
             'jersey_number': '',
             'notes': '',
         })
 
         self.assertEqual(shirt_resp.status_code, 200)
-        self.assertContains(shirt_resp, 'Free size is only for cap/hat')
+        self.assertContains(shirt_resp, 'Choose an adult shirt size from the maker chart.')
         self.assertEqual(JerseyOrder.objects.count(), 1)
+
+    def test_kid_custom_measurements_are_saved(self):
+        resp = self.client.post(reverse('jersey-orders'), {
+            'for_person': 'kid',
+            'gender': 'girl',
+            'wearer_name': 'Kid',
+            'item_types': ['round_full', 'shorts'],
+            'kid_shirt_full_chest': '28',
+            'kid_shirt_half_chest': '14',
+            'kid_shirt_length': '20',
+            'kid_shirt_shoulder': '12',
+            'kid_pant_length': '26',
+            'kid_pant_relaxed_waist': '20',
+            'kid_pant_half_hip': '26',
+            'quantity_round_full': '1',
+            'quantity_shorts': '1',
+            'jersey_number': '21',
+            'notes': '',
+        })
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn('Kid custom shirt', JerseyOrder.objects.get(item_type='round_full').size)
+        self.assertIn('Kid custom pant', JerseyOrder.objects.get(item_type='shorts').size)
 
     def test_number_reference_deduplicates_multiple_items_for_same_wearer(self):
         for item_type in ['collar_half', 'collar_full', 'player_cap']:
@@ -127,8 +171,10 @@ class JerseyOrderTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Wide-Brim Hat')
         self.assertContains(resp, 'Family/kids may reuse the same number')
-        self.assertContains(resp, 'T-shirt maker size chart')
-        self.assertContains(resp, 'Pants/shorts maker size template')
+        self.assertContains(resp, 'How to choose the right size')
+        self.assertContains(resp, 'Adult shirt standard size chart')
+        self.assertContains(resp, 'Adult pant / shorts standard size chart')
+        self.assertContains(resp, 'Kids custom measurements')
 
     def test_closed_ordering_window_blocks_member_changes(self):
         JerseyOrderWindow.objects.create(
@@ -143,7 +189,7 @@ class JerseyOrderTests(TestCase):
             'gender': 'male',
             'wearer_name': 'Late',
             'item_types': ['collar_half'],
-            'size': '38',
+            'shirt_size': '38',
             'quantity_collar_half': '1',
             'jersey_number': '11',
             'notes': '',
@@ -199,3 +245,6 @@ class JerseyOrderTests(TestCase):
         self.assertEqual(worksheet['A1'].value, 'Member')
         self.assertEqual(worksheet['D2'].value, 'Kid')
         self.assertEqual(worksheet['C2'].value, 'Girl')
+        self.assertEqual(worksheet['F1'].value, 'Size / measurement')
+        self.assertEqual(worksheet['I1'].value, 'Kid Measurements')
+        self.assertEqual(worksheet['F2'].value, '28')

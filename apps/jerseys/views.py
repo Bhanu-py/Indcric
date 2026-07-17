@@ -61,7 +61,6 @@ def _summary():
     )
     item_labels = dict(JerseyOrder.ITEM_CHOICES)
     gender_labels = dict(JerseyOrder.GENDER_CHOICES)
-    size_labels = dict(JerseyOrder.SIZE_CHOICES)
     grouped = defaultdict(list)
     grand_total = 0
     total_quantity = 0
@@ -73,7 +72,7 @@ def _summary():
         total_quantity += quantity
         grouped[row['item_type']].append({
             'item': item_labels.get(row['item_type'], row['item_type']),
-            'size': size_labels.get(row['size'], row['size']),
+            'size': 'Free size - cap/hat' if row['size'] == 'FS' else row['size'],
             'gender': gender_labels.get(row['gender'], row['gender']),
             'quantity': quantity,
             'rate': rate,
@@ -165,7 +164,10 @@ def export_jersey_orders_view(request):
         'Gender',
         'Wearer name',
         'Item',
-        'Size',
+        'Size / measurement',
+        'Shirt Size',
+        'Pant Size',
+        'Kid Measurements',
         'Quantity',
         'Jersey number',
         'Unit price',
@@ -185,7 +187,10 @@ def export_jersey_orders_view(request):
             order.get_gender_display(),
             order.wearer_name,
             order.get_item_type_display(),
-            order.get_size_display(),
+            order.display_size,
+            order.display_size if order.item_type in JerseyOrder.SHIRT_ITEMS and not order.display_size.startswith('Kid custom') else '',
+            order.display_size if order.item_type in JerseyOrder.PANT_ITEMS and not order.display_size.startswith('Kid custom') else '',
+            order.display_size if order.display_size.startswith('Kid custom') else '',
             order.quantity,
             order.jersey_number,
             order.unit_price,

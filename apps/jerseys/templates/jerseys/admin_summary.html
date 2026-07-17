@@ -47,7 +47,7 @@
                     <tr>
                         <th class="px-4 py-3 text-left">Item</th>
                         <th class="px-4 py-3 text-left">Gender / fit</th>
-                        <th class="px-4 py-3 text-left">Size</th>
+                        <th class="px-4 py-3 text-left">Size / measurement</th>
                         <th class="px-4 py-3 text-right">Qty</th>
                         <th class="px-4 py-3 text-right">Rate</th>
                         <th class="px-4 py-3 text-right">Total</th>
@@ -88,7 +88,7 @@
                         <th class="px-4 py-3 text-left">Gender / fit</th>
                         <th class="px-4 py-3 text-left">Wearer</th>
                         <th class="px-4 py-3 text-left">Item</th>
-                        <th class="px-4 py-3 text-left">Size</th>
+                        <th class="px-4 py-3 text-left">Size / measurement</th>
                         <th class="px-4 py-3 text-right">Qty</th>
                         <th class="px-4 py-3 text-left">No.</th>
                         <th class="px-4 py-3 text-right">Total</th>
@@ -102,7 +102,7 @@
                         <td class="px-4 py-3">{{ order.get_gender_display }}</td>
                         <td class="px-4 py-3 font-semibold">{{ order.wearer_name }}</td>
                         <td class="px-4 py-3">{{ order.get_item_type_display }}</td>
-                        <td class="px-4 py-3">{{ order.get_size_display }}</td>
+                        <td class="px-4 py-3">{{ order.display_size }}</td>
                         <td class="px-4 py-3 text-right">{{ order.quantity }}</td>
                         <td class="px-4 py-3">{% if order.jersey_number %}#{{ order.jersey_number }}{% else %}-{% endif %}</td>
                         <td class="px-4 py-3 text-right font-semibold">₹{{ order.line_total }}</td>

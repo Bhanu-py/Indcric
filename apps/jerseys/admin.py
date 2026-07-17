@@ -11,7 +11,7 @@ class JerseyOrderAdmin(admin.ModelAdmin):
         'gender',
         'wearer_name',
         'item_type',
-        'size',
+        'display_size',
         'quantity',
         'jersey_number',
         'line_total',
