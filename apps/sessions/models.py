@@ -61,12 +61,31 @@ class Session(models.Model):
         return None
 
     @property
+    def date_option_1_label(self):
+        return self.date_option_1.strftime('%a %d %b') if self.date_option_1 else ''
+
+    @property
+    def date_option_2_label(self):
+        return self.date_option_2.strftime('%a %d %b') if self.date_option_2 else ''
+
+    @property
     def final_play_day_label(self):
-        return dict(self.PLAY_DAY_CHOICES).get(self.final_play_day, '')
+        # Show the actual chosen date, not a fixed weekday word — sessions can
+        # fall on any two days, not just Saturday/Sunday.
+        if self.final_play_day == 'sat' and self.date_option_1:
+            return self.date_option_1_label
+        if self.final_play_day == 'sun' and self.date_option_2:
+            return self.date_option_2_label
+        return self.date.strftime('%a %d %b') if self.date else ''
 
     @property
     def single_play_day_label(self):
-        return dict(self.PLAY_DAY_CHOICES).get(self.single_play_day, '')
+        single = self.single_play_day
+        if single == 'sat' and self.date_option_1:
+            return self.date_option_1_label
+        if single == 'sun' and self.date_option_2:
+            return self.date_option_2_label
+        return self.date.strftime('%a %d %b') if self.date else ''
 
     def __str__(self):
         return self.name
