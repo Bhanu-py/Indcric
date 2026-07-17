@@ -1065,72 +1065,8 @@ function validateSubmit(e) {
         }
     }
     
-    // Check conditional size requirements based on selected items
-    const genderSelect = document.querySelector('select[name="gender"]');
-    const gender = genderSelect ? genderSelect.value : '';
-    console.log('Gender selected:', gender);
-    
-    // Determine which sizes are needed based on selected items
-    let needsShirtSize = false;
-    let needsPantSize = false;
-    
-    document.querySelectorAll('input[type="checkbox"][name="item_types"]:checked').forEach(checkbox => {
-        const itemType = checkbox.value;
-        console.log('Checking item type:', itemType);
-        
-        if (itemType && itemType.toLowerCase().includes('shirt')) {
-            needsShirtSize = true;
-        }
-        if (itemType && itemType.toLowerCase().includes('pant')) {
-            needsPantSize = true;
-        }
-    });
-    
-    console.log('Needs shirt size:', needsShirtSize, 'Needs pant size:', needsPantSize);
-    
-    // Validate shirt size if shirt is selected
-    if (needsShirtSize) {
-        if (gender === 'Adult') {
-            const shirtSize = document.querySelector('select[name="shirt_size"]');
-            if (!shirtSize || shirtSize.value === '' || shirtSize.value === 'None') {
-                e.preventDefault();
-                showNotification('⚠️ Shirt Size is required when Adult Shirt is selected', 'error');
-                console.log('Adult shirt size not selected, preventing submission');
-                return false;
-            }
-        } else if (gender === 'Kids') {
-            const kidShirtChest = document.querySelector('input[name="kid_shirt_full_chest"]');
-            if (!kidShirtChest || kidShirtChest.value.trim() === '') {
-                e.preventDefault();
-                showNotification('⚠️ Kids Shirt Full Chest measurement is required when Kids Shirt is selected', 'error');
-                console.log('Kids shirt measurement not filled, preventing submission');
-                return false;
-            }
-        }
-    }
-    
-    // Validate pant size if pant is selected
-    if (needsPantSize) {
-        if (gender === 'Adult') {
-            const pantSize = document.querySelector('select[name="pant_size"]');
-            if (!pantSize || pantSize.value === '' || pantSize.value === 'None') {
-                e.preventDefault();
-                showNotification('⚠️ Pant Size is required when Adult Pant is selected', 'error');
-                console.log('Adult pant size not selected, preventing submission');
-                return false;
-            }
-        } else if (gender === 'Kids') {
-            const kidPantLength = document.querySelector('input[name="kid_pant_length"]');
-            if (!kidPantLength || kidPantLength.value.trim() === '') {
-                e.preventDefault();
-                showNotification('⚠️ Kids Pant Length is required when Kids Pant is selected', 'error');
-                console.log('Kids pant length not filled, preventing submission');
-                return false;
-            }
-        }
-    }
-    
-    console.log('Validation passed, allowing submission');
+    console.log('Validation passed, allowing submission to continue');
+    // Don't prevent default - let the form submit to the server
     return true;
 }
 
