@@ -383,7 +383,7 @@
 
             <!-- Poll card -->
             {% if session.poll %}
-            <div class="card overflow-hidden" x-data="{ expanded: {% if user_vote %}false{% else %}true{% endif %} }">
+            <div class="card overflow-hidden" x-data="{ expanded: {% if session.poll.is_open and not is_past %}true{% else %}false{% endif %} }">
 
                 {# Header — after voting it doubles as a summary strip + collapse toggle. #}
                 {% if user_choice %}
