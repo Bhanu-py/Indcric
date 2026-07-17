@@ -88,6 +88,7 @@
         </div>
     </div>
 
+    {% if jersey_ordering_enabled %}
     <a href="{% url 'jersey-orders' %}" class="card block mb-6 overflow-hidden border-emerald-100 bg-emerald-50/70 hover:shadow-md transition-shadow">
         <div class="p-4 flex items-center justify-between gap-4">
             <div class="min-w-0">
@@ -98,6 +99,7 @@
             <span class="btn btn-primary btn-md shrink-0">Order now</span>
         </div>
     </a>
+    {% endif %}
 
     <!-- ── Member snapshot (same for staff — staff is also a member) ──
          Next up (with vote-status pill) · Your outstanding · Wallet balance -->

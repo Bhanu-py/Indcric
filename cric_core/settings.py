@@ -67,6 +67,11 @@ if not DEBUG:
 # locals still back local-dev uploads and the DEBUG media route in urls.py.
 CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "")
 
+# ── Feature flags ──
+# Jersey ordering ships dormant to prod until prices are finalized. Default on
+# (stage keeps it visible); master sets JERSEY_ORDERING_ENABLED=False in env.
+JERSEY_ORDERING_ENABLED = os.getenv("JERSEY_ORDERING_ENABLED", "True").lower() == "true"
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -218,6 +223,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "apps.notifications.context_processors.activity_unread",
                 "apps.gdpr.context_processors.gdpr_context",
+                "apps.jerseys.context_processors.feature_flags",
             ],
         },
     },
