@@ -383,7 +383,7 @@
 
             <!-- Poll card -->
             {% if session.poll %}
-            <div class="card overflow-hidden" x-data="{ expanded: {% if user_vote %}false{% else %}true{% endif %} }">
+            <div class="card overflow-hidden" x-data="{ expanded: {% if session.poll.is_open and not is_past %}true{% else %}false{% endif %} }">
 
                 {# Header — after voting it doubles as a summary strip + collapse toggle. #}
                 {% if user_choice %}
@@ -434,6 +434,7 @@
                                     class="flex flex-col items-start gap-1 p-3.5 rounded-2xl border-2 bg-white active:scale-[.98] transition-all text-left {{ c.card }}">
                                 <span class="flex items-center gap-2 text-sm font-bold text-stone-800">
                                     <span class="w-2 h-2 rounded-full {{ c.dot }}"></span>{{ c.label }}
+                                    {% if c.status == 'finalized' %}<span class="rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Finalized</span>{% elif c.status == 'cancelled' %}<span class="rounded-full bg-stone-200 text-stone-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Cancelled</span>{% endif %}
                                 </span>
                                 {% if session.time %}<span class="text-xs text-stone-400">{{ session.time|time:"H:i" }} start</span>{% endif %}
                                 <span class="text-xs font-semibold {{ c.text }}">{{ c.count }} going</span>
@@ -514,8 +515,8 @@
                             <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3">
                                 {% for c in poll_choices %}
                                 <div class="flex items-center justify-between text-[13px]">
-                                    <span class="flex items-center gap-1.5 font-medium text-stone-600"><span class="w-2 h-2 rounded-full {{ c.dot }}"></span>{{ c.label }}</span>
-                                    <span class="font-bold text-stone-800 tabular-nums">{{ c.count }}</span>
+                                    <span class="flex items-center gap-1.5 font-medium text-stone-600 min-w-0"><span class="w-2 h-2 rounded-full {{ c.dot }} shrink-0"></span><span class="truncate">{{ c.label }}</span>{% if c.status == 'finalized' %}<span class="shrink-0 rounded-full bg-emerald-100 text-emerald-700 px-1.5 py-0.5 text-[9px] font-bold uppercase">Final</span>{% elif c.status == 'cancelled' %}<span class="shrink-0 rounded-full bg-stone-200 text-stone-500 px-1.5 py-0.5 text-[9px] font-bold uppercase">Cancelled</span>{% endif %}</span>
+                                    <span class="font-bold text-stone-800 tabular-nums shrink-0">{{ c.count }}</span>
                                 </div>
                                 {% endfor %}
                             </div>
@@ -545,48 +546,46 @@
             </div>
             {% endif %}
 
-            {% if user.is_staff and session.poll and not is_past %}
-            <div class="card overflow-hidden">
-                <div class="card-header flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-                    <div class="flex items-center gap-2 min-w-0">
-                        <h2 class="text-sm font-bold text-stone-800 shrink-0">Finalize play day</h2>
-                        {% if session.final_play_day %}
-                        <span class="badge badge-green shrink-0">{{ session.final_play_day_label }}</span>
-                        {% else %}
-                        <span class="badge badge-stone shrink-0">Not selected</span>
-                        {% endif %}
+            {# Finalize card: two-day sessions only, hidden once play starts (matches/attendance). #}
+            {% if user.is_staff and session.poll and availability.show_both and not is_past and not matches and not session.attendance_confirmed %}
+            <div class="card overflow-hidden" x-data="{ open: {% if session.final_play_day %}false{% else %}true{% endif %} }">
+                <button type="button" @click="open = !open" class="card-header w-full flex items-center justify-between gap-2 text-left">
+                    <div class="flex flex-col items-start gap-1 min-w-0">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <h2 class="text-sm font-bold text-stone-800 shrink-0">Finalize play day</h2>
+                            {% if session.final_play_day %}
+                            <span class="badge badge-green shrink-0">{{ session.final_play_day_label }}</span>
+                            {% else %}
+                            <span class="badge badge-stone shrink-0">Not selected</span>
+                            {% endif %}
+                        </div>
+                        {% if not session.final_play_day %}<span class="text-[11px] text-stone-400">Team balance unlocks after choosing one day</span>{% endif %}
                     </div>
-                    <span class="text-[11px] text-stone-400">{% if availability.show_both %}Team balance unlocks after choosing one day{% else %}Single-day session{% endif %}</span>
-                </div>
-                <div class="card-body">
-                    {% if availability.show_both %}
-                    <p class="text-sm text-stone-600 mb-4">
-                        Choose the day the session will actually be played.
-                    </p>
+                    <svg class="w-4 h-4 text-stone-400 transition-transform shrink-0" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="card-body" x-show="open" x-cloak>
                     <form method="POST" action="{% url 'finalize_play_day' session.id %}">
                         {% csrf_token %}
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-2 gap-2">
                             <button type="submit" name="play_day" value="sat"
-                                    class="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl border-2 font-bold transition-all {% if session.final_play_day == 'sat' %}bg-emerald-50 border-emerald-400 text-emerald-700{% else %}bg-white border-stone-200 text-stone-700 hover:bg-emerald-50 hover:border-emerald-300{% endif %}">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                                <span class="text-sm">{{ session.date_option_1_label }}</span>
+                                    class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 text-sm font-bold transition-all {% if session.final_play_day == 'sat' %}bg-emerald-50 border-emerald-400 text-emerald-700{% else %}bg-white border-stone-200 text-stone-700 hover:bg-emerald-50 hover:border-emerald-300{% endif %}">
+                                {% if session.final_play_day == 'sat' %}<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>{% endif %}
+                                {{ session.date_option_1_label }}
                             </button>
                             <button type="submit" name="play_day" value="sun"
-                                    class="flex flex-col items-center justify-center gap-1.5 py-4 rounded-2xl border-2 font-bold transition-all {% if session.final_play_day == 'sun' %}bg-sky-50 border-sky-400 text-sky-700{% else %}bg-white border-stone-200 text-stone-700 hover:bg-sky-50 hover:border-sky-300{% endif %}">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                                <span class="text-sm">{{ session.date_option_2_label }}</span>
+                                    class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 text-sm font-bold transition-all {% if session.final_play_day == 'sun' %}bg-sky-50 border-sky-400 text-sky-700{% else %}bg-white border-stone-200 text-stone-700 hover:bg-sky-50 hover:border-sky-300{% endif %}">
+                                {% if session.final_play_day == 'sun' %}<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>{% endif %}
+                                {{ session.date_option_2_label }}
                             </button>
                         </div>
+                        {% if session.final_play_day %}
+                        <div class="mt-2 flex items-center justify-between gap-2">
+                            <span class="text-xs text-stone-500">Locked as {{ session.final_play_day_label }}.</span>
+                            <button type="submit" name="play_day" value="clear"
+                                    class="text-xs font-semibold text-stone-400 hover:text-red-500 transition-colors">Clear</button>
+                        </div>
+                        {% endif %}
                     </form>
-                    {% if session.final_play_day %}
-                    <p class="mt-3 text-xs text-stone-500">Locked as {{ session.final_play_day_label }}. You can resave to change it.</p>
-                    {% endif %}
-                    {% else %}
-                    <p class="text-sm text-stone-600">
-                        This session has one date option, so it is fixed as {{ session.final_play_day_label }}.
-                        Members vote Yes or No for that day.
-                    </p>
-                    {% endif %}
                 </div>
             </div>
             {% endif %}
@@ -677,7 +676,7 @@
                     {% endwith %}
                     {% endif %}
                 </div>
-                <div class="card-body" x-show="expanded" x-cloak>
+                <div class="card-body">
 
                     <!-- Compact team summary (always visible) -->
                     <div class="flex items-center gap-3 flex-wrap">
@@ -686,7 +685,7 @@
                             <span class="w-2 h-2 rounded-full shrink-0 {% if forloop.first %}bg-pitch-500{% else %}bg-amber-400{% endif %}"></span>
                             <span class="text-xs font-semibold {% if forloop.first %}text-pitch-800{% else %}text-amber-700{% endif %} truncate">{{ team.name }}</span>
                             {% if team.runs > 0 or team.wickets > 0 %}
-                            <span class="text-xs font-mono text-stone-600">{{ team.runs }}/{{ team.wickets }}</span>
+                            <span class="text-xs font-mono text-stone-600">{{ team.runs }}/{{ team.wickets }}{% if team.overs %} <span class="text-stone-400">({{ team.overs }}{% if match.overs_limit %}/{{ match.overs_limit }}{% endif %} ov)</span>{% endif %}</span>
                             {% endif %}
                         </div>
                         {% if forloop.first and mteams|length > 1 %}
@@ -694,6 +693,13 @@
                         {% endif %}
                         {% endfor %}
                     </div>
+
+                    <!-- Scoring start/end time (issue #68) -->
+                    {% if match.scoring_started_at %}
+                    <p class="text-[11px] text-stone-400 mt-1.5">
+                        Started {{ match.scoring_started_at|time:"H:i" }}{% if match.scoring_ended_at %} &middot; Ended {{ match.scoring_ended_at|time:"H:i" }}{% if match.scoring_duration_minutes is not None %} &middot; {{ match.scoring_duration_minutes }}m{% endif %}{% else %} &middot; in progress{% endif %}
+                    </p>
+                    {% endif %}
 
                     <!-- Action row -->
                     {% if match.innings.all or user.is_staff and mteams|length >= 2 %}
@@ -715,10 +721,17 @@
                     </div>
                     {% endif %}
 
-                    <!-- Player lists — always visible, sorted batsmen → all-rounders → bowlers.
-                         On mobile the grid is pulled out past the card padding (-mx-3) and the
-                         gap/box padding tightened, so player names get the most width. -->
-                    <div class="mt-3 grid grid-cols-2 gap-2 sm:gap-3 -mx-3 sm:mx-0">
+                    <!-- Squads — collapsible so the match header + score overview above stay
+                         visible. Sorted batsmen → all-rounders → bowlers. On mobile the grid is
+                         pulled past the card padding (-mx-3) so player names get the most width. -->
+                    <div class="mt-3">
+                        <button type="button" @click="expanded = !expanded"
+                                class="flex items-center gap-1.5 text-xs font-semibold text-stone-500 hover:text-stone-700 transition-colors">
+                            <svg class="w-3.5 h-3.5 transition-transform" :class="expanded ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            <span x-text="expanded ? 'Hide squads' : 'Show squads'"></span>
+                        </button>
+                    </div>
+                    <div x-show="expanded" x-cloak x-transition class="mt-2 grid grid-cols-2 gap-2 sm:gap-3 -mx-3 sm:mx-0">
                         {% for team in mteams %}
                         <div>
                             <div class="flex items-center gap-2 mb-1.5 pl-1.5 pr-[18px] sm:pr-5">

@@ -483,8 +483,17 @@ def session_detail_view(request, session_id):
         for key, label, date, count, pct, voters, accent, primary in _defs:
             poll_choices.append({
                 'key': key, 'label': label, 'date': date, 'count': count,
-                'percentage': pct, 'voters': voters, 'primary': primary, **_accent[accent],
+                'percentage': pct, 'voters': voters, 'primary': primary,
+                'status': '', **_accent[accent],
             })
+        # Once a two-day session's play day is finalized, tag the chosen date
+        # 'finalized' and the other date 'cancelled' (poll stays open regardless).
+        if availability['is_two_day'] and session.final_play_day:
+            for c in poll_choices:
+                if c['key'] == session.final_play_day:
+                    c['status'] = 'finalized'
+                elif c['key'] in ('sat', 'sun'):
+                    c['status'] = 'cancelled'
         user_choice = next((c for c in poll_choices if c['key'] == user_vote), None)
         other_choices = [c for c in poll_choices if c['key'] != user_vote]
 
@@ -506,6 +515,14 @@ def session_detail_view(request, session_id):
         completed = len(innings) >= 2 and all(i.is_closed for i in innings)
         match.is_live = bool(innings) and not completed
         match.has_scorecard = match.id in scored_match_ids
+        # #69: overs bowled per team (from its batting innings), shown next to the score.
+        overs_by_team = {}
+        for inn in innings:
+            sc = match_scoring.innings_score(inn)
+            if sc['legal_balls'] or sc['runs']:
+                overs_by_team[inn.batting_team_id] = sc['overs']
+        for team in match.teams.all():
+            team.overs = overs_by_team.get(team.id)
         # Cap holders, tagged on the player chips once the match has a result.
         match.orange_cap_user_id = match.purple_cap_user_id = None
         if completed:
@@ -777,6 +794,12 @@ def finalize_play_day_view(request, session_id):
         return redirect('session_detail', session_id=session.id)
 
     choice = (request.POST.get('play_day') or '').strip().lower()
+    # Allow un-choosing: clear the finalized day back to "not selected".
+    if choice == 'clear':
+        session.final_play_day = None
+        session.save(update_fields=['final_play_day'])
+        messages.success(request, "Play day cleared. The poll stays open.")
+        return redirect('session_detail', session_id=session.id)
     allowed_choices = {'sat', 'sun'} if session.has_two_date_options else {session.single_play_day}
     if choice not in allowed_choices:
         messages.error(request, 'Please choose one of the available play days.')
@@ -785,13 +808,12 @@ def finalize_play_day_view(request, session_id):
     session.final_play_day = choice
     session.save(update_fields=['final_play_day'])
 
-    if hasattr(session, 'poll') and session.poll.is_open:
-        session.poll.is_open = False
-        session.poll.save(update_fields=['is_open'])
+    # Keep the poll open after finalizing so members can still change their
+    # availability response (staff can close it manually if needed).
 
     messages.success(
         request,
-        f"Play day set to {session.final_play_day_label}. Team balance is now open."
+        f"Play day set to {session.final_play_day_label}. Team balance is now open. The poll stays open."
     )
     return redirect('session_detail', session_id=session.id)
 
@@ -966,6 +988,13 @@ def save_teams_view(request, session_id):
                 )
             except (User.DoesNotExist, ValueError):
                 pass
+
+        # Teams are now split — availability gathering is done, so close the
+        # poll. It stays open through voting and play-day finalization up to
+        # this point (see finalize_play_day_view, which no longer closes it).
+        if hasattr(session, 'poll') and session.poll.is_open:
+            session.poll.is_open = False
+            session.poll.save(update_fields=['is_open'])
 
         messages.success(request, f"Teams saved for {match.name}!")
 
