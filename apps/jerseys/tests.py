@@ -217,6 +217,32 @@ class JerseyOrderTests(TestCase):
         self.assertContains(page_resp, 'Jersey ordering is closed.')
         self.assertContains(page_resp, 'Locked')
 
+    def test_staff_can_set_close_date_shown_bold_to_members(self):
+        staff = User.objects.create_user(username='window-staff', password='x', is_staff=True)
+        self.client.force_login(staff)
+        closes_at = timezone.localtime(timezone.now() + timedelta(days=3)).replace(second=0, microsecond=0)
+
+        resp = self.client.post(reverse('jersey-orders-admin'), {
+            'action': 'update_order_window',
+            'is_enabled': 'on',
+            'closes_at': closes_at.strftime('%Y-%m-%dT%H:%M'),
+        })
+
+        self.assertEqual(resp.status_code, 302)
+        window = JerseyOrderWindow.objects.get()
+        self.assertTrue(window.is_enabled)
+        self.assertEqual(window.closes_at_label(), closes_at.strftime('%d %b %Y, %H:%M'))
+
+        self.client.force_login(self.user)
+        page_resp = self.client.get(reverse('jersey-orders'))
+
+        self.assertContains(page_resp, 'Order close date:')
+        self.assertContains(
+            page_resp,
+            f'<strong class="font-extrabold">{window.closes_at_label()}</strong>',
+            html=True,
+        )
+
     def test_staff_can_export_orders(self):
         staff = User.objects.create_user(username='staff', password='x', is_staff=True)
         JerseyOrder.objects.create(

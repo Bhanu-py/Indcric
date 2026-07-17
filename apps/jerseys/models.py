@@ -215,12 +215,22 @@ class JerseyOrderWindow(models.Model):
             return 'Ordering is open. No cutoff period is currently enabled.'
         at = at or timezone.now()
         if self.opens_at and at < self.opens_at:
-            return f'Ordering opens on {timezone.localtime(self.opens_at).strftime("%d %b %Y, %H:%M")}.'
+            return f'Ordering opens on {self.opens_at_label()}.'
         if self.closes_at and at > self.closes_at:
-            return f'Ordering closed on {timezone.localtime(self.closes_at).strftime("%d %b %Y, %H:%M")}.'
+            return f'Ordering closed on {self.closes_at_label()}.'
         if self.closes_at:
-            return f'Ordering is open until {timezone.localtime(self.closes_at).strftime("%d %b %Y, %H:%M")}.'
+            return f'Ordering is open until {self.closes_at_label()}.'
         return 'Ordering is open.'
+
+    def opens_at_label(self):
+        if not self.opens_at:
+            return ''
+        return timezone.localtime(self.opens_at).strftime('%d %b %Y, %H:%M')
+
+    def closes_at_label(self):
+        if not self.closes_at:
+            return ''
+        return timezone.localtime(self.closes_at).strftime('%d %b %Y, %H:%M')
 
     def clean(self):
         super().clean()

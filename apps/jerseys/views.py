@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 
-from .forms import JerseyOrderForm
+from .forms import JerseyOrderForm, JerseyOrderWindowForm
 from .models import JerseyOrder, JerseyOrderWindow
 
 
@@ -91,6 +91,11 @@ def jersey_orders_view(request):
         if order_window
         else 'Ordering is open. Admin can set an order cutoff from Django admin.'
     )
+    ordering_deadline = (
+        order_window.closes_at_label()
+        if order_window and order_window.is_enabled and order_window.closes_at
+        else ''
+    )
     if request.method == 'POST':
         if not ordering_open:
             messages.error(request, 'Jersey ordering is closed. No new orders can be added now.')
@@ -115,6 +120,7 @@ def jersey_orders_view(request):
         'taken_numbers': _taken_numbers(),
         'ordering_open': ordering_open,
         'ordering_status': ordering_status,
+        'ordering_deadline': ordering_deadline,
     }
     return render(request, 'jerseys/order_form.html', context)
 
@@ -138,6 +144,14 @@ def delete_jersey_order_view(request, order_id):
 def jersey_orders_admin_view(request):
     summary, total_quantity, grand_total = _summary()
     order_window = JerseyOrderWindow.current()
+    window_form = JerseyOrderWindowForm(instance=order_window)
+    if request.method == 'POST' and request.POST.get('action') == 'update_order_window':
+        window_form = JerseyOrderWindowForm(request.POST, instance=order_window)
+        if window_form.is_valid():
+            order_window = window_form.save()
+            messages.success(request, 'Jersey order close date updated.')
+            return redirect('jersey-orders-admin')
+
     orders = JerseyOrder.objects.select_related('user').order_by(
         'user__first_name',
         'user__username',
@@ -150,6 +164,12 @@ def jersey_orders_admin_view(request):
         'grand_total': grand_total,
         'taken_numbers': _taken_numbers(),
         'ordering_status': order_window.status_text() if order_window else 'Ordering is open.',
+        'ordering_deadline': (
+            order_window.closes_at_label()
+            if order_window and order_window.is_enabled and order_window.closes_at
+            else ''
+        ),
+        'order_window_form': window_form,
     })
 
 

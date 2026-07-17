@@ -20,6 +20,25 @@
         <p class="text-sm font-semibold text-amber-900">All prices are in Indian rupees (₹) and exclude postal/courier charges.</p>
         <p class="text-xs text-amber-800 mt-1">Supplier totals below use the quotation rates only. Add postage separately when the final shipment cost is known.</p>
         <p class="text-xs font-semibold text-amber-900 mt-2">Ordering status: {{ ordering_status }}</p>
+        {% if ordering_deadline %}
+        <p class="text-sm text-amber-950 mt-2">Visible close date: <strong class="font-extrabold">{{ ordering_deadline }}</strong></p>
+        {% endif %}
+        <form method="post" class="mt-4 grid grid-cols-1 gap-3 rounded-xl bg-white/70 p-3 ring-1 ring-amber-100 sm:grid-cols-[1fr_auto] sm:items-end">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_order_window">
+            <div>
+                <label class="form-label" for="{{ order_window_form.closes_at.id_for_label }}">Order close date</label>
+                {{ order_window_form.closes_at }}
+                <label class="mt-2 flex items-center gap-2 text-xs font-semibold text-amber-900">
+                    {{ order_window_form.is_enabled }}
+                    <span>Show this close date and stop member orders after it</span>
+                </label>
+                {% if order_window_form.closes_at.errors %}
+                <p class="text-xs text-red-600 mt-1">{{ order_window_form.closes_at.errors|striptags }}</p>
+                {% endif %}
+            </div>
+            <button type="submit" class="btn btn-primary btn-md">Save close date</button>
+        </form>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">

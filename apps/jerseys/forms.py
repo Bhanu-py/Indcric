@@ -1,6 +1,7 @@
 from django import forms
+from django.utils import timezone
 
-from .models import JerseyOrder
+from .models import JerseyOrder, JerseyOrderWindow
 
 
 class JerseyOrderForm(forms.ModelForm):
@@ -178,3 +179,50 @@ class JerseyOrderForm(forms.ModelForm):
                 'quantity_field': self[field_name],
             })
         return rows
+
+
+class JerseyOrderWindowForm(forms.Form):
+    is_enabled = forms.BooleanField(
+        required=False,
+        label='Use order close date',
+        widget=forms.CheckboxInput(attrs={
+            'class': 'rounded border-stone-300 text-pitch-600 focus:ring-pitch-500',
+        }),
+    )
+    closes_at = forms.DateTimeField(
+        required=False,
+        input_formats=['%Y-%m-%dT%H:%M'],
+        widget=forms.DateTimeInput(attrs={
+            'class': 'form-input',
+            'type': 'datetime-local',
+        }, format='%Y-%m-%dT%H:%M'),
+        label='Order close date',
+    )
+
+    def __init__(self, *args, instance=None, **kwargs):
+        self.instance = instance
+        initial = kwargs.pop('initial', {})
+        if instance:
+            initial.setdefault('is_enabled', instance.is_enabled)
+            if instance.closes_at:
+                initial.setdefault(
+                    'closes_at',
+                    timezone.localtime(instance.closes_at).strftime('%Y-%m-%dT%H:%M'),
+                )
+        super().__init__(*args, initial=initial, **kwargs)
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('is_enabled') and not cleaned.get('closes_at'):
+            self.add_error('closes_at', 'Choose an order close date.')
+        return cleaned
+
+    def save(self):
+        window = self.instance or JerseyOrderWindow.objects.first() or JerseyOrderWindow()
+        window.name = window.name or 'Jersey order window'
+        window.is_enabled = self.cleaned_data.get('is_enabled', False)
+        window.closes_at = self.cleaned_data.get('closes_at')
+        window.opens_at = None
+        window.full_clean()
+        window.save()
+        return window
