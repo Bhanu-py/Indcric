@@ -746,6 +746,20 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
 .text-sm { font-size: 0.75rem; }
 
 @media (max-width: 768px) {
+    .hero {
+        padding: 2rem 1rem 3rem 1rem;
+        clip-path: polygon(0 0, 100% 0, 100% 90%, 0 100%);
+    }
+
+    .team-kit-label {
+        font-size: 0.7rem !important;
+    }
+
+    .admin-btn {
+        font-size: 0.65rem !important;
+        padding: 0.4rem 0.8rem !important;
+    }
+
     .hero h1 {
         font-size: 1.8rem;
     }
@@ -810,13 +824,13 @@ ul.errorlist li { display: none !important; }
     <!-- Admin Dashboard in Top Right Corner -->
     {% if request.user.is_staff %}
     <div style="position: absolute; top: 1.5rem; right: 2rem; z-index: 10;">
-        <a href="{% url 'jersey-orders-admin' %}" class="hero-cta">📊 Admin Dashboard</a>
+        <a href="{% url 'jersey-orders-admin' %}" class="hero-cta admin-btn">📊 Admin Dashboard</a>
     </div>
     {% endif %}
     
     <div class="hero-content">
         <div style="margin-bottom: 1rem;">
-            <div style="color: #FFD700; font-weight: 700; font-size: 0.95rem; margin-bottom: 0.5rem;">🏷️ TEAM KIT</div>
+            <div class="team-kit-label" style="color: #FFD700; font-weight: 700; font-size: 0.95rem; margin-bottom: 0.5rem;">🏷️ TEAM KIT</div>
         </div>
         <h1 style="color: #FFD700;">🏏 ICG Store</h1>
         
