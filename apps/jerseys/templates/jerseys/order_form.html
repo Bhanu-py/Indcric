@@ -238,36 +238,60 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
 .product-qty-controls {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.8rem;
     margin-left: auto;
+}
+
+@media (max-width: 639px) {
+    .product-qty-section {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding-top: 1rem;
+        border-top: 2px solid #f5f5f5;
+        justify-content: space-between;
+        width: 100%;
+    }
 }
 
 .qty-mini-btn {
     background: #f0f0f0;
     color: #1a1a1a;
     border: none;
-    width: 28px;
-    height: 28px;
+    width: 44px;
+    height: 44px;
     border-radius: 6px;
     cursor: pointer;
     font-weight: 800;
     transition: all 0.2s ease;
-    font-size: 0.9rem;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (min-width: 640px) {
+    .qty-mini-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 0.95rem;
+    }
 }
 
 .qty-mini-btn:hover {
     background: #FF6B35;
     color: white;
+    transform: scale(1.05);
 }
 
 .qty-mini-input {
-    width: 40px;
+    width: 50px;
     text-align: center;
     border: 2px solid #e8e8e8;
     border-radius: 6px;
-    padding: 0.3rem;
+    padding: 0.5rem;
     font-weight: 700;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
 }
 
 .product-checkbox {
