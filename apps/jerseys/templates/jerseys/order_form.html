@@ -1499,7 +1499,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 {% if own_orders %}
                 <div style="background: linear-gradient(135deg, #003D5C, #004B7A); color: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-weight: 700; font-size: 0.95rem;">
-                    Total: ₹{{ total_orders_amount|floatformat:0 }}
+                    Total: ₹{{ own_order_total|floatformat:0 }}
                 </div>
                 <div class="orders-list" style="max-height: 400px; overflow-y: auto;">
                     {% for order in own_orders %}
