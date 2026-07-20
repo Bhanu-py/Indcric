@@ -3,7 +3,7 @@
 {% block content %}
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scrollbar-gutter: stable; }
 body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; }
 
 /* Hero Section - Bold Modern Design */
@@ -108,6 +108,9 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
 
 .section {
     margin-bottom: 5rem;
+    max-width: 100%;
+    overflow: hidden;
+    width: 100%;
 }
 
 .section-title {
@@ -143,6 +146,8 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 1.2rem;
     margin-bottom: 1.5rem;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .product-card {
@@ -359,17 +364,40 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
 
 /* Main Layout */
 .main-layout {
-    display: grid;
-    grid-template-columns: 1fr 380px;
-    gap: 2rem;
+    display: block;
+    position: relative;
     margin-bottom: 2rem;
+    width: 100%;
+}
+
+.main-layout > div:first-child {
+    margin-right: 412px;
+    overflow: hidden;
+}
+
+.sidebar {
+    grid-column: 2;
+    grid-row: 1 / -1;
 }
 
 @media (max-width: 1024px) {
     .main-layout {
-        grid-template-columns: 1fr;
+        display: flex !important;
+        flex-direction: column !important;
+        position: relative;
     }
+    
+    .main-layout > div:first-child {
+        margin-right: 0 !important;
+        margin-bottom: 2rem;
+    }
+    
     .sidebar {
+        position: static !important;
+        top: auto !important;
+        right: auto !important;
+        width: 100% !important;
+        max-width: none !important;
         order: -1;
     }
 }
@@ -381,6 +409,8 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
     padding: 1.5rem;
     box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     margin-bottom: 1.2rem;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .form-card h2 {
@@ -462,6 +492,9 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
     font-family: inherit;
     transition: all 0.3s ease;
     background: white;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .form-input:focus,
@@ -578,8 +611,19 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
 
 /* Sidebar */
 .sidebar {
-    position: sticky;
-    top: 2rem;
+    position: absolute !important;
+    top: 0;
+    right: 0;
+    width: 380px !important;
+    max-width: 380px !important;
+    min-width: 380px !important;
+}
+
+@supports (position: sticky) {
+    .sidebar {
+        position: sticky;
+        top: 2rem;
+    }
 }
 
 .order-summary {
@@ -777,7 +821,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
 .text-gray { color: #888; }
 .text-sm { font-size: 0.75rem; }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     .hero {
         padding: 2rem 1rem 3rem 1rem;
         clip-path: polygon(0 0, 100% 0, 100% 90%, 0 100%);
@@ -809,15 +853,9 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
         grid-template-columns: 1fr;
     }
     
-    .main-layout {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
-    
     .sidebar {
-        width: 100%;
-        order: 2;
+        width: auto !important;
+        max-width: 380px !important;
     }
     
     .checkbox-item {
@@ -895,6 +933,7 @@ ul.errorlist li { display: none !important; }
         </div>
     </div>
 </div>
+
 
 <div class="container">
     <div class="alert alert-warning">
