@@ -159,7 +159,16 @@
                     <h2 class="text-sm font-bold text-stone-800">Add order</h2>
                 </div>
                 {% if ordering_open %}
-                <form method="post" class="card-body space-y-4">
+                <form method="post" class="card-body space-y-4"
+                      x-data="{
+                          forPerson: '{{ form.for_person.value|default:"self" }}',
+                          items: [{% for item in item_rows %}{% if item.checked %}'{{ item.code }}',{% endif %}{% endfor %}],
+                          shirtCodes: ['collar_half','collar_full','round_half','round_full'],
+                          pantCodes: ['pant','shorts'],
+                          get isKid() { return this.forPerson === 'kid' },
+                          get hasShirt() { return this.items.some(c => this.shirtCodes.includes(c)) },
+                          get hasPant() { return this.items.some(c => this.pantCodes.includes(c)) }
+                      }">
                     {% csrf_token %}
                     {% if form.non_field_errors %}
                     <div class="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
@@ -198,19 +207,13 @@
                             {{ form.jersey_number.errors }}
                         </div>
                         <div class="sm:col-span-2">
-                            <label class="form-label" for="{{ form.size.id_for_label }}">Size</label>
-                            {{ form.size }}
-                            <p class="text-xs text-stone-400 mt-1">Use shirt chest size for tops, waist size for pants/shorts, or free size for cap/hat only.</p>
-                            {{ form.size.errors }}
-                        </div>
-                        <div class="sm:col-span-2">
                             <label class="form-label">Items needed</label>
                             <p class="text-xs text-stone-500 mb-2">Select based on your requirement, then enter the quantity next to each selected item.</p>
                             <div class="space-y-2">
                                 {% for item in item_rows %}
                                 <div class="grid grid-cols-[1fr_92px] gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2.5">
                                     <label class="flex items-start gap-2 text-sm font-medium text-stone-700">
-                                        <input type="checkbox" name="item_types" value="{{ item.code }}"
+                                        <input type="checkbox" name="item_types" value="{{ item.code }}" x-model="items"
                                                class="mt-1 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500"
                                                {% if item.checked %}checked{% endif %}>
                                         <span>
@@ -230,6 +233,45 @@
                             <p class="text-xs text-stone-400 mt-1">Example: choose only full sleeve, only half sleeve, cap/hat, or multiple items together.</p>
                             {{ form.item_types.errors }}
                         </div>
+
+                        {# Size / measurements — shown based on the items chosen and whether it's a kid. #}
+                        <div class="sm:col-span-2" x-show="hasShirt || hasPant" x-cloak>
+                            <label class="form-label">Size / measurements</label>
+
+                            <div x-show="hasShirt && !isKid">
+                                <label class="text-xs text-stone-500" for="{{ form.shirt_size.id_for_label }}">Adult shirt size</label>
+                                {{ form.shirt_size }}
+                                {% if form.shirt_size.errors %}<p class="text-xs text-red-600 mt-1">{{ form.shirt_size.errors|striptags }}</p>{% endif %}
+                            </div>
+
+                            <div x-show="hasPant && !isKid" class="mt-3">
+                                <label class="text-xs text-stone-500" for="{{ form.pant_size.id_for_label }}">Adult pant / shorts size</label>
+                                {{ form.pant_size }}
+                                {% if form.pant_size.errors %}<p class="text-xs text-red-600 mt-1">{{ form.pant_size.errors|striptags }}</p>{% endif %}
+                            </div>
+
+                            <div x-show="hasShirt && isKid">
+                                <p class="text-xs text-stone-500 mb-1">Kid shirt measurements (inches)</p>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div><label class="text-[11px] text-stone-400">Full chest</label>{{ form.kid_shirt_full_chest }}{% if form.kid_shirt_full_chest.errors %}<p class="text-[11px] text-red-600">{{ form.kid_shirt_full_chest.errors|striptags }}</p>{% endif %}</div>
+                                    <div><label class="text-[11px] text-stone-400">Half chest</label>{{ form.kid_shirt_half_chest }}{% if form.kid_shirt_half_chest.errors %}<p class="text-[11px] text-red-600">{{ form.kid_shirt_half_chest.errors|striptags }}</p>{% endif %}</div>
+                                    <div><label class="text-[11px] text-stone-400">Length</label>{{ form.kid_shirt_length }}{% if form.kid_shirt_length.errors %}<p class="text-[11px] text-red-600">{{ form.kid_shirt_length.errors|striptags }}</p>{% endif %}</div>
+                                    <div><label class="text-[11px] text-stone-400">Shoulder</label>{{ form.kid_shirt_shoulder }}{% if form.kid_shirt_shoulder.errors %}<p class="text-[11px] text-red-600">{{ form.kid_shirt_shoulder.errors|striptags }}</p>{% endif %}</div>
+                                </div>
+                            </div>
+
+                            <div x-show="hasPant && isKid" class="mt-3">
+                                <p class="text-xs text-stone-500 mb-1">Kid pant/shorts measurements (inches)</p>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div><label class="text-[11px] text-stone-400">Length</label>{{ form.kid_pant_length }}{% if form.kid_pant_length.errors %}<p class="text-[11px] text-red-600">{{ form.kid_pant_length.errors|striptags }}</p>{% endif %}</div>
+                                    <div><label class="text-[11px] text-stone-400">Relaxed waist</label>{{ form.kid_pant_relaxed_waist }}{% if form.kid_pant_relaxed_waist.errors %}<p class="text-[11px] text-red-600">{{ form.kid_pant_relaxed_waist.errors|striptags }}</p>{% endif %}</div>
+                                    <div><label class="text-[11px] text-stone-400">Half hip</label>{{ form.kid_pant_half_hip }}{% if form.kid_pant_half_hip.errors %}<p class="text-[11px] text-red-600">{{ form.kid_pant_half_hip.errors|striptags }}</p>{% endif %}</div>
+                                </div>
+                            </div>
+
+                            <p class="text-xs text-stone-400 mt-2">Caps/hats are free size — no size needed.</p>
+                        </div>
+
                         <div class="sm:col-span-2">
                             <label class="form-label" for="{{ form.notes.id_for_label }}">Notes</label>
                             {{ form.notes }}
