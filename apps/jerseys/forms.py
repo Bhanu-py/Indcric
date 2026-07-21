@@ -164,8 +164,8 @@ class JerseyOrderForm(forms.ModelForm):
                     if other:
                         self.add_error(
                             'jersey_number',
-                            f'{wearer or "This wearer"} already has #{other}. '
-                            'Use the same number, or leave it blank.',
+                            f'You already have #{other}. '
+                            'Use the same number, tick “No specific number”, or remove that number.',
                         )
         return cleaned
 
