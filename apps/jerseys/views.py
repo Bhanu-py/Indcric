@@ -183,7 +183,10 @@ def jersey_orders_view(request):
 @login_required
 @jersey_ordering_enabled
 def edit_jersey_order_view(request, order_id):
-    order = get_object_or_404(JerseyOrder, id=order_id)
+    order = JerseyOrder.objects.filter(id=order_id).first()
+    if order is None:
+        messages.info(request, 'That order was already removed.')
+        return redirect('jersey-orders')
     if not request.user.is_staff and order.user_id != request.user.id:
         messages.error(request, "You cannot edit another member's order.")
         return redirect('jersey-orders')
@@ -215,8 +218,20 @@ def edit_jersey_order_view(request, order_id):
 @login_required
 @jersey_ordering_enabled
 def delete_jersey_order_view(request, order_id):
-    order = get_object_or_404(JerseyOrder, id=order_id)
     next_url = request.POST.get('next') or request.GET.get('next')
+
+    def _dest():
+        if next_url and url_has_allowed_host_and_scheme(
+            next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure(),
+        ):
+            return redirect(next_url)
+        return redirect('jersey-orders-admin' if request.user.is_staff else 'jersey-orders')
+
+    order = JerseyOrder.objects.filter(id=order_id).first()
+    if order is None:
+        # Stale page (already removed) — don't 404, just go back with a note.
+        messages.info(request, 'That order was already removed.')
+        return _dest()
     if not request.user.is_staff and order.user_id != request.user.id:
         messages.error(request, "You cannot delete another member's order.")
         return redirect('jersey-orders')
@@ -226,13 +241,7 @@ def delete_jersey_order_view(request, order_id):
     if request.method == 'POST':
         order.delete()
         messages.success(request, 'Order line removed.')
-    if next_url and url_has_allowed_host_and_scheme(
-        next_url,
-        allowed_hosts={request.get_host()},
-        require_https=request.is_secure(),
-    ):
-        return redirect(next_url)
-    return redirect('jersey-orders-admin' if request.user.is_staff else 'jersey-orders')
+    return _dest()
 
 
 @staff_member_required

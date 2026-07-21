@@ -335,6 +335,7 @@
                                 <button type="button" @click="edit = !edit" class="btn btn-ghost btn-sm text-stone-600" x-text="edit ? 'Cancel' : 'Edit'"></button>
                                 <form method="post" action="{% url 'jersey-order-delete' order.id %}" onsubmit="return confirm('Remove this item?')">
                                     {% csrf_token %}
+                                    <input type="hidden" name="next" value="{% url 'jersey-orders' %}">
                                     <button type="submit" class="btn btn-ghost btn-sm text-red-600">Remove</button>
                                 </form>
                             </div>
