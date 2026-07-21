@@ -9,7 +9,6 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils.http import url_has_allowed_host_and_scheme
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 
@@ -125,14 +124,49 @@ def jersey_orders_view(request):
             )
             return redirect('jersey-orders')
 
-    own_orders = list(JerseyOrder.objects.filter(user=request.user).order_by('-created_at'))
-    own_order_total = sum((order.line_total for order in own_orders), start=0)
-    own_order_quantity = sum((order.quantity for order in own_orders), start=0)
+    # Get orders and consolidate duplicates
+    all_orders = JerseyOrder.objects.filter(user=request.user).order_by('-created_at')
+    orders_dict = {}
+    
+    for order in all_orders:
+        # Create a key for grouping identical orders
+        key = (
+            order.wearer_name,
+            order.item_type,
+            order.gender,
+            order.display_size,
+            order.jersey_number,
+        )
+        
+        if key in orders_dict:
+            # If this order already exists, add the quantity and line_total
+            orders_dict[key]['quantity'] += order.quantity
+            orders_dict[key]['line_total'] += order.line_total
+        else:
+            # Create new entry with necessary info
+            orders_dict[key] = {
+                'id': order.id,  # Keep first order's ID for deletion
+                'wearer_name': order.wearer_name,
+                'item_type': order.item_type,
+                'get_item_type_display': order.get_item_type_display(),
+                'gender': order.gender,
+                'get_gender_display': order.get_gender_display(),
+                'display_size': order.display_size,
+                'jersey_number': order.jersey_number,
+                'quantity': order.quantity,
+                'line_total': order.line_total,
+            }
+    
+    # Convert back to list, preserving order
+    own_orders = list(orders_dict.values())
+    
+    # Calculate total amount
+    total_orders_amount = sum(order['line_total'] for order in own_orders)
+    
     context = {
         'form': form,
         'own_orders': own_orders,
-        'own_order_total': own_order_total,
-        'own_order_quantity': own_order_quantity,
+        'total_orders_amount': total_orders_amount,
         'catalog': _catalog(),
         'item_rows': form.item_rows(),
         'shirt_size_measurements': JerseyOrder.SIZE_MEASUREMENTS,
@@ -149,7 +183,6 @@ def jersey_orders_view(request):
 @jersey_ordering_enabled
 def delete_jersey_order_view(request, order_id):
     order = get_object_or_404(JerseyOrder, id=order_id)
-    next_url = request.POST.get('next') or request.GET.get('next')
     if not request.user.is_staff and order.user_id != request.user.id:
         messages.error(request, "You cannot delete another member's order.")
         return redirect('jersey-orders')
@@ -159,13 +192,19 @@ def delete_jersey_order_view(request, order_id):
     if request.method == 'POST':
         order.delete()
         messages.success(request, 'Order line removed.')
-    if next_url and url_has_allowed_host_and_scheme(
-        next_url,
-        allowed_hosts={request.get_host()},
-        require_https=request.is_secure(),
-    ):
-        return redirect(next_url)
-    return redirect('jersey-orders-admin' if request.user.is_staff else 'jersey-orders')
+    
+    # Determine redirect based on referrer or user role
+    # If it's the order's owner (non-staff), always go to jersey-orders page
+    # If it's staff and they came from admin, go to admin
+    # If it's staff viewing a user's order, go to jersey-orders
+    if order.user_id == request.user.id:
+        # Owner of the order - go to their order page
+        return redirect('jersey-orders')
+    elif request.user.is_staff:
+        # Staff member deleting another user's order - go to admin
+        return redirect('jersey-orders-admin')
+    else:
+        return redirect('jersey-orders')
 
 
 @staff_member_required
@@ -174,25 +213,107 @@ def jersey_orders_admin_view(request):
     summary, total_quantity, grand_total = _summary()
     order_window = JerseyOrderWindow.current()
     window_form = JerseyOrderWindowForm(instance=order_window)
+    
+    # Handle download request
+    if request.method == 'POST' and request.POST.get('download') == 'true':
+        return redirect('jersey-orders-export')
+    
     if request.method == 'POST' and request.POST.get('action') == 'update_order_window':
         window_form = JerseyOrderWindowForm(request.POST, instance=order_window)
         if window_form.is_valid():
             order_window = window_form.save()
             messages.success(request, 'Jersey order close date updated.')
             return redirect('jersey-orders-admin')
+    
+    if request.method == 'POST' and request.POST.get('delete_order_id'):
+        order = get_object_or_404(JerseyOrder, id=request.POST.get('delete_order_id'))
+        order.delete()
+        messages.success(request, 'Order deleted.')
+        return redirect('jersey-orders-admin')
 
     orders = JerseyOrder.objects.select_related('user').order_by(
         'user__first_name',
         'user__username',
         'wearer_name',
     )
+    
+    # Consolidate duplicate orders for display
+    orders_dict = {}
+    for order in orders:
+        # Create a unique key for grouping identical orders
+        key = (
+            order.user.get_full_name() or order.user.username,
+            order.user.username,
+            order.wearer_name,
+            order.item_type,
+            order.gender,
+            order.display_size,
+            order.jersey_number,
+            order.unit_price,
+        )
+        
+        if key in orders_dict:
+            # If this order already exists, add the quantity and totals
+            orders_dict[key]['quantity'] += order.quantity
+            orders_dict[key]['line_total'] += order.line_total
+        else:
+            # Create new entry
+            orders_dict[key] = {
+                'id': order.id,  # Keep first order's ID for deletion
+                'user_full_name': order.user.get_full_name() or order.user.username,
+                'user_username': order.user.username,
+                'user_email': order.user.email,
+                'wearer_name': order.wearer_name,
+                'for_person': order.get_for_person_display(),
+                'gender': order.get_gender_display(),
+                'item_type': order.get_item_type_display(),
+                'display_size': order.display_size,
+                'jersey_number': order.jersey_number,
+                'unit_price': order.unit_price,
+                'quantity': order.quantity,
+                'line_total': order.line_total,
+            }
+    
+    # Convert to list maintaining order
+    consolidated_orders = list(orders_dict.values())
+    
+    # Build supplier summary
+    supplier_lines = []
+    for item_type, orders_by_item in summary.items():
+        for order_line in orders_by_item:
+            supplier_lines.append({
+                'item_type_label': dict(JerseyOrder.ITEM_CHOICES).get(item_type, item_type),
+                'gender_label': order_line['gender'],
+                'size_label': order_line['size'],
+                'total_qty': order_line['quantity'],
+                'rate': order_line['rate'],
+                'total_cost': order_line['total'],
+            })
+    
+    # Count unique jersey numbers
+    unique_numbers = JerseyOrder.objects.filter(jersey_number__gt='').values('jersey_number').distinct().count()
+    
+    # Get unique members with orders
+    total_members = orders.values('user').distinct().count()
+    total_orders = len(consolidated_orders)  # Changed to use consolidated count
+    
+    ordering_open = JerseyOrderWindow.ordering_is_open()
+    
     return render(request, 'jerseys/admin_summary.html', {
-        'orders': orders,
+        'all_orders': consolidated_orders,
         'summary': dict(summary),
-        'total_quantity': total_quantity,
-        'grand_total': grand_total,
-        'taken_numbers': _taken_numbers(),
-        'ordering_open': JerseyOrderWindow.ordering_is_open(),
+        'supplier_lines': supplier_lines,
+        'total_qty': total_quantity,
+        'total_cost': grand_total,
+        'unique_numbers': unique_numbers,
+        'total_members': total_members,
+        'total_orders': total_orders,
+        'pricing': {
+            'adult_shirt': JerseyOrder.rate_for('adult_shirt'),
+            'adult_pant': JerseyOrder.rate_for('adult_pant'),
+            'kid_jersey': JerseyOrder.rate_for('kids_jersey'),
+        },
+        'ordering_open': ordering_open,
         'ordering_status': order_window.status_text() if order_window else 'Ordering is open.',
         'ordering_deadline': (
             order_window.closes_at_label()
@@ -231,22 +352,63 @@ def export_jersey_orders_view(request):
         cell.font = Font(bold=True)
         cell.fill = header_fill
 
+    # Group orders by key attributes to consolidate duplicates
+    orders_dict = {}
     for order in JerseyOrder.objects.select_related('user').order_by('user__username', 'wearer_name'):
-        worksheet.append([
+        # Create a unique key for grouping identical orders
+        key = (
             order.user.get_full_name() or order.user.username,
             order.get_for_person_display(),
             order.get_gender_display(),
             order.wearer_name,
             order.get_item_type_display(),
             order.display_size,
-            order.display_size if order.item_type in JerseyOrder.SHIRT_ITEMS and not order.display_size.startswith('Kid custom') else '',
-            order.display_size if order.item_type in JerseyOrder.PANT_ITEMS and not order.display_size.startswith('Kid custom') else '',
-            order.display_size if order.display_size.startswith('Kid custom') else '',
-            order.quantity,
             order.jersey_number,
             order.unit_price,
-            order.line_total,
             order.notes,
+        )
+        
+        if key in orders_dict:
+            # If this order already exists, add the quantity
+            orders_dict[key]['quantity'] += order.quantity
+            orders_dict[key]['line_total'] += order.line_total
+        else:
+            # Create new entry
+            orders_dict[key] = {
+                'member': key[0],
+                'for_person': key[1],
+                'gender': key[2],
+                'wearer_name': key[3],
+                'item': key[4],
+                'size': key[5],
+                'jersey_number': key[6],
+                'unit_price': key[7],
+                'notes': key[8],
+                'quantity': order.quantity,
+                'line_total': order.line_total,
+            }
+
+    # Write consolidated orders to worksheet
+    for order_data in orders_dict.values():
+        shirt_size = order_data['size'] if order_data['item'] in JerseyOrder.SHIRT_ITEMS and not order_data['size'].startswith('Kid custom') else ''
+        pant_size = order_data['size'] if order_data['item'] in JerseyOrder.PANT_ITEMS and not order_data['size'].startswith('Kid custom') else ''
+        kid_measurements = order_data['size'] if order_data['size'].startswith('Kid custom') else ''
+        
+        worksheet.append([
+            order_data['member'],
+            order_data['for_person'],
+            order_data['gender'],
+            order_data['wearer_name'],
+            order_data['item'],
+            order_data['size'],
+            shirt_size,
+            pant_size,
+            kid_measurements,
+            order_data['quantity'],
+            order_data['jersey_number'],
+            order_data['unit_price'],
+            order_data['line_total'],
+            order_data['notes'],
         ])
 
     for column_cells in worksheet.columns:

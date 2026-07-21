@@ -146,3 +146,27 @@ class AvatarChangeViewTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.user.refresh_from_db()
         self.assertFalse(self.user.avatar)
+
+
+class StaffUserManagementViewTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(username='staff_user', password='x', is_staff=True)
+        self.member = User.objects.create_user(username='member_user', password='x')
+        self.client.force_login(self.staff)
+
+    def test_edit_user_full_page_renders(self):
+        resp = self.client.get(reverse('edit-user', args=[self.member.id]))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Edit User')
+        self.assertContains(resp, reverse('edit-user', args=[self.member.id]))
+
+    def test_edit_user_htmx_partial_renders(self):
+        resp = self.client.get(
+            reverse('edit-user', args=[self.member.id]),
+            HTTP_HX_REQUEST='true',
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Edit Player')
+        self.assertContains(resp, reverse('edit-user', args=[self.member.id]))

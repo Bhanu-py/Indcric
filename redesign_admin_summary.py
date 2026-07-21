@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+modern_admin = r'''{% extends "base.html" %}
 {% block title %}Jersey Orders Admin - Dashboard{% endblock %}
 {% block content %}
 <style>
@@ -21,14 +21,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxyge
 }
 
 .header h1 {
-    font-size: 1.6rem;
+    font-size: 2rem;
     font-weight: 900;
     margin-bottom: 0.5rem;
 }
 
 .header p {
     opacity: 0.9;
-    font-size: 0.8rem;
+    font-size: 0.95rem;
 }
 
 .header-actions {
@@ -49,7 +49,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxyge
     cursor: pointer;
     transition: all 0.3s ease;
     text-decoration: none;
-    font-size: 0.8rem;
+    font-size: 0.95rem;
 }
 
 .btn-primary {
@@ -101,7 +101,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxyge
 .alert-warning h3 {
     margin: 0 0 0.5rem 0;
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 1.1rem;
 }
 
 .alert-warning p {
@@ -176,7 +176,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxyge
 }
 
 .section-title {
-    font-size: 1.2rem;
+    font-size: 1.5rem;
     font-weight: 900;
     color: #1a202c;
     margin-bottom: 1.5rem;
@@ -186,7 +186,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxyge
 }
 
 .section-subtitle {
-    font-size: 0.8rem;
+    font-size: 0.95rem;
     color: #718096;
     margin-bottom: 1.5rem;
 }
@@ -235,21 +235,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxyge
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     background: #f7fafc;
-}
-
-/* Django Form Widgets */
-.form-input[type="datetime-local"],
-.form-input[type="date"] {
-    min-height: 40px;
-    padding: 0.75rem 1rem;
-}
-
-.form-group input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    margin-top: 0.3rem;
-    cursor: pointer;
-    accent-color: #667eea;
 }
 
 /* Tables */
@@ -390,53 +375,25 @@ tbody tr:last-child td {
 .mb-2 { margin-bottom: 1rem; }
 .mb-3 { margin-bottom: 1.5rem; }
 .mb-4 { margin-bottom: 2rem; }
-.text-sm { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
 .text-gray { color: #718096; }
 .font-bold { font-weight: 700; }
 
 @media (max-width: 768px) {
-    .container {
-        padding: 0 1rem;
-    }
-    
-    .header {
-        padding: 1.5rem 1rem;
-        margin-bottom: 1.5rem;
-    }
-    
     .header h1 {
-        font-size: 1.4rem;
-    }
-    
-    .header p {
-        font-size: 0.75rem;
+        font-size: 1.5rem;
     }
     
     .header-actions {
         flex-direction: column;
-        gap: 0.8rem;
-        margin-top: 1rem;
-    }
-    
-    .header-actions .btn {
-        width: 100%;
-        padding: 0.7rem 1rem;
-        font-size: 0.75rem;
-    }
-    
-    .btn {
-        padding: 0.6rem 1rem;
-        font-size: 0.75rem;
     }
     
     .metrics-grid {
         grid-template-columns: 1fr;
-        gap: 1rem;
     }
     
     .form-row {
         grid-template-columns: 1fr;
-        gap: 0.8rem;
     }
     
     .summary-row {
@@ -445,37 +402,18 @@ tbody tr:last-child td {
     
     .table-responsive {
         overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
     }
     
     table {
-        font-size: 0.75rem;
-        width: 100%;
+        font-size: 0.85rem;
     }
     
     th, td {
-        padding: 0.6rem 0.4rem;
-        white-space: nowrap;
+        padding: 0.75rem;
     }
     
     .grid-2 {
         grid-template-columns: 1fr;
-    }
-    
-    .form-card {
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .section-title {
-        font-size: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .alert {
-        padding: 1rem;
-        margin-bottom: 1.5rem;
-        font-size: 0.75rem;
     }
 }
 </style>
@@ -486,9 +424,14 @@ tbody tr:last-child td {
     
     <div class="header-actions">
         <a href="{% url 'jersey-orders' %}" class="btn btn-primary">📝 Back to Orders</a>
-        <a href="{% url 'jersey-orders-export' %}" class="btn btn-secondary">
-            📥 Download Order Details
-        </a>
+        <form method="get" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <button type="submit" name="download" value="true" class="btn btn-secondary">
+                📥 Download Order Data (CSV)
+            </button>
+        </form>
+        {% if user.is_staff %}
+        <a href="/admin/" class="btn btn-secondary">⚙️ Django Admin</a>
+        {% endif %}
     </div>
 </div>
 
@@ -501,22 +444,28 @@ tbody tr:last-child td {
     </div>
     {% endif %}
 
+    <div class="alert alert-warning">
+        <h3>💡 Current Pricing & Status</h3>
+        <p><strong>Adult Shirt:</strong> ₹{{ pricing.adult_shirt }} | <strong>Adult Shorts/Pant:</strong> ₹{{ pricing.adult_pant }} | <strong>Kids Jersey:</strong> ₹{{ pricing.kid_jersey }}</p>
+        <p style="margin-top: 0.75rem;">
+            Last Updated: <strong>{{ now|date:"d M Y, H:i" }}</strong>
+        </p>
+    </div>
+
     <!-- Order Close Form -->
     {% if user.is_staff %}
     <div class="form-card">
         <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem;">🗓️ Order Management</h3>
-        <form method="post" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+        <form method="post" class="form-row">
             {% csrf_token %}
-            <input type="hidden" name="action" value="update_order_window">
-            <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label">Enable Order Close Date</label>
-                {{ order_window_form.is_enabled }}
+            <div class="form-group">
+                <label class="form-label">Set Order Close Date</label>
+                <input type="date" name="order_close_date" class="form-input" placeholder="Select date">
             </div>
-            <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label">Close Date & Time</label>
-                {{ order_window_form.closes_at }}
+            <div class="form-group">
+                <label class="form-label">&nbsp;</label>
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">✓ Update Date</button>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: auto; padding: 0.75rem 1.5rem;">✓ Update</button>
         </form>
     </div>
     {% endif %}
@@ -525,17 +474,17 @@ tbody tr:last-child td {
     <div class="metrics-grid">
         <div class="metric-card blue">
             <div class="metric-label">📦 Total Pieces</div>
-            <div class="metric-value">{{ total_quantity }}</div>
+            <div class="metric-value">{{ total_qty }}</div>
             <div class="metric-detail">across all orders</div>
         </div>
         <div class="metric-card purple">
             <div class="metric-label">💰 Total Cost</div>
-            <div class="metric-value">₹{{ grand_total|floatformat:0 }}</div>
+            <div class="metric-value">₹{{ total_cost|floatformat:0 }}</div>
             <div class="metric-detail">excluding shipping</div>
         </div>
         <div class="metric-card green">
             <div class="metric-label">🎯 Number References</div>
-            <div class="metric-value">{{ taken_numbers|length }}</div>
+            <div class="metric-value">{{ unique_numbers }}</div>
             <div class="metric-detail">unique jersey numbers</div>
         </div>
     </div>
@@ -559,19 +508,17 @@ tbody tr:last-child td {
                         </tr>
                     </thead>
                     <tbody>
-                        {% for item_type, lines in summary.items %}
-                            {% for line in lines %}
+                        {% for line in supplier_lines %}
                         <tr>
-                            <td><strong>{{ line.item }}</strong></td>
+                            <td><strong>{{ line.item_type_label }}</strong></td>
                             <td>
-                                <span class="badge badge-blue">{{ line.gender }}</span>
+                                <span class="badge badge-blue">{{ line.gender_label }}</span>
                             </td>
-                            <td><span class="badge badge-purple">{{ line.size }}</span></td>
-                            <td><strong style="font-size: 1.1rem;">{{ line.quantity }}</strong></td>
+                            <td><span class="badge badge-purple">{{ line.size_label }}</span></td>
+                            <td><strong style="font-size: 1.1rem;">{{ line.total_qty }}</strong></td>
                             <td><span class="price">₹{{ line.rate }}</span></td>
-                            <td><span class="price-total">₹{{ line.total|floatformat:0 }}</span></td>
+                            <td><span class="price-total">₹{{ line.total_cost|floatformat:0 }}</span></td>
                         </tr>
-                            {% endfor %}
                         {% empty %}
                         <tr>
                             <td colspan="6" style="text-align: center; padding: 2rem; color: #a0aec0;">
@@ -608,21 +555,21 @@ tbody tr:last-child td {
                         </tr>
                     </thead>
                     <tbody>
-                        {% for order in orders %}
+                        {% for order in all_orders %}
                         <tr>
                             <td>
-                                <strong>{{ order.user.get_full_name }}</strong>
-                                <div class="text-sm text-gray">{{ order.user.email }}</div>
+                                <strong>{{ order.created_by.get_full_name|default:order.created_by.username }}</strong>
+                                <div class="text-sm text-gray">{{ order.created_by.email }}</div>
                             </td>
                             <td>
                                 <strong>{{ order.wearer_name }}</strong>
-                                <div class="text-sm text-gray">{{ order.for_person }}</div>
+                                <div class="text-sm text-gray">{{ order.get_for_person_display }}</div>
                             </td>
                             <td>{{ order.get_item_type_display }}</td>
-                            <td><span class="badge badge-blue">{{ order.gender }}</span></td>
+                            <td><span class="badge badge-blue">{{ order.get_gender_display }}</span></td>
                             <td>
                                 <span class="badge badge-purple">
-                                    {{ order.display_size }}
+                                    {% if order.shirt_size %}{{ order.shirt_size }}{% elif order.kid_shirt_full_chest %}Custom{% else %}-{% endif %}
                                 </span>
                             </td>
                             <td><strong>{{ order.quantity }}</strong></td>
@@ -633,7 +580,7 @@ tbody tr:last-child td {
                                     <span class="text-gray">—</span>
                                 {% endif %}
                             </td>
-                            <td><span class="price">₹{{ order.unit_price|floatformat:2 }}</span></td>
+                            <td><span class="price">₹{{ order.rate }}</span></td>
                             <td><span class="price-total">₹{{ order.line_total|floatformat:0 }}</span></td>
                             {% if user.is_staff %}
                             <td>
@@ -654,23 +601,6 @@ tbody tr:last-child td {
                             </td>
                         </tr>
                         {% endfor %}
-                        <!-- Total Row -->
-                        {% if orders %}
-                        <tr style="background: #f7f4f1; font-weight: 700; border-top: 3px solid #FF6B35;">
-                            <td colspan="5" style="text-align: right; padding-right: 2rem;">
-                                <strong>TOTAL</strong>
-                            </td>
-                            <td>
-                                <strong>{{ total_quantity }}</strong>
-                            </td>
-                            <td>—</td>
-                            <td>—</td>
-                            <td style="background: #FFE8D6; color: #FF6B35; padding: 1rem;">
-                                <strong>₹{{ grand_total|floatformat:0 }}</strong>
-                            </td>
-                            {% if user.is_staff %}<td></td>{% endif %}
-                        </tr>
-                        {% endif %}
                     </tbody>
                 </table>
             </div>
@@ -679,8 +609,12 @@ tbody tr:last-child td {
 
     <!-- Footer Info -->
     <div style="text-align: center; margin-top: 4rem; padding: 2rem; color: #a0aec0; font-size: 0.9rem;">
-        <p>Last updated: {% now "d M Y, H:i:s" %}</p>
-        <p>Total members with orders: <strong>{{ orders|length }}</strong> • Total line items: <strong>{{ total_quantity }}</strong></p>
+        <p>Last updated: {{ now|date:"d M Y, H:i:s" }}</p>
+        <p>Total members with orders: <strong>{{ total_members }}</strong> • Total line items: <strong>{{ total_orders }}</strong></p>
     </div>
 </div>
-{% endblock %}
+{% endblock %}'''
+
+with open('apps/jerseys/templates/jerseys/admin_summary.html', 'w', encoding='utf-8') as f:
+    f.write(modern_admin)
+print('✓ Modern admin dashboard created!')

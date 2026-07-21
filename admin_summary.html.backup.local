@@ -486,9 +486,12 @@ tbody tr:last-child td {
     
     <div class="header-actions">
         <a href="{% url 'jersey-orders' %}" class="btn btn-primary">📝 Back to Orders</a>
-        <a href="{% url 'jersey-orders-export' %}" class="btn btn-secondary">
-            📥 Download Order Details
-        </a>
+        <form method="post" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            {% csrf_token %}
+            <button type="submit" name="download" value="true" class="btn btn-secondary">
+                📥 Download Order Details
+            </button>
+        </form>
     </div>
 </div>
 
@@ -525,17 +528,17 @@ tbody tr:last-child td {
     <div class="metrics-grid">
         <div class="metric-card blue">
             <div class="metric-label">📦 Total Pieces</div>
-            <div class="metric-value">{{ total_quantity }}</div>
+            <div class="metric-value">{{ total_qty }}</div>
             <div class="metric-detail">across all orders</div>
         </div>
         <div class="metric-card purple">
             <div class="metric-label">💰 Total Cost</div>
-            <div class="metric-value">₹{{ grand_total|floatformat:0 }}</div>
+            <div class="metric-value">₹{{ total_cost|floatformat:0 }}</div>
             <div class="metric-detail">excluding shipping</div>
         </div>
         <div class="metric-card green">
             <div class="metric-label">🎯 Number References</div>
-            <div class="metric-value">{{ taken_numbers|length }}</div>
+            <div class="metric-value">{{ unique_numbers }}</div>
             <div class="metric-detail">unique jersey numbers</div>
         </div>
     </div>
@@ -559,19 +562,17 @@ tbody tr:last-child td {
                         </tr>
                     </thead>
                     <tbody>
-                        {% for item_type, lines in summary.items %}
-                            {% for line in lines %}
+                        {% for line in supplier_lines %}
                         <tr>
-                            <td><strong>{{ line.item }}</strong></td>
+                            <td><strong>{{ line.item_type_label }}</strong></td>
                             <td>
-                                <span class="badge badge-blue">{{ line.gender }}</span>
+                                <span class="badge badge-blue">{{ line.gender_label }}</span>
                             </td>
-                            <td><span class="badge badge-purple">{{ line.size }}</span></td>
-                            <td><strong style="font-size: 1.1rem;">{{ line.quantity }}</strong></td>
+                            <td><span class="badge badge-purple">{{ line.size_label }}</span></td>
+                            <td><strong style="font-size: 1.1rem;">{{ line.total_qty }}</strong></td>
                             <td><span class="price">₹{{ line.rate }}</span></td>
-                            <td><span class="price-total">₹{{ line.total|floatformat:0 }}</span></td>
+                            <td><span class="price-total">₹{{ line.total_cost|floatformat:0 }}</span></td>
                         </tr>
-                            {% endfor %}
                         {% empty %}
                         <tr>
                             <td colspan="6" style="text-align: center; padding: 2rem; color: #a0aec0;">
@@ -608,17 +609,17 @@ tbody tr:last-child td {
                         </tr>
                     </thead>
                     <tbody>
-                        {% for order in orders %}
+                        {% for order in all_orders %}
                         <tr>
                             <td>
-                                <strong>{{ order.user.get_full_name }}</strong>
-                                <div class="text-sm text-gray">{{ order.user.email }}</div>
+                                <strong>{{ order.user_full_name }}</strong>
+                                <div class="text-sm text-gray">{{ order.user_email }}</div>
                             </td>
                             <td>
                                 <strong>{{ order.wearer_name }}</strong>
                                 <div class="text-sm text-gray">{{ order.for_person }}</div>
                             </td>
-                            <td>{{ order.get_item_type_display }}</td>
+                            <td>{{ order.item_type }}</td>
                             <td><span class="badge badge-blue">{{ order.gender }}</span></td>
                             <td>
                                 <span class="badge badge-purple">
@@ -633,7 +634,7 @@ tbody tr:last-child td {
                                     <span class="text-gray">—</span>
                                 {% endif %}
                             </td>
-                            <td><span class="price">₹{{ order.unit_price|floatformat:2 }}</span></td>
+                            <td><span class="price">₹{{ order.unit_price }}</span></td>
                             <td><span class="price-total">₹{{ order.line_total|floatformat:0 }}</span></td>
                             {% if user.is_staff %}
                             <td>
@@ -655,18 +656,18 @@ tbody tr:last-child td {
                         </tr>
                         {% endfor %}
                         <!-- Total Row -->
-                        {% if orders %}
+                        {% if all_orders %}
                         <tr style="background: #f7f4f1; font-weight: 700; border-top: 3px solid #FF6B35;">
                             <td colspan="5" style="text-align: right; padding-right: 2rem;">
                                 <strong>TOTAL</strong>
                             </td>
                             <td>
-                                <strong>{{ total_quantity }}</strong>
+                                <strong>{{ total_qty }}</strong>
                             </td>
                             <td>—</td>
                             <td>—</td>
                             <td style="background: #FFE8D6; color: #FF6B35; padding: 1rem;">
-                                <strong>₹{{ grand_total|floatformat:0 }}</strong>
+                                <strong>₹{{ total_cost|floatformat:0 }}</strong>
                             </td>
                             {% if user.is_staff %}<td></td>{% endif %}
                         </tr>
@@ -679,8 +680,8 @@ tbody tr:last-child td {
 
     <!-- Footer Info -->
     <div style="text-align: center; margin-top: 4rem; padding: 2rem; color: #a0aec0; font-size: 0.9rem;">
-        <p>Last updated: {% now "d M Y, H:i:s" %}</p>
-        <p>Total members with orders: <strong>{{ orders|length }}</strong> • Total line items: <strong>{{ total_quantity }}</strong></p>
+        <p>Last updated: {{ now|date:"d M Y, H:i:s" }}</p>
+        <p>Total members with orders: <strong>{{ total_members }}</strong> • Total line items: <strong>{{ total_orders }}</strong></p>
     </div>
 </div>
 {% endblock %}
