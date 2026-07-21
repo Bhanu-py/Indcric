@@ -191,7 +191,7 @@
                                 No specific number — assign me a reference
                             </label>
                             <p class="text-xs text-stone-400 mt-1" x-show="!noNum">A member can reuse their own number across their items; a number reserved by someone else can't be taken.</p>
-                            <p class="text-xs text-emerald-700 mt-1" x-show="noNum" x-cloak>We'll assign a unique 3-digit reference (e.g. #347).</p>
+                            <p class="text-xs text-emerald-700 mt-1" x-show="noNum" x-cloak>If this wearer already has a number, we'll reuse it — otherwise we assign a unique 3-digit reference (e.g. #347).</p>
                             <template x-if="!noNum && num && reserved[num]">
                                 <p class="text-xs font-semibold text-red-600 mt-1" x-text="'⚠️ #' + num + ' is already reserved by ' + reserved[num] + '. Pick another, or tick “No specific number”.'"></p>
                             </template>

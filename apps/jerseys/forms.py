@@ -164,10 +164,11 @@ class JerseyOrderForm(forms.ModelForm):
     def save_orders(self):
         orders = []
         is_kid = self._uses_kid_measurements(self.cleaned_data)
-        # No specific number chosen → assign one shared reference for this wearer.
+        # No specific number chosen → reuse this wearer's existing number if
+        # they already have one; otherwise assign a fresh 3-digit reference.
         number = self.cleaned_data.get('jersey_number') or ''
         if not number:
-            number = self._generate_reference()
+            number = self._existing_number_for_wearer() or self._generate_reference()
         for item_type in self.cleaned_data['item_types']:
             quantity = self.cleaned_data[f'quantity_{item_type}']
             order = JerseyOrder(
@@ -185,6 +186,21 @@ class JerseyOrderForm(forms.ModelForm):
             order.save()
             orders.append(order)
         return orders
+
+    def _existing_number_for_wearer(self):
+        """This member's already-assigned number for the same wearer, if any —
+        so a second order without a number reuses it instead of a new reference."""
+        wearer = (self.cleaned_data.get('wearer_name') or '').strip()
+        if not wearer:
+            return ''
+        return (
+            JerseyOrder.objects
+            .filter(user=self.user, wearer_name__iexact=wearer)
+            .exclude(jersey_number='')
+            .order_by('id')
+            .values_list('jersey_number', flat=True)
+            .first()
+        ) or ''
 
     @staticmethod
     def _generate_reference():
