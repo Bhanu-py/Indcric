@@ -115,32 +115,37 @@
                    class="form-input w-full sm:w-72">
         </div>
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
+            <table class="w-full min-w-[880px] table-fixed text-sm">
+                <colgroup>
+                    <col style="width:15%"><col style="width:8%"><col style="width:10%">
+                    <col style="width:13%"><col style="width:16%"><col style="width:18%">
+                    <col style="width:6%"><col style="width:7%"><col style="width:7%">
+                </colgroup>
                 <thead class="bg-stone-50 text-xs uppercase tracking-wide text-stone-500 select-none">
                     <tr>
-                        <th @click="sortBy('member')" class="px-4 py-3 text-left cursor-pointer hover:text-stone-800">Member<span x-text="arrow('member')"></span></th>
-                        <th @click="sortBy('forp')" class="px-4 py-3 text-left cursor-pointer hover:text-stone-800">For<span x-text="arrow('forp')"></span></th>
-                        <th @click="sortBy('gender')" class="px-4 py-3 text-left cursor-pointer hover:text-stone-800">Gender / fit<span x-text="arrow('gender')"></span></th>
-                        <th @click="sortBy('wearer')" class="px-4 py-3 text-left cursor-pointer hover:text-stone-800">Wearer<span x-text="arrow('wearer')"></span></th>
-                        <th @click="sortBy('item')" class="px-4 py-3 text-left cursor-pointer hover:text-stone-800">Item<span x-text="arrow('item')"></span></th>
-                        <th @click="sortBy('size')" class="px-4 py-3 text-left cursor-pointer hover:text-stone-800">Size / measurement<span x-text="arrow('size')"></span></th>
-                        <th @click="sortBy('qty')" class="px-4 py-3 text-right cursor-pointer hover:text-stone-800">Qty<span x-text="arrow('qty')"></span></th>
-                        <th @click="sortBy('number')" class="px-4 py-3 text-left cursor-pointer hover:text-stone-800">No.<span x-text="arrow('number')"></span></th>
-                        <th @click="sortBy('total')" class="px-4 py-3 text-right cursor-pointer hover:text-stone-800">Total<span x-text="arrow('total')"></span></th>
+                        <th @click="sortBy('member')" class="px-3 py-3 text-left cursor-pointer hover:text-stone-800 truncate">Member<span x-text="arrow('member')"></span></th>
+                        <th @click="sortBy('forp')" class="px-3 py-3 text-left cursor-pointer hover:text-stone-800 truncate">For<span x-text="arrow('forp')"></span></th>
+                        <th @click="sortBy('gender')" class="px-3 py-3 text-left cursor-pointer hover:text-stone-800 truncate">Gender<span x-text="arrow('gender')"></span></th>
+                        <th @click="sortBy('wearer')" class="px-3 py-3 text-left cursor-pointer hover:text-stone-800 truncate">Wearer<span x-text="arrow('wearer')"></span></th>
+                        <th @click="sortBy('item')" class="px-3 py-3 text-left cursor-pointer hover:text-stone-800 truncate">Item<span x-text="arrow('item')"></span></th>
+                        <th @click="sortBy('size')" class="px-3 py-3 text-left cursor-pointer hover:text-stone-800 truncate">Size / measurement<span x-text="arrow('size')"></span></th>
+                        <th @click="sortBy('qty')" class="px-3 py-3 text-right cursor-pointer hover:text-stone-800">Qty<span x-text="arrow('qty')"></span></th>
+                        <th @click="sortBy('number')" class="px-3 py-3 text-left cursor-pointer hover:text-stone-800">No.<span x-text="arrow('number')"></span></th>
+                        <th @click="sortBy('total')" class="px-3 py-3 text-right cursor-pointer hover:text-stone-800">Total<span x-text="arrow('total')"></span></th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-stone-100">
+                <tbody class="divide-y divide-stone-100 align-top">
                     <template x-for="o in view()" :key="o._i">
                         <tr>
-                            <td class="px-4 py-3" x-text="o.member"></td>
-                            <td class="px-4 py-3" x-text="o.forp"></td>
-                            <td class="px-4 py-3" x-text="o.gender"></td>
-                            <td class="px-4 py-3 font-semibold" x-text="o.wearer"></td>
-                            <td class="px-4 py-3" x-text="o.item"></td>
-                            <td class="px-4 py-3" x-text="o.size"></td>
-                            <td class="px-4 py-3 text-right" x-text="o.qty"></td>
-                            <td class="px-4 py-3" x-text="o.number ? '#' + o.number : '-'"></td>
-                            <td class="px-4 py-3 text-right font-semibold" x-text="'₹' + o.total"></td>
+                            <td class="px-3 py-3 truncate" :title="o.member" x-text="o.member"></td>
+                            <td class="px-3 py-3 truncate" x-text="o.forp"></td>
+                            <td class="px-3 py-3 truncate" x-text="o.gender"></td>
+                            <td class="px-3 py-3 font-semibold truncate" :title="o.wearer" x-text="o.wearer"></td>
+                            <td class="px-3 py-3 truncate" :title="o.item" x-text="o.item"></td>
+                            <td class="px-3 py-3 break-words" x-text="o.size"></td>
+                            <td class="px-3 py-3 text-right tabular-nums" x-text="o.qty"></td>
+                            <td class="px-3 py-3 truncate" x-text="o.number ? '#' + o.number : '-'"></td>
+                            <td class="px-3 py-3 text-right font-semibold tabular-nums" x-text="'₹' + o.total"></td>
                         </tr>
                     </template>
                     <tr x-show="view().length === 0">
