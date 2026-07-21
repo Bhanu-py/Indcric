@@ -218,7 +218,7 @@
                                 <p class="text-xs font-semibold text-red-600 mt-1" x-text="'⚠️ #' + num + ' is already reserved by ' + reserved[num] + '. Pick another, or tick “No specific number”.'"></p>
                             </template>
                             <template x-if="!noNum && num && !reserved[num] && wearerNum && wearerNum !== num">
-                                <p class="text-xs font-semibold text-red-600 mt-1" x-text="'⚠️ ' + (wearer || 'This wearer') + ' already has #' + wearerNum + '. Use the same number, or tick “No specific number”.'"></p>
+                                <p class="text-xs font-semibold text-red-600 mt-1" x-text="'⚠️ You already have #' + wearerNum + '. Use the same number, tick “No specific number”, or remove that number.'"></p>
                             </template>
                             {{ form.jersey_number.errors }}
                         </div>
