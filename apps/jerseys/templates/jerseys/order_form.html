@@ -237,6 +237,7 @@
                         {# Size / measurements — shown based on the items chosen and whether it's a kid. #}
                         <div class="sm:col-span-2" x-show="hasShirt || hasPant" x-cloak>
                             <label class="form-label">Size / measurements</label>
+                            <p class="text-xs text-stone-400 mt-0.5 mb-2">Not sure which size? Refer to the size charts below.</p>
 
                             <div x-show="hasShirt && !isKid">
                                 <label class="text-xs text-stone-500" for="{{ form.shirt_size.id_for_label }}">Adult shirt size</label>
