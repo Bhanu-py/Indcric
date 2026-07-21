@@ -128,20 +128,28 @@ class JerseyOrderForm(forms.ModelForm):
         elif not number:
             self.add_error('jersey_number', 'Pick a number, or tick “No specific number”.')
         else:
-            clash = (
-                JerseyOrder.objects
-                .filter(jersey_number=number)
-                .exclude(user=self.user)
-                .select_related('user')
-                .first()
-            )
-            if clash:
-                owner = clash.wearer_name or (clash.user.username if clash.user else 'another member')
+            reserved_to = JerseyOrder.MANUAL_NUMBER_RESERVATIONS.get(number)
+            if reserved_to and (not self.user or self.user.username != reserved_to):
                 self.add_error(
                     'jersey_number',
-                    f'#{number} is already reserved by {owner}. '
+                    f'#{number} is reserved for {reserved_to}. '
                     'Pick another, or tick “No specific number”.',
                 )
+            else:
+                clash = (
+                    JerseyOrder.objects
+                    .filter(jersey_number=number)
+                    .exclude(user=self.user)
+                    .select_related('user')
+                    .first()
+                )
+                if clash:
+                    owner = clash.wearer_name or (clash.user.username if clash.user else 'another member')
+                    self.add_error(
+                        'jersey_number',
+                        f'#{number} is already reserved by {owner}. '
+                        'Pick another, or tick “No specific number”.',
+                    )
         return cleaned
 
     @staticmethod

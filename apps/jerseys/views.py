@@ -3,6 +3,7 @@ from io import BytesIO
 from collections import defaultdict
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
@@ -64,7 +65,20 @@ def _taken_numbers():
                 'item_count': 0,
             }
         references[key]['item_count'] += 1
-    return list(references.values())
+    rows = list(references.values())
+    # Manually-booked numbers always appear as reserved, even without an order.
+    shown = {r['jersey_number'] for r in rows}
+    for num, uname in JerseyOrder.MANUAL_NUMBER_RESERVATIONS.items():
+        if num not in shown:
+            rows.append({
+                'jersey_number': num,
+                'wearer_name': 'Reserved',
+                'gender': '',
+                'user__username': uname,
+                'item_count': 0,
+            })
+    rows.sort(key=lambda r: (len(r['jersey_number']), r['jersey_number']))
+    return rows
 
 
 def _summary():
@@ -136,6 +150,18 @@ def jersey_orders_view(request):
         .exclude(user=request.user).select_related('user')
     ):
         reserved_numbers.setdefault(o.jersey_number, o.wearer_name or (o.user.username if o.user else 'another member'))
+    # Manually-booked numbers count as reserved for everyone except their owner.
+    for num, uname in JerseyOrder.MANUAL_NUMBER_RESERVATIONS.items():
+        if request.user.username != uname:
+            reserved_numbers.setdefault(num, uname)
+    # Size choices per own-order line, for the inline editor (adult shirt/pant only).
+    for o in own_orders:
+        if o.item_type in JerseyOrder.SHIRT_ITEMS:
+            o.size_choices = JerseyOrder.SHIRT_SIZE_CHOICES
+        elif o.item_type in JerseyOrder.PANT_ITEMS:
+            o.size_choices = JerseyOrder.PANT_SIZE_CHOICES
+        else:
+            o.size_choices = None
     context = {
         'form': form,
         'own_orders': own_orders,
@@ -152,6 +178,38 @@ def jersey_orders_view(request):
         'ordering_deadline': ordering_deadline,
     }
     return render(request, 'jerseys/order_form.html', context)
+
+
+@login_required
+@jersey_ordering_enabled
+def edit_jersey_order_view(request, order_id):
+    order = get_object_or_404(JerseyOrder, id=order_id)
+    if not request.user.is_staff and order.user_id != request.user.id:
+        messages.error(request, "You cannot edit another member's order.")
+        return redirect('jersey-orders')
+    if not request.user.is_staff and not JerseyOrderWindow.ordering_is_open():
+        messages.error(request, 'Jersey ordering is closed. Existing orders can no longer be changed.')
+        return redirect('jersey-orders')
+    if request.method == 'POST':
+        try:
+            qty = int(request.POST.get('quantity') or 0)
+        except (TypeError, ValueError):
+            qty = 0
+        if qty < 1:
+            messages.error(request, 'Quantity must be at least 1.')
+            return redirect('jersey-orders')
+        order.quantity = qty
+        new_size = (request.POST.get('size') or '').strip()
+        if new_size and order.item_type in (JerseyOrder.SHIRT_ITEMS | JerseyOrder.PANT_ITEMS):
+            order.size = new_size
+        try:
+            order.full_clean()
+            order.save()
+            messages.success(request, 'Order updated.')
+        except ValidationError as exc:
+            msgs = '; '.join(' '.join(v) for v in exc.message_dict.values())
+            messages.error(request, msgs or 'Could not update the order.')
+    return redirect('jersey-orders')
 
 
 @login_required

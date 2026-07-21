@@ -118,6 +118,10 @@ class JerseyOrder(models.Model):
         on_delete=models.CASCADE,
         related_name='jersey_orders',
     )
+    # Numbers permanently booked to a specific member (username), independent of
+    # actual orders — reserved for them, blocked for everyone else.
+    MANUAL_NUMBER_RESERVATIONS = {'10': 'bhanu'}
+
     for_person = models.CharField(max_length=10, choices=FOR_CHOICES, default=FOR_SELF)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, default=GENDER_UNISEX)
     wearer_name = models.CharField(max_length=80)
