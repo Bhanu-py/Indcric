@@ -51,6 +51,7 @@ class JerseyOrderForm(forms.ModelForm):
             'wearer_name': forms.TextInput(attrs={
                 'class': 'form-input',
                 'placeholder': 'Name on jersey / wearer name',
+                '@input': 'wearer = $event.target.value',
             }),
             'jersey_number': forms.TextInput(attrs={
                 'class': 'form-input',
@@ -148,6 +149,24 @@ class JerseyOrderForm(forms.ModelForm):
                         f'#{number} is already reserved by {owner}. '
                         'Pick another, or tick “No specific number”.',
                     )
+                else:
+                    # One number per wearer: can't pick a different number than
+                    # one this wearer already has.
+                    wearer = (cleaned.get('wearer_name') or '').strip()
+                    other = (
+                        JerseyOrder.objects
+                        .filter(user=self.user, wearer_name__iexact=wearer)
+                        .exclude(jersey_number='')
+                        .exclude(jersey_number=number)
+                        .values_list('jersey_number', flat=True)
+                        .first()
+                    )
+                    if other:
+                        self.add_error(
+                            'jersey_number',
+                            f'{wearer or "This wearer"} already has #{other}. '
+                            'Use the same number, or leave it blank.',
+                        )
         return cleaned
 
     @staticmethod
