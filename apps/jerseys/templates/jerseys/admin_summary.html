@@ -1,686 +1,152 @@
 {% extends "base.html" %}
-{% block title %}Jersey Orders Admin - Dashboard{% endblock %}
+
+{% block title %}Jersey Orders Admin{% endblock %}
+
 {% block content %}
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
-
-.container {
-    max-width: 1600px;
-    margin: 0 auto;
-    padding: 0 2rem;
-}
-
-.header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 2rem;
-    border-radius: 0 0 20px 20px;
-    margin-bottom: 2rem;
-    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
-}
-
-.header h1 {
-    font-size: 1.6rem;
-    font-weight: 900;
-    margin-bottom: 0.5rem;
-}
-
-.header p {
-    opacity: 0.9;
-    font-size: 0.8rem;
-}
-
-.header-actions {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin-top: 1.5rem;
-}
-
-.btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    border: none;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    font-size: 0.8rem;
-}
-
-.btn-primary {
-    background: white;
-    color: #667eea;
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-}
-
-.btn-secondary {
-    background: rgba(255,255,255,0.2);
-    color: white;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.3);
-}
-
-.btn-secondary:hover {
-    background: rgba(255,255,255,0.3);
-}
-
-.btn-danger {
-    background: #e53e3e;
-    color: white;
-    padding: 0.5rem 1rem;
-    font-size: 0.85rem;
-}
-
-.btn-danger:hover {
-    background: #c53030;
-}
-
-/* Alert */
-.alert {
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    border-left: 5px solid;
-}
-
-.alert-warning {
-    background: linear-gradient(135deg, #fffbeb, #fef3c7);
-    border-left-color: #fcd34d;
-    color: #78350f;
-}
-
-.alert-warning h3 {
-    margin: 0 0 0.5rem 0;
-    font-weight: 700;
-    font-size: 0.95rem;
-}
-
-.alert-warning p {
-    margin: 0.25rem 0;
-    line-height: 1.6;
-}
-
-.alert-info {
-    background: linear-gradient(135deg, #eff6ff, #dbeafe);
-    border-left-color: #0ea5e9;
-    color: #0c4a6e;
-}
-
-/* Metrics Grid */
-.metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 2rem;
-    margin-bottom: 3rem;
-}
-
-.metric-card {
-    background: white;
-    border-radius: 16px;
-    padding: 2rem;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    border-left: 5px solid;
-    transition: all 0.3s ease;
-}
-
-.metric-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 30px rgba(0,0,0,0.12);
-}
-
-.metric-card.blue {
-    border-left-color: #0ea5e9;
-}
-
-.metric-card.purple {
-    border-left-color: #a855f7;
-}
-
-.metric-card.green {
-    border-left-color: #10b981;
-}
-
-.metric-label {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: #a0aec0;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-}
-
-.metric-value {
-    font-size: 2.5rem;
-    font-weight: 900;
-    color: #1a202c;
-    margin-bottom: 0.5rem;
-}
-
-.metric-detail {
-    font-size: 0.9rem;
-    color: #718096;
-}
-
-/* Section */
-.section {
-    margin-bottom: 3rem;
-}
-
-.section-title {
-    font-size: 1.2rem;
-    font-weight: 900;
-    color: #1a202c;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.section-subtitle {
-    font-size: 0.8rem;
-    color: #718096;
-    margin-bottom: 1.5rem;
-}
-
-/* Form Section */
-.form-card {
-    background: white;
-    border-radius: 16px;
-    padding: 2rem;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    margin-bottom: 2rem;
-}
-
-.form-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-}
-
-.form-label {
-    font-weight: 700;
-    color: #1a202c;
-    margin-bottom: 0.5rem;
-    font-size: 0.95rem;
-}
-
-.form-input,
-.form-select {
-    padding: 0.75rem 1rem;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    font-family: inherit;
-    transition: all 0.3s ease;
-}
-
-.form-input:focus,
-.form-select:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    background: #f7fafc;
-}
-
-/* Django Form Widgets */
-.form-input[type="datetime-local"],
-.form-input[type="date"] {
-    min-height: 40px;
-    padding: 0.75rem 1rem;
-}
-
-.form-group input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    margin-top: 0.3rem;
-    cursor: pointer;
-    accent-color: #667eea;
-}
-
-/* Tables */
-.table-card {
-    background: white;
-    border-radius: 16px;
-    padding: 0;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    overflow: hidden;
-}
-
-.table-responsive {
-    overflow-x: auto;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-thead {
-    background: linear-gradient(135deg, #f7fafc, #edf2f7);
-    border-bottom: 2px solid #e2e8f0;
-}
-
-th {
-    padding: 1rem;
-    text-align: left;
-    font-weight: 700;
-    color: #1a202c;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-td {
-    padding: 1rem;
-    border-bottom: 1px solid #f1f5f9;
-    font-size: 0.95rem;
-    color: #4a5568;
-}
-
-tbody tr:hover {
-    background: #f7fafc;
-}
-
-tbody tr:last-child td {
-    border-bottom: none;
-}
-
-/* Tags/Badges */
-.badge {
-    display: inline-block;
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
-    font-weight: 700;
-    font-size: 0.8rem;
-    white-space: nowrap;
-}
-
-.badge-blue {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.badge-purple {
-    background: #e9d5ff;
-    color: #6b21a8;
-}
-
-.badge-green {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.badge-amber {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.badge-red {
-    background: #fee2e2;
-    color: #991b1b;
-}
-
-/* Price Highlight */
-.price {
-    font-weight: 900;
-    color: #667eea;
-    font-size: 1.1rem;
-}
-
-.price-total {
-    font-size: 1.3rem;
-    font-weight: 900;
-    color: #667eea;
-}
-
-/* Summary Table */
-.summary-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
-    gap: 1rem;
-    padding: 1rem;
-    border-bottom: 1px solid #e2e8f0;
-    align-items: center;
-}
-
-.summary-row:hover {
-    background: #f7fafc;
-}
-
-.summary-row:last-child {
-    border-bottom: none;
-}
-
-.summary-item-name {
-    font-weight: 700;
-    color: #1a202c;
-}
-
-.summary-item-detail {
-    font-size: 0.85rem;
-    color: #718096;
-}
-
-/* Grid Layout */
-.grid-2 {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-    gap: 2rem;
-}
-
-/* Utilities */
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.mb-1 { margin-bottom: 0.5rem; }
-.mb-2 { margin-bottom: 1rem; }
-.mb-3 { margin-bottom: 1.5rem; }
-.mb-4 { margin-bottom: 2rem; }
-.text-sm { font-size: 0.75rem; }
-.text-gray { color: #718096; }
-.font-bold { font-weight: 700; }
-
-@media (max-width: 768px) {
-    .container {
-        padding: 0 1rem;
-    }
-    
-    .header {
-        padding: 1.5rem 1rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    .header h1 {
-        font-size: 1.4rem;
-    }
-    
-    .header p {
-        font-size: 0.75rem;
-    }
-    
-    .header-actions {
-        flex-direction: column;
-        gap: 0.8rem;
-        margin-top: 1rem;
-    }
-    
-    .header-actions .btn {
-        width: 100%;
-        padding: 0.7rem 1rem;
-        font-size: 0.75rem;
-    }
-    
-    .btn {
-        padding: 0.6rem 1rem;
-        font-size: 0.75rem;
-    }
-    
-    .metrics-grid {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-    
-    .form-row {
-        grid-template-columns: 1fr;
-        gap: 0.8rem;
-    }
-    
-    .summary-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .table-responsive {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-    
-    table {
-        font-size: 0.75rem;
-        width: 100%;
-    }
-    
-    th, td {
-        padding: 0.6rem 0.4rem;
-        white-space: nowrap;
-    }
-    
-    .grid-2 {
-        grid-template-columns: 1fr;
-    }
-    
-    .form-card {
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .section-title {
-        font-size: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .alert {
-        padding: 1rem;
-        margin-bottom: 1.5rem;
-        font-size: 0.75rem;
-    }
-}
-</style>
-
-<div class="header">
-    <h1>📊 Jersey Orders Admin Dashboard</h1>
-    <p>Manage orders, track inventory, and process fulfillment</p>
-    
-    <div class="header-actions">
-        <a href="{% url 'jersey-orders' %}" class="btn btn-primary">📝 Back to Orders</a>
-        <a href="{% url 'jersey-orders-export' %}" class="btn btn-secondary">
-            📥 Download Order Details
-        </a>
+<div class="page-content">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+        <div>
+            <p class="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pitch-600 mb-2">Team kit</p>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-stone-900">Jersey orders admin</h1>
+            <p class="text-sm text-stone-500 mt-1">Review totals before sending the final order to the supplier.</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'jersey-orders' %}" class="btn btn-secondary btn-md">Member form</a>
+            <a href="{% url 'jersey-orders-export' %}" class="btn btn-primary btn-md">Download Order Data</a>
+        </div>
     </div>
-</div>
 
-<div class="container">
-    <!-- Alerts -->
-    {% if not ordering_open %}
-    <div class="alert alert-info">
-        <h3>🔒 Ordering Closed</h3>
-        <p>New orders are not being accepted. You can still view and process existing orders below.</p>
-    </div>
-    {% endif %}
-
-    <!-- Order Close Form -->
-    {% if user.is_staff %}
-    <div class="form-card">
-        <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem;">🗓️ Order Management</h3>
-        <form method="post" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+    <div class="card p-4 mb-5 bg-amber-50 border-amber-100">
+        <p class="text-sm font-semibold text-amber-900">All prices are in Indian rupees (₹) and exclude postal/courier charges.</p>
+        <p class="text-xs text-amber-800 mt-1">Supplier totals below use the quotation rates only. Add postage separately when the final shipment cost is known.</p>
+        <div class="mt-3 rounded-xl border px-3 py-2 {% if ordering_open %}border-emerald-200 bg-emerald-50 text-emerald-900{% else %}border-red-200 bg-red-50 text-red-900{% endif %}">
+            <p class="text-[11px] font-extrabold uppercase tracking-wide">Ordering status</p>
+            {% if ordering_deadline %}
+            <p class="text-sm font-semibold mt-1">
+                {% if ordering_open %}
+                <span class="font-extrabold text-emerald-700">Open</span>
+                <span class="text-emerald-800"> — will close on </span>
+                {% else %}
+                <span class="font-extrabold text-red-700">Closed</span>
+                <span class="text-red-800"> — closed on </span>
+                {% endif %}
+                <strong class="font-extrabold">{{ ordering_deadline }}</strong>{% if ordering_open %}. Please order before that.{% else %}.{% endif %}
+            </p>
+            {% else %}
+            <p class="text-xs font-semibold mt-1">{{ ordering_status }}</p>
+            {% endif %}
+        </div>
+        <form method="post" class="mt-4 grid grid-cols-1 gap-3 rounded-xl bg-white/70 p-3 ring-1 ring-amber-100 sm:grid-cols-[1fr_auto] sm:items-end">
             {% csrf_token %}
             <input type="hidden" name="action" value="update_order_window">
-            <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label">Enable Order Close Date</label>
-                {{ order_window_form.is_enabled }}
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label">Close Date & Time</label>
+            <div>
+                <label class="form-label" for="{{ order_window_form.closes_at.id_for_label }}">Order close date</label>
                 {{ order_window_form.closes_at }}
+                <label class="mt-2 flex items-center gap-2 text-xs font-semibold text-amber-900">
+                    {{ order_window_form.is_enabled }}
+                    <span>Show this close date and stop member orders after it</span>
+                </label>
+                {% if order_window_form.closes_at.errors %}
+                <p class="text-xs text-red-600 mt-1">{{ order_window_form.closes_at.errors|striptags }}</p>
+                {% endif %}
             </div>
-            <button type="submit" class="btn btn-primary" style="width: auto; padding: 0.75rem 1.5rem;">✓ Update</button>
+            <button type="submit" class="btn btn-primary btn-md">Save close date</button>
         </form>
     </div>
-    {% endif %}
 
-    <!-- Metrics -->
-    <div class="metrics-grid">
-        <div class="metric-card blue">
-            <div class="metric-label">📦 Total Pieces</div>
-            <div class="metric-value">{{ total_quantity }}</div>
-            <div class="metric-detail">across all orders</div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+        <div class="card p-4">
+            <p class="text-xs font-semibold text-stone-500 uppercase tracking-wide">Total pieces</p>
+            <p class="text-2xl font-extrabold text-stone-900 mt-1">{{ total_quantity }}</p>
         </div>
-        <div class="metric-card purple">
-            <div class="metric-label">💰 Total Cost</div>
-            <div class="metric-value">₹{{ grand_total|floatformat:0 }}</div>
-            <div class="metric-detail">excluding shipping</div>
+        <div class="card p-4">
+            <p class="text-xs font-semibold text-stone-500 uppercase tracking-wide">Total cost</p>
+            <p class="text-2xl font-extrabold text-stone-900 mt-1">₹{{ grand_total }}</p>
         </div>
-        <div class="metric-card green">
-            <div class="metric-label">🎯 Number References</div>
-            <div class="metric-value">{{ taken_numbers|length }}</div>
-            <div class="metric-detail">unique jersey numbers</div>
+        <div class="card p-4">
+            <p class="text-xs font-semibold text-stone-500 uppercase tracking-wide">Number references</p>
+            <p class="text-2xl font-extrabold text-stone-900 mt-1">{{ taken_numbers|length }}</p>
         </div>
     </div>
 
-    <!-- Supplier Summary -->
-    <div class="section">
-        <h2 class="section-title">🏭 Supplier Summary</h2>
-        <p class="section-subtitle">Consolidated order by item type for supplier fulfillment</p>
-        
-        <div class="table-card">
-            <div class="table-responsive">
-                <table>
-                    <thead>
+    <div class="card overflow-hidden mb-5">
+        <div class="card-header">
+            <h2 class="text-sm font-bold text-stone-800">Supplier summary</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-stone-50 text-xs uppercase tracking-wide text-stone-500">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Item</th>
+                        <th class="px-4 py-3 text-left">Gender / fit</th>
+                        <th class="px-4 py-3 text-left">Size / measurement</th>
+                        <th class="px-4 py-3 text-right">Qty</th>
+                        <th class="px-4 py-3 text-right">Rate</th>
+                        <th class="px-4 py-3 text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100">
+                    {% for item_code, rows in summary.items %}
+                        {% for row in rows %}
                         <tr>
-                            <th>Item</th>
-                            <th>Gender/Fit</th>
-                            <th>Size</th>
-                            <th>Quantity</th>
-                            <th>Rate</th>
-                            <th>Total Cost</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item_type, lines in summary.items %}
-                            {% for line in lines %}
-                        <tr>
-                            <td><strong>{{ line.item }}</strong></td>
-                            <td>
-                                <span class="badge badge-blue">{{ line.gender }}</span>
-                            </td>
-                            <td><span class="badge badge-purple">{{ line.size }}</span></td>
-                            <td><strong style="font-size: 1.1rem;">{{ line.quantity }}</strong></td>
-                            <td><span class="price">₹{{ line.rate }}</span></td>
-                            <td><span class="price-total">₹{{ line.total|floatformat:0 }}</span></td>
-                        </tr>
-                            {% endfor %}
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" style="text-align: center; padding: 2rem; color: #a0aec0;">
-                                No orders yet
-                            </td>
+                            <td class="px-4 py-3 text-stone-700">{{ row.item }}</td>
+                            <td class="px-4 py-3">{{ row.gender }}</td>
+                            <td class="px-4 py-3 font-semibold">{{ row.size }}</td>
+                            <td class="px-4 py-3 text-right">{{ row.quantity }}</td>
+                            <td class="px-4 py-3 text-right">₹{{ row.rate }}</td>
+                            <td class="px-4 py-3 text-right font-semibold">₹{{ row.total }}</td>
                         </tr>
                         {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-4 py-6 text-center text-stone-500">No orders yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <!-- Detailed Orders by Member -->
-    <div class="section">
-        <h2 class="section-title">👥 Member-wise Order Details</h2>
-        <p class="section-subtitle">Complete order breakdown for tracking and communication</p>
-        
-        <div class="table-card">
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Member</th>
-                            <th>Wearer</th>
-                            <th>Item</th>
-                            <th>Gender</th>
-                            <th>Size</th>
-                            <th>Qty</th>
-                            <th>Jersey #</th>
-                            <th>Price</th>
-                            <th>Total</th>
-                            {% if user.is_staff %}<th>Action</th>{% endif %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for order in orders %}
-                        <tr>
-                            <td>
-                                <strong>{{ order.user.get_full_name }}</strong>
-                                <div class="text-sm text-gray">{{ order.user.email }}</div>
-                            </td>
-                            <td>
-                                <strong>{{ order.wearer_name }}</strong>
-                                <div class="text-sm text-gray">{{ order.for_person }}</div>
-                            </td>
-                            <td>{{ order.get_item_type_display }}</td>
-                            <td><span class="badge badge-blue">{{ order.gender }}</span></td>
-                            <td>
-                                <span class="badge badge-purple">
-                                    {{ order.display_size }}
-                                </span>
-                            </td>
-                            <td><strong>{{ order.quantity }}</strong></td>
-                            <td>
-                                {% if order.jersey_number %}
-                                    <span class="badge badge-green">#{{ order.jersey_number }}</span>
-                                {% else %}
-                                    <span class="text-gray">—</span>
-                                {% endif %}
-                            </td>
-                            <td><span class="price">₹{{ order.unit_price|floatformat:2 }}</span></td>
-                            <td><span class="price-total">₹{{ order.line_total|floatformat:0 }}</span></td>
-                            {% if user.is_staff %}
-                            <td>
-                                <form method="post" style="display: inline;">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="delete_order_id" value="{{ order.id }}">
-                                    <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this order?');">
-                                        🗑️ Remove
-                                    </button>
-                                </form>
-                            </td>
-                            {% endif %}
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="{% if user.is_staff %}10{% else %}9{% endif %}" style="text-align: center; padding: 2rem; color: #a0aec0;">
-                                No orders placed yet
-                            </td>
-                        </tr>
-                        {% endfor %}
-                        <!-- Total Row -->
-                        {% if orders %}
-                        <tr style="background: #f7f4f1; font-weight: 700; border-top: 3px solid #FF6B35;">
-                            <td colspan="5" style="text-align: right; padding-right: 2rem;">
-                                <strong>TOTAL</strong>
-                            </td>
-                            <td>
-                                <strong>{{ total_quantity }}</strong>
-                            </td>
-                            <td>—</td>
-                            <td>—</td>
-                            <td style="background: #FFE8D6; color: #FF6B35; padding: 1rem;">
-                                <strong>₹{{ grand_total|floatformat:0 }}</strong>
-                            </td>
-                            {% if user.is_staff %}<td></td>{% endif %}
-                        </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
+    <div class="card overflow-hidden">
+        <div class="card-header">
+            <h2 class="text-sm font-bold text-stone-800">Member-wise orders</h2>
         </div>
-    </div>
-
-    <!-- Footer Info -->
-    <div style="text-align: center; margin-top: 4rem; padding: 2rem; color: #a0aec0; font-size: 0.9rem;">
-        <p>Last updated: {% now "d M Y, H:i:s" %}</p>
-        <p>Total members with orders: <strong>{{ orders|length }}</strong> • Total line items: <strong>{{ total_quantity }}</strong></p>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-stone-50 text-xs uppercase tracking-wide text-stone-500">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Member</th>
+                        <th class="px-4 py-3 text-left">For</th>
+                        <th class="px-4 py-3 text-left">Gender / fit</th>
+                        <th class="px-4 py-3 text-left">Wearer</th>
+                        <th class="px-4 py-3 text-left">Item</th>
+                        <th class="px-4 py-3 text-left">Size / measurement</th>
+                        <th class="px-4 py-3 text-right">Qty</th>
+                        <th class="px-4 py-3 text-left">No.</th>
+                        <th class="px-4 py-3 text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100">
+                    {% for order in orders %}
+                    <tr>
+                        <td class="px-4 py-3">{{ order.user.get_full_name|default:order.user.username }}</td>
+                        <td class="px-4 py-3">{{ order.get_for_person_display }}</td>
+                        <td class="px-4 py-3">{{ order.get_gender_display }}</td>
+                        <td class="px-4 py-3 font-semibold">{{ order.wearer_name }}</td>
+                        <td class="px-4 py-3">{{ order.get_item_type_display }}</td>
+                        <td class="px-4 py-3">{{ order.display_size }}</td>
+                        <td class="px-4 py-3 text-right">{{ order.quantity }}</td>
+                        <td class="px-4 py-3">{% if order.jersey_number %}#{{ order.jersey_number }}{% else %}-{% endif %}</td>
+                        <td class="px-4 py-3 text-right font-semibold">₹{{ order.line_total }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="px-4 py-6 text-center text-stone-500">No orders yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}
