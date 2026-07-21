@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Premium Jersey Store - Order Team Kits{% endblock %}
 {% block content %}
 <style>
@@ -912,6 +913,29 @@ ul.errorlist li { display: none !important; }
             </p>
         </div>
         
+        <!-- Official kit showcase (tap to enlarge) -->
+        <div style="margin-top: 2rem; display: flex; justify-content: center;" x-data="{ open: false }">
+            <div style="width: 100%; max-width: 420px;">
+                <button type="button" @click="open = true" aria-label="Enlarge team kit image"
+                        style="display:block; width:100%; padding:0; border:none; background:transparent; cursor:pointer; position:relative;">
+                    <img src="{% static 'images/team-kit.jpeg' %}"
+                         alt="ICG official team kit: navy and silver jerseys, pants, shorts and caps"
+                         style="width:100%; border-radius:16px; box-shadow:0 12px 32px rgba(0,0,0,0.45); display:block;" loading="lazy">
+                    <span style="position:absolute; bottom:0.75rem; right:0.75rem; background:rgba(0,0,0,0.55); color:#fff; font-size:0.7rem; font-weight:600; padding:0.3rem 0.75rem; border-radius:999px;">🔍 Tap to enlarge</span>
+                </button>
+                <p style="margin-top:0.6rem; font-size:0.7rem; color:#FFD9B8; line-height:1.4;">⚠️ AI-generated rough design, shown for reference only. The final manufactured kit may differ slightly or significantly.</p>
+            </div>
+            <!-- Lightbox -->
+            <div x-show="open" x-cloak x-transition.opacity
+                 @click="open = false" @keydown.escape.window="open = false"
+                 style="position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.85); padding:1rem;">
+                <img src="{% static 'images/team-kit.jpeg' %}" alt="ICG official team kit, full size" @click.stop
+                     style="max-height:90vh; max-width:100%; border-radius:16px; box-shadow:0 24px 60px rgba(0,0,0,0.6);">
+                <button type="button" @click="open = false" aria-label="Close"
+                        style="position:absolute; top:1rem; right:1rem; width:44px; height:44px; border:none; border-radius:999px; background:rgba(255,255,255,0.18); color:#fff; font-size:1.4rem; line-height:1; cursor:pointer;">&times;</button>
+            </div>
+        </div>
+
         <!-- Centered Status Box -->
         <div style="margin-top: 2rem; display: flex; justify-content: center;">
             <div style="width: 100%; max-width: 600px;">
