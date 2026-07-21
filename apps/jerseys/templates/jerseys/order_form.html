@@ -323,8 +323,10 @@
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <p class="text-sm font-semibold text-stone-800">{{ order.wearer_name }} &middot; {{ order.get_item_type_display }}</p>
-                                    {% if order.jersey_number %}
-                                    <span class="badge badge-stone shrink-0">Ref #{{ order.jersey_number }}</span>
+                                    {% if order.reference %}
+                                    <span class="badge {% if order.jersey_number %}badge-green{% else %}badge-stone{% endif %} shrink-0">
+                                        Ref #{{ order.reference }} &middot; {% if order.jersey_number %}#{{ order.jersey_number }} on jersey{% else %}no number{% endif %}
+                                    </span>
                                     {% endif %}
                                 </div>
                                 <p class="text-xs text-stone-500 mt-1">{{ order.get_gender_display }} &middot; Size {{ order.display_size }} &middot; Qty {{ order.quantity }}</p>

@@ -131,8 +131,11 @@ class JerseyOrder(models.Model):
     jersey_number = models.CharField(
         max_length=3,
         blank=True,
-        help_text="Optional. Duplicates are allowed for family/kids.",
+        help_text="Number printed ON the jersey. Blank = no number on the jersey.",
     )
+    # Tracking reference for the wearer's order batch. Equals the jersey number
+    # when one is picked; otherwise a 3-digit temporary code (NOT on the jersey).
+    reference = models.CharField(max_length=3, blank=True, default='')
     notes = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -142,6 +145,39 @@ class JerseyOrder(models.Model):
 
     def __str__(self):
         return f"{self.wearer_name} - {self.get_item_type_display()} #{self.jersey_number or '-'}"
+
+    @classmethod
+    def _new_reference(cls):
+        """A random unused 3-digit code (100–999), avoiding existing references,
+        jersey numbers and manually-booked numbers."""
+        import random
+        used = (
+            set(cls.objects.exclude(reference='').values_list('reference', flat=True))
+            | set(cls.objects.exclude(jersey_number='').values_list('jersey_number', flat=True))
+            | set(cls.MANUAL_NUMBER_RESERVATIONS.keys())
+        )
+        pool = [str(n) for n in range(100, 1000) if str(n) not in used]
+        return random.choice(pool) if pool else str(random.randint(100, 999))
+
+    @classmethod
+    def sync_reference(cls, user, wearer_name):
+        """Recompute the shared reference for a wearer's orders: the picked
+        jersey number if any exists, else a stable 3-digit temporary code."""
+        qs = cls.objects.filter(user=user, wearer_name__iexact=(wearer_name or '').strip())
+        if not qs.exists():
+            return
+        number = (
+            qs.exclude(jersey_number='').order_by('id')
+            .values_list('jersey_number', flat=True).first()
+        )
+        if number:
+            ref = number
+        else:
+            ref = (
+                qs.exclude(reference='').values_list('reference', flat=True).first()
+                or cls._new_reference()
+            )
+        qs.update(reference=ref)
 
     @classmethod
     def rate_for(cls, item_type):

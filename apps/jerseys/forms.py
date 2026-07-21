@@ -188,6 +188,8 @@ class JerseyOrderForm(forms.ModelForm):
             order.full_clean()
             order.save()
             orders.append(order)
+        # Set the shared reference for this wearer (picked number, or 3-digit code).
+        JerseyOrder.sync_reference(self.user, self.cleaned_data['wearer_name'])
         return orders
 
     def _size_for_item(self, item_type, is_kid):

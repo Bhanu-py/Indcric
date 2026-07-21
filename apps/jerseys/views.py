@@ -239,7 +239,10 @@ def delete_jersey_order_view(request, order_id):
         messages.error(request, 'Jersey ordering is closed. Existing orders can no longer be changed.')
         return redirect('jersey-orders')
     if request.method == 'POST':
+        owner, wearer = order.user, order.wearer_name
         order.delete()
+        # Recompute the wearer's reference (e.g. if the numbered order was removed).
+        JerseyOrder.sync_reference(owner, wearer)
         messages.success(request, 'Order line removed.')
     return _dest()
 
@@ -271,6 +274,7 @@ def jersey_orders_admin_view(request):
         'item': o.get_item_type_display(),
         'size': o.display_size,
         'qty': o.quantity,
+        'ref': o.reference or '',
         'number': o.jersey_number or '',
         'total': float(o.line_total),
     } for o in orders]

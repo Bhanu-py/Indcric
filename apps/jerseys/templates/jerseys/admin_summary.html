@@ -115,11 +115,11 @@
                    class="form-input w-full sm:w-72">
         </div>
         <div class="overflow-x-auto">
-            <table class="w-full min-w-[880px] table-fixed text-sm">
+            <table class="w-full min-w-[960px] table-fixed text-sm">
                 <colgroup>
-                    <col style="width:15%"><col style="width:8%"><col style="width:10%">
-                    <col style="width:13%"><col style="width:16%"><col style="width:18%">
-                    <col style="width:6%"><col style="width:7%"><col style="width:7%">
+                    <col style="width:14%"><col style="width:7%"><col style="width:9%">
+                    <col style="width:12%"><col style="width:15%"><col style="width:16%">
+                    <col style="width:6%"><col style="width:7%"><col style="width:7%"><col style="width:7%">
                 </colgroup>
                 <thead class="bg-stone-50 text-xs uppercase tracking-wide text-stone-500 select-none">
                     <tr>
@@ -130,7 +130,8 @@
                         <th @click="sortBy('item')" class="px-3 py-3 text-left cursor-pointer hover:text-stone-800 truncate">Item<span x-text="arrow('item')"></span></th>
                         <th @click="sortBy('size')" class="px-3 py-3 text-left cursor-pointer hover:text-stone-800 truncate">Size / measurement<span x-text="arrow('size')"></span></th>
                         <th @click="sortBy('qty')" class="px-3 py-3 text-right cursor-pointer hover:text-stone-800">Qty<span x-text="arrow('qty')"></span></th>
-                        <th @click="sortBy('number')" class="px-3 py-3 text-left cursor-pointer hover:text-stone-800">No.<span x-text="arrow('number')"></span></th>
+                        <th @click="sortBy('ref')" class="px-3 py-3 text-left cursor-pointer hover:text-stone-800" title="Tracking reference">Ref<span x-text="arrow('ref')"></span></th>
+                        <th @click="sortBy('number')" class="px-3 py-3 text-left cursor-pointer hover:text-stone-800" title="Number printed on the jersey">On jersey<span x-text="arrow('number')"></span></th>
                         <th @click="sortBy('total')" class="px-3 py-3 text-right cursor-pointer hover:text-stone-800">Total<span x-text="arrow('total')"></span></th>
                     </tr>
                 </thead>
@@ -144,12 +145,13 @@
                             <td class="px-3 py-3 truncate" :title="o.item" x-text="o.item"></td>
                             <td class="px-3 py-3 break-words" x-text="o.size"></td>
                             <td class="px-3 py-3 text-right tabular-nums" x-text="o.qty"></td>
-                            <td class="px-3 py-3 truncate" x-text="o.number ? '#' + o.number : '-'"></td>
+                            <td class="px-3 py-3 truncate" x-text="o.ref ? '#' + o.ref : '-'"></td>
+                            <td class="px-3 py-3 truncate" x-text="o.number ? '#' + o.number : '—'"></td>
                             <td class="px-3 py-3 text-right font-semibold tabular-nums" x-text="'₹' + o.total"></td>
                         </tr>
                     </template>
                     <tr x-show="view().length === 0">
-                        <td colspan="9" class="px-4 py-6 text-center text-stone-500" x-text="rows.length ? 'No orders match your filter.' : 'No orders yet.'"></td>
+                        <td colspan="10" class="px-4 py-6 text-center text-stone-500" x-text="rows.length ? 'No orders match your filter.' : 'No orders yet.'"></td>
                     </tr>
                 </tbody>
             </table>
