@@ -128,6 +128,14 @@ def jersey_orders_view(request):
     own_orders = list(JerseyOrder.objects.filter(user=request.user).order_by('-created_at'))
     own_order_total = sum((order.line_total for order in own_orders), start=0)
     own_order_quantity = sum((order.quantity for order in own_orders), start=0)
+    # Numbers reserved by OTHER members — used for the live "already reserved"
+    # warning as the user types (own numbers are reusable, so excluded).
+    reserved_numbers = {}
+    for o in (
+        JerseyOrder.objects.exclude(jersey_number='')
+        .exclude(user=request.user).select_related('user')
+    ):
+        reserved_numbers.setdefault(o.jersey_number, o.wearer_name or (o.user.username if o.user else 'another member'))
     context = {
         'form': form,
         'own_orders': own_orders,
@@ -138,6 +146,7 @@ def jersey_orders_view(request):
         'shirt_size_measurements': JerseyOrder.SIZE_MEASUREMENTS,
         'pant_size_measurements': JerseyOrder.PANT_SIZE_MEASUREMENTS,
         'taken_numbers': _taken_numbers(),
+        'reserved_numbers': reserved_numbers,
         'ordering_open': ordering_open,
         'ordering_status': ordering_status,
         'ordering_deadline': ordering_deadline,
