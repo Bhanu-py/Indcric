@@ -1,5 +1,3 @@
-import random
-
 from django import forms
 from django.utils import timezone
 
@@ -172,11 +170,8 @@ class JerseyOrderForm(forms.ModelForm):
     def save_orders(self):
         orders = []
         is_kid = self._uses_kid_measurements(self.cleaned_data)
-        # No specific number chosen → reuse this wearer's existing number if
-        # they already have one; otherwise assign a fresh 3-digit reference.
+        # "No specific number" → the order has no number at all (left blank).
         number = self.cleaned_data.get('jersey_number') or ''
-        if not number:
-            number = self._existing_number_for_wearer() or self._generate_reference()
         for item_type in self.cleaned_data['item_types']:
             quantity = self.cleaned_data[f'quantity_{item_type}']
             order = JerseyOrder(
@@ -194,31 +189,6 @@ class JerseyOrderForm(forms.ModelForm):
             order.save()
             orders.append(order)
         return orders
-
-    def _existing_number_for_wearer(self):
-        """This member's already-assigned number for the same wearer, if any —
-        so a second order without a number reuses it instead of a new reference."""
-        wearer = (self.cleaned_data.get('wearer_name') or '').strip()
-        if not wearer:
-            return ''
-        return (
-            JerseyOrder.objects
-            .filter(user=self.user, wearer_name__iexact=wearer)
-            .exclude(jersey_number='')
-            .order_by('id')
-            .values_list('jersey_number', flat=True)
-            .first()
-        ) or ''
-
-    @staticmethod
-    def _generate_reference():
-        """A random unused 3-digit reference (100–999) for a no-number order."""
-        used = set(
-            JerseyOrder.objects.exclude(jersey_number='')
-            .values_list('jersey_number', flat=True)
-        )
-        pool = [str(n) for n in range(100, 1000) if str(n) not in used]
-        return random.choice(pool) if pool else str(random.randint(100, 999))
 
     def _size_for_item(self, item_type, is_kid):
         if item_type in JerseyOrder.HEADWEAR_ITEMS:
