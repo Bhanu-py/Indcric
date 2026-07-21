@@ -107,46 +107,76 @@
         </div>
     </div>
 
-    <div class="card overflow-hidden">
-        <div class="card-header">
-            <h2 class="text-sm font-bold text-stone-800">Member-wise orders</h2>
+    <div class="card overflow-hidden" x-data="jerseyOrderTable()">
+        {{ orders_data|json_script:"orders-data" }}
+        <div class="card-header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h2 class="text-sm font-bold text-stone-800">Member-wise orders <span class="text-stone-400 font-normal" x-text="'(' + view().length + ')'"></span></h2>
+            <input type="search" x-model="q" placeholder="Filter member, wearer, item, number…"
+                   class="form-input w-full sm:w-72">
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-stone-50 text-xs uppercase tracking-wide text-stone-500">
+                <thead class="bg-stone-50 text-xs uppercase tracking-wide text-stone-500 select-none">
                     <tr>
-                        <th class="px-4 py-3 text-left">Member</th>
-                        <th class="px-4 py-3 text-left">For</th>
-                        <th class="px-4 py-3 text-left">Gender / fit</th>
-                        <th class="px-4 py-3 text-left">Wearer</th>
-                        <th class="px-4 py-3 text-left">Item</th>
-                        <th class="px-4 py-3 text-left">Size / measurement</th>
-                        <th class="px-4 py-3 text-right">Qty</th>
-                        <th class="px-4 py-3 text-left">No.</th>
-                        <th class="px-4 py-3 text-right">Total</th>
+                        <th @click="sortBy('member')" class="px-4 py-3 text-left cursor-pointer hover:text-stone-800">Member<span x-text="arrow('member')"></span></th>
+                        <th @click="sortBy('forp')" class="px-4 py-3 text-left cursor-pointer hover:text-stone-800">For<span x-text="arrow('forp')"></span></th>
+                        <th @click="sortBy('gender')" class="px-4 py-3 text-left cursor-pointer hover:text-stone-800">Gender / fit<span x-text="arrow('gender')"></span></th>
+                        <th @click="sortBy('wearer')" class="px-4 py-3 text-left cursor-pointer hover:text-stone-800">Wearer<span x-text="arrow('wearer')"></span></th>
+                        <th @click="sortBy('item')" class="px-4 py-3 text-left cursor-pointer hover:text-stone-800">Item<span x-text="arrow('item')"></span></th>
+                        <th @click="sortBy('size')" class="px-4 py-3 text-left cursor-pointer hover:text-stone-800">Size / measurement<span x-text="arrow('size')"></span></th>
+                        <th @click="sortBy('qty')" class="px-4 py-3 text-right cursor-pointer hover:text-stone-800">Qty<span x-text="arrow('qty')"></span></th>
+                        <th @click="sortBy('number')" class="px-4 py-3 text-left cursor-pointer hover:text-stone-800">No.<span x-text="arrow('number')"></span></th>
+                        <th @click="sortBy('total')" class="px-4 py-3 text-right cursor-pointer hover:text-stone-800">Total<span x-text="arrow('total')"></span></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-stone-100">
-                    {% for order in orders %}
-                    <tr>
-                        <td class="px-4 py-3">{{ order.user.get_full_name|default:order.user.username }}</td>
-                        <td class="px-4 py-3">{{ order.get_for_person_display }}</td>
-                        <td class="px-4 py-3">{{ order.get_gender_display }}</td>
-                        <td class="px-4 py-3 font-semibold">{{ order.wearer_name }}</td>
-                        <td class="px-4 py-3">{{ order.get_item_type_display }}</td>
-                        <td class="px-4 py-3">{{ order.display_size }}</td>
-                        <td class="px-4 py-3 text-right">{{ order.quantity }}</td>
-                        <td class="px-4 py-3">{% if order.jersey_number %}#{{ order.jersey_number }}{% else %}-{% endif %}</td>
-                        <td class="px-4 py-3 text-right font-semibold">₹{{ order.line_total }}</td>
+                    <template x-for="o in view()" :key="o._i">
+                        <tr>
+                            <td class="px-4 py-3" x-text="o.member"></td>
+                            <td class="px-4 py-3" x-text="o.forp"></td>
+                            <td class="px-4 py-3" x-text="o.gender"></td>
+                            <td class="px-4 py-3 font-semibold" x-text="o.wearer"></td>
+                            <td class="px-4 py-3" x-text="o.item"></td>
+                            <td class="px-4 py-3" x-text="o.size"></td>
+                            <td class="px-4 py-3 text-right" x-text="o.qty"></td>
+                            <td class="px-4 py-3" x-text="o.number ? '#' + o.number : '-'"></td>
+                            <td class="px-4 py-3 text-right font-semibold" x-text="'₹' + o.total"></td>
+                        </tr>
+                    </template>
+                    <tr x-show="view().length === 0">
+                        <td colspan="9" class="px-4 py-6 text-center text-stone-500" x-text="rows.length ? 'No orders match your filter.' : 'No orders yet.'"></td>
                     </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="9" class="px-4 py-6 text-center text-stone-500">No orders yet.</td>
-                    </tr>
-                    {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+<script>
+    function jerseyOrderTable() {
+        return {
+            rows: JSON.parse(document.getElementById('orders-data').textContent).map((o, i) => ({ ...o, _i: i })),
+            q: '', sortKey: '', sortDir: 1,
+            sortBy(k) { if (this.sortKey === k) { this.sortDir *= -1; } else { this.sortKey = k; this.sortDir = 1; } },
+            arrow(k) { return this.sortKey === k ? (this.sortDir > 0 ? ' ▲' : ' ▼') : ''; },
+            view() {
+                let r = this.rows;
+                const query = this.q.trim().toLowerCase();
+                if (query) {
+                    r = r.filter(o => [o.member, o.forp, o.gender, o.wearer, o.item, o.size, String(o.number)]
+                        .join(' ').toLowerCase().includes(query));
+                }
+                if (this.sortKey) {
+                    const k = this.sortKey, d = this.sortDir;
+                    r = [...r].sort((a, b) => {
+                        const x = a[k], y = b[k];
+                        if (typeof x === 'number' && typeof y === 'number') return (x - y) * d;
+                        return String(x).localeCompare(String(y), undefined, { numeric: true }) * d;
+                    });
+                }
+                return r;
+            },
+        };
+    }
+</script>
 {% endblock %}

@@ -195,8 +195,21 @@ def jersey_orders_admin_view(request):
         'user__username',
         'wearer_name',
     )
+    # Flat rows for the client-side sortable/filterable member-wise table.
+    orders_data = [{
+        'member': (o.user.get_full_name() or o.user.username) if o.user else '—',
+        'forp': o.get_for_person_display(),
+        'gender': o.get_gender_display(),
+        'wearer': o.wearer_name,
+        'item': o.get_item_type_display(),
+        'size': o.display_size,
+        'qty': o.quantity,
+        'number': o.jersey_number or '',
+        'total': float(o.line_total),
+    } for o in orders]
     return render(request, 'jerseys/admin_summary.html', {
         'orders': orders,
+        'orders_data': orders_data,
         'summary': dict(summary),
         'total_quantity': total_quantity,
         'grand_total': grand_total,
