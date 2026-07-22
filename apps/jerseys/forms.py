@@ -126,14 +126,14 @@ class JerseyOrderForm(forms.ModelForm):
         if no_number:
             cleaned['jersey_number'] = ''  # cleared; a reference is assigned on save
         elif not number:
-            self.add_error('jersey_number', 'Pick a number, or tick “No specific number”.')
+            self.add_error('jersey_number', 'Pick a number, or tick “No number”.')
         else:
             reserved_to = JerseyOrder.MANUAL_NUMBER_RESERVATIONS.get(number)
             if reserved_to and (not self.user or self.user.username != reserved_to):
                 self.add_error(
                     'jersey_number',
                     f'#{number} is reserved for {reserved_to}. '
-                    'Pick another, or tick “No specific number”.',
+                    'Pick another, or tick “No number”.',
                 )
             else:
                 clash = (
@@ -148,7 +148,7 @@ class JerseyOrderForm(forms.ModelForm):
                     self.add_error(
                         'jersey_number',
                         f'#{number} is already reserved by {owner}. '
-                        'Pick another, or tick “No specific number”.',
+                        'Pick another, or tick “No number”.',
                     )
                 else:
                     # One number per wearer: can't pick a different number than
@@ -166,7 +166,7 @@ class JerseyOrderForm(forms.ModelForm):
                         self.add_error(
                             'jersey_number',
                             f'You already have #{other}. '
-                            'Use the same number, tick “No specific number”, or remove that number.',
+                            'Use the same number, tick “No number”, or remove that number.',
                         )
         return cleaned
 
@@ -190,7 +190,7 @@ class JerseyOrderForm(forms.ModelForm):
     def save_orders(self):
         orders = []
         is_kid = self._uses_kid_measurements(self.cleaned_data)
-        # "No specific number" → the order has no number at all (left blank).
+        # "No number" → the order has no number at all (left blank).
         number = self.cleaned_data.get('jersey_number') or ''
         for item_type in self.cleaned_data['item_types']:
             quantity = self.cleaned_data[f'quantity_{item_type}']
