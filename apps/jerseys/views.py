@@ -3,6 +3,7 @@ from io import BytesIO
 from collections import defaultdict
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
@@ -64,7 +65,20 @@ def _taken_numbers():
                 'item_count': 0,
             }
         references[key]['item_count'] += 1
-    return list(references.values())
+    rows = list(references.values())
+    # Manually-booked numbers always appear as reserved, even without an order.
+    shown = {r['jersey_number'] for r in rows}
+    for num, uname in JerseyOrder.MANUAL_NUMBER_RESERVATIONS.items():
+        if num not in shown:
+            rows.append({
+                'jersey_number': num,
+                'wearer_name': 'Reserved',
+                'gender': '',
+                'user__username': uname,
+                'item_count': 0,
+            })
+    rows.sort(key=lambda r: (len(r['jersey_number']), r['jersey_number']))
+    return rows
 
 
 def _summary():
@@ -128,6 +142,32 @@ def jersey_orders_view(request):
     own_orders = list(JerseyOrder.objects.filter(user=request.user).order_by('-created_at'))
     own_order_total = sum((order.line_total for order in own_orders), start=0)
     own_order_quantity = sum((order.quantity for order in own_orders), start=0)
+    # Numbers reserved by OTHER members — used for the live "already reserved"
+    # warning as the user types (own numbers are reusable, so excluded).
+    reserved_numbers = {}
+    for o in (
+        JerseyOrder.objects.exclude(jersey_number='')
+        .exclude(user=request.user).select_related('user')
+    ):
+        reserved_numbers.setdefault(o.jersey_number, o.wearer_name or (o.user.username if o.user else 'another member'))
+    # Manually-booked numbers count as reserved for everyone except their owner.
+    for num, uname in JerseyOrder.MANUAL_NUMBER_RESERVATIONS.items():
+        if request.user.username != uname:
+            reserved_numbers.setdefault(num, uname)
+    # This member's existing number per wearer — one number per wearer, so the
+    # live warning flags a different number for a wearer who already has one.
+    own_wearer_numbers = {}
+    for o in own_orders:
+        if o.jersey_number:
+            own_wearer_numbers.setdefault(o.wearer_name.strip().lower(), o.jersey_number)
+    # Size choices per own-order line, for the inline editor (adult shirt/pant only).
+    for o in own_orders:
+        if o.item_type in JerseyOrder.SHIRT_ITEMS:
+            o.size_choices = JerseyOrder.SHIRT_SIZE_CHOICES
+        elif o.item_type in JerseyOrder.PANT_ITEMS:
+            o.size_choices = JerseyOrder.PANT_SIZE_CHOICES
+        else:
+            o.size_choices = None
     context = {
         'form': form,
         'own_orders': own_orders,
@@ -138,6 +178,8 @@ def jersey_orders_view(request):
         'shirt_size_measurements': JerseyOrder.SIZE_MEASUREMENTS,
         'pant_size_measurements': JerseyOrder.PANT_SIZE_MEASUREMENTS,
         'taken_numbers': _taken_numbers(),
+        'reserved_numbers': reserved_numbers,
+        'own_wearer_numbers': own_wearer_numbers,
         'ordering_open': ordering_open,
         'ordering_status': ordering_status,
         'ordering_deadline': ordering_deadline,
@@ -147,9 +189,56 @@ def jersey_orders_view(request):
 
 @login_required
 @jersey_ordering_enabled
+def edit_jersey_order_view(request, order_id):
+    order = JerseyOrder.objects.filter(id=order_id).first()
+    if order is None:
+        messages.info(request, 'That order was already removed.')
+        return redirect('jersey-orders')
+    if not request.user.is_staff and order.user_id != request.user.id:
+        messages.error(request, "You cannot edit another member's order.")
+        return redirect('jersey-orders')
+    if not request.user.is_staff and not JerseyOrderWindow.ordering_is_open():
+        messages.error(request, 'Jersey ordering is closed. Existing orders can no longer be changed.')
+        return redirect('jersey-orders')
+    if request.method == 'POST':
+        try:
+            qty = int(request.POST.get('quantity') or 0)
+        except (TypeError, ValueError):
+            qty = 0
+        if qty < 1:
+            messages.error(request, 'Quantity must be at least 1.')
+            return redirect('jersey-orders')
+        order.quantity = qty
+        new_size = (request.POST.get('size') or '').strip()
+        if new_size and order.item_type in (JerseyOrder.SHIRT_ITEMS | JerseyOrder.PANT_ITEMS):
+            order.size = new_size
+        try:
+            order.full_clean()
+            order.save()
+            messages.success(request, 'Order updated.')
+        except ValidationError as exc:
+            msgs = '; '.join(' '.join(v) for v in exc.message_dict.values())
+            messages.error(request, msgs or 'Could not update the order.')
+    return redirect('jersey-orders')
+
+
+@login_required
+@jersey_ordering_enabled
 def delete_jersey_order_view(request, order_id):
-    order = get_object_or_404(JerseyOrder, id=order_id)
     next_url = request.POST.get('next') or request.GET.get('next')
+
+    def _dest():
+        if next_url and url_has_allowed_host_and_scheme(
+            next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure(),
+        ):
+            return redirect(next_url)
+        return redirect('jersey-orders-admin' if request.user.is_staff else 'jersey-orders')
+
+    order = JerseyOrder.objects.filter(id=order_id).first()
+    if order is None:
+        # Stale page (already removed) — don't 404, just go back with a note.
+        messages.info(request, 'That order was already removed.')
+        return _dest()
     if not request.user.is_staff and order.user_id != request.user.id:
         messages.error(request, "You cannot delete another member's order.")
         return redirect('jersey-orders')
@@ -157,15 +246,12 @@ def delete_jersey_order_view(request, order_id):
         messages.error(request, 'Jersey ordering is closed. Existing orders can no longer be changed.')
         return redirect('jersey-orders')
     if request.method == 'POST':
+        owner, wearer = order.user, order.wearer_name
         order.delete()
+        # Recompute the wearer's reference (e.g. if the numbered order was removed).
+        JerseyOrder.sync_reference(owner, wearer)
         messages.success(request, 'Order line removed.')
-    if next_url and url_has_allowed_host_and_scheme(
-        next_url,
-        allowed_hosts={request.get_host()},
-        require_https=request.is_secure(),
-    ):
-        return redirect(next_url)
-    return redirect('jersey-orders-admin' if request.user.is_staff else 'jersey-orders')
+    return _dest()
 
 
 @staff_member_required
@@ -186,8 +272,22 @@ def jersey_orders_admin_view(request):
         'user__username',
         'wearer_name',
     )
+    # Flat rows for the client-side sortable/filterable member-wise table.
+    orders_data = [{
+        'member': (o.user.get_full_name() or o.user.username) if o.user else '—',
+        'forp': o.get_for_person_display(),
+        'gender': o.get_gender_display(),
+        'wearer': o.wearer_name,
+        'item': o.get_item_type_display(),
+        'size': o.display_size,
+        'qty': o.quantity,
+        'ref': o.reference or '',
+        'number': o.jersey_number or '',
+        'total': float(o.line_total),
+    } for o in orders]
     return render(request, 'jerseys/admin_summary.html', {
         'orders': orders,
+        'orders_data': orders_data,
         'summary': dict(summary),
         'total_quantity': total_quantity,
         'grand_total': grand_total,

@@ -1,1596 +1,416 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Premium Jersey Store - Order Team Kits{% endblock %}
+
+{% block title %}ICG Store{% endblock %}
+
 {% block content %}
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; scrollbar-gutter: stable; }
-body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; }
-
-/* Hero Section - Bold Modern Design */
-.hero {
-    background: linear-gradient(135deg, #001F3F 0%, #003D5C 50%, #004B7A 100%);
-    color: #E8F0F8;
-    padding: 3rem 2rem;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-    clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%);
-}
-
-.hero::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -10%;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px);
-    background-size: 50px 50px;
-    animation: drift 20s infinite linear;
-}
-
-.hero::after {
-    content: '';
-    position: absolute;
-    bottom: -50%;
-    left: -10%;
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
-    background-size: 40px 40px;
-    animation: drift 25s infinite linear reverse;
-}
-
-@keyframes drift {
-    0% { transform: translateY(0px); }
-    50% { transform: translateY(20px); }
-    100% { transform: translateY(0px); }
-}
-
-.hero-content {
-    position: relative;
-    z-index: 2;
-    max-width: 900px;
-    margin: 0 auto;
-}
-
-.hero h1 {
-    font-size: 2.5rem;
-    font-weight: 900;
-    letter-spacing: -2px;
-    margin-bottom: 0.5rem;
-    line-height: 1.1;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.2);
-}
-
-.hero p {
-    font-size: 1rem;
-    opacity: 0.95;
-    margin-bottom: 1.5rem;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-}
-
-.hero-badge {
-    display: inline-block;
-    background: rgba(255,255,255,0.2);
-    backdrop-filter: blur(10px);
-    padding: 0.75rem 1.5rem;
-    border-radius: 50px;
-    border: 1px solid rgba(255,255,255,0.3);
-    font-weight: 600;
-    margin-right: 1rem;
-}
-
-.hero-cta {
-    display: inline-block;
-    background: white;
-    color: #667eea;
-    padding: 1rem 2rem;
-    border-radius: 50px;
-    font-weight: 700;
-    text-decoration: none;
-    transition: all 0.3s ease;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-}
-
-.hero-cta:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-}
-
-/* Container */
-.container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 2rem;
-}
-
-.section {
-    margin-bottom: 5rem;
-    max-width: 100%;
-    overflow: hidden;
-    width: 100%;
-}
-
-.section-title {
-    font-size: 2.5rem;
-    font-weight: 900;
-    text-align: center;
-    margin-bottom: 3rem;
-    color: #1a202c;
-}
-
-/* Product Grid - Modern E-Commerce Showcase */
-.showcase-title {
-    font-size: 1.75rem;
-    font-weight: 900;
-    text-align: center;
-    margin: 1.5rem 0 1rem;
-    color: #1a1a1a;
-    letter-spacing: -1px;
-}
-
-.showcase-subtitle {
-    text-align: center;
-    color: #666;
-    font-size: 0.85rem;
-    margin-bottom: 1.2rem;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.product-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1.2rem;
-    margin-bottom: 1.5rem;
-    max-width: 100%;
-    overflow: hidden;
-}
-
-.product-card {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-}
-
-.product-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(0,63,127,0.05), rgba(0,77,154,0.05));
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-}
-
-.product-card:hover {
-    transform: translateY(-12px);
-    box-shadow: 0 20px 40px rgba(0,63,127,0.12);
-}
-
-.product-card:hover::before {
-    opacity: 1;
-}
-
-.product-info {
-    padding: 1.5rem;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    z-index: 1;
-}
-
-.product-category {
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 1.2px;
-    color: #003D5C;
-    font-weight: 800;
-    margin-bottom: 0.5rem;
-}
-
-.product-name {
-    font-size: 0.9rem;
-    font-weight: 800;
-    color: #1a1a1a;
-    margin-bottom: 0.4rem;
-}
-
-.product-desc {
-    font-size: 0.75rem;
-    color: #888;
-    margin-bottom: 0.7rem;
-    flex-grow: 1;
-    line-height: 1.5;
-}
-
-.product-price {
-    font-size: 1.1rem;
-    font-weight: 900;
-    color: #003D5C;
-    letter-spacing: -0.5px;
-    margin-bottom: 0.8rem;
-}
-
-.product-qty-section {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding-top: 1rem;
-    border-top: 2px solid #f5f5f5;
-}
-
-.product-qty-label {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #1a1a1a;
-    white-space: nowrap;
-}
-
-.product-qty-controls {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    margin-left: auto;
-}
-
-@media (min-width: 640px) {
-    .product-qty-controls {
-        gap: 0.8rem;
-    }
-}
-
-@media (max-width: 639px) {
-    .product-qty-section {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding-top: 1rem;
-        border-top: 2px solid #f5f5f5;
-        justify-content: space-between;
-        width: 100%;
-    }
-}
-
-.qty-mini-btn {
-    background: #f0f0f0;
-    color: #1a1a1a;
-    border: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 3px;
-    cursor: pointer;
-    font-weight: 800;
-    transition: all 0.2s ease;
-    font-size: 0.65rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    min-width: 20px;
-}
-
-@media (min-width: 640px) {
-    .qty-mini-btn {
-        width: 32px;
-        height: 32px;
-        font-size: 0.9rem;
-    }
-}
-
-.qty-mini-btn:hover {
-    background: #FF6B35;
-    color: white;
-    transform: scale(1.05);
-}
-
-.qty-mini-input {
-    width: 30px;
-    text-align: center;
-    border: 1px solid #e8e8e8;
-    border-radius: 3px;
-    padding: 0.15rem;
-    font-weight: 700;
-    font-size: 0.7rem;
-}
-
-.product-checkbox {
-    margin-right: 0.5rem;
-    cursor: pointer;
-    width: 16px;
-    height: 16px;
-    accent-color: #FF6B35;
-}
-
-/* Quantity field styling */
-.product-qty-controls input[type="number"] {
-    width: 40px;
-    text-align: center;
-    border: 2px solid #e8e8e8;
-    border-radius: 6px;
-    padding: 0.3rem;
-    font-weight: 700;
-    font-size: 0.85rem;
-    background: white;
-}
-
-.product-qty-controls input[type="number"]:focus {
-    outline: none;
-    border-color: #FF6B35;
-    box-shadow: 0 0 0 2px rgba(255,107,53,0.1);
-}
-
-/* Info Cards */
-.info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.info-card {
-    background: white;
-    border-radius: 16px;
-    padding: 1.5rem;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-    border-left: 5px solid #667eea;
-}
-
-.info-card h3 {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: #1a202c;
-    margin-bottom: 0.8rem;
-}
-
-.info-card p {
-    color: #4a5568;
-    line-height: 1.6;
-    font-size: 0.8rem;
-}
-
-/* Main Layout */
-.main-layout {
-    display: block;
-    position: relative;
-    margin-bottom: 2rem;
-    width: 100%;
-}
-
-.main-layout > div:first-child {
-    margin-right: 412px;
-    overflow: hidden;
-}
-
-.sidebar {
-    grid-column: 2;
-    grid-row: 1 / -1;
-}
-
-@media (max-width: 1024px) {
-    .main-layout {
-        display: flex !important;
-        flex-direction: column !important;
-        position: relative;
-    }
-    
-    .main-layout > div:first-child {
-        margin-right: 0 !important;
-        margin-bottom: 2rem;
-    }
-    
-    .sidebar {
-        position: static !important;
-        top: auto !important;
-        right: auto !important;
-        width: 100% !important;
-        max-width: none !important;
-        order: -1;
-    }
-}
-
-/* Form Section - Modern Clean Design */
-.form-card {
-    background: white;
-    border-radius: 16px;
-    padding: 1.5rem;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    margin-bottom: 1.2rem;
-    max-width: 100%;
-    overflow: hidden;
-}
-
-.form-card h2 {
-    font-size: 0.95rem;
-    font-weight: 900;
-    margin-bottom: 1rem;
-    color: #1a1a1a;
-    letter-spacing: -0.5px;
-}
-
-.form-step {
-    margin-bottom: 1.2rem;
-    padding-bottom: 1.2rem;
-    border-bottom: 2px solid #f0f0f0;
-    position: relative;
-}
-
-.form-step:last-child {
-    border-bottom: none;
-    margin-bottom: 0.8rem;
-}
-
-.form-step-title {
-    font-size: 0.8rem;
-    font-weight: 800;
-    color: #1a1a1a;
-    margin-bottom: 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-}
-
-.step-number {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #003D5C, #004B7A);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 900;
-    flex-shrink: 0;
-    font-size: 0.8rem;
-}
-
-.form-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.2rem;
-    margin-bottom: 1.2rem;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 0.8rem;
-}
-
-.form-label {
-    font-weight: 800;
-    color: #1a1a1a;
-    margin-bottom: 0.5rem;
-    font-size: 0.75rem;
-    letter-spacing: 0.2px;
-}
-
-.form-label .required {
-    color: #003D5C;
-}
-
-.form-input,
-.form-select,
-.form-textarea {
-    padding: 0.7rem 0.9rem;
-    border: 2.5px solid #e8e8e8;
-    border-radius: 10px;
-    font-size: 0.75rem;
-    font-family: inherit;
-    transition: all 0.3s ease;
-    background: white;
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-}
-
-.form-input:focus,
-.form-select:focus,
-.form-textarea:focus {
-    outline: none;
-    border-color: #003D5C;
-    box-shadow: 0 0 0 4px rgba(0,63,127,0.08);
-    background: #fafafa;
-}
-
-.form-textarea {
-    min-height: 100px;
-    resize: vertical;
-}
-
-/* Checkbox Items - Modern Style */
-.checkbox-grid {
-    display: grid;
-    gap: 1.2rem;
-}
-
-.checkbox-item {
-    display: flex;
-    gap: 1rem;
-    padding: 1rem;
-    border: 2.5px solid #e8e8e8;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    align-items: flex-start;
-    background: white;
-}
-
-.checkbox-item:hover {
-    border-color: #003D5C;
-    background: #f0f8ff;
-    transform: translateX(4px);
-}
-
-.checkbox-item input[type="checkbox"] {
-    margin-top: 4px;
-    cursor: pointer;
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-    accent-color: #003D5C;
-}
-
-.checkbox-item.checked {
-    border-color: #003D5C;
-    background: linear-gradient(135deg, #f0f8ff, #e3f2fd);
-}
-
-.checkbox-content {
-    flex: 1;
-}
-
-.checkbox-label {
-    font-weight: 800;
-    color: #1a1a1a;
-    margin-bottom: 0.2rem;
-    font-size: 0.95rem;
-}
-
-.checkbox-price {
-    font-size: 1.1rem;
-    font-weight: 900;
-    color: #003D5C;
-    margin-top: 0.4rem;
-}
-
-.checkbox-desc {
-    font-size: 0.8rem;
-    color: #888;
-    margin-top: 0.3rem;
-    line-height: 1.4;
-}
-
-.qty-input {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-shrink: 0;
-}
-
-.qty-btn {
-    background: #f0f0f0;
-    color: #1a1a1a;
-    border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 800;
-    transition: all 0.2s ease;
-    font-size: 1rem;
-}
-
-.qty-btn:hover {
-    background: #003D5C;
-    color: white;
-}
-
-.qty-input input {
-    width: 50px;
-    text-align: center;
-    border: 2px solid #e8e8e8;
-    border-radius: 8px;
-    padding: 0.4rem;
-    font-weight: 700;
-    font-size: 0.9rem;
-}
-
-/* Sidebar */
-.sidebar {
-    position: absolute !important;
-    top: 0;
-    right: 0;
-    width: 380px !important;
-    max-width: 380px !important;
-    min-width: 380px !important;
-}
-
-@supports (position: sticky) {
-    .sidebar {
-        position: sticky;
-        top: 2rem;
-    }
-}
-
-.order-summary {
-    background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-}
-
-.order-summary h3 {
-    font-size: 1rem;
-    font-weight: 800;
-    color: #1a1a1a;
-    margin-bottom: 1rem;
-    padding-bottom: 0.8rem;
-    border-bottom: 2.5px solid #f0f0f0;
-    position: relative;
-}
-
-.order-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.7rem 0;
-    font-size: 0.85rem;
-    color: #666;
-    border-bottom: 1px solid #f5f5f5;
-}
-
-.order-item:last-child {
-    border-bottom: none;
-}
-
-.order-item-name {
-    font-weight: 700;
-    color: #1a1a1a;
-    flex: 1;
-}
-
-.order-item-qty {
-    color: #aaa;
-    font-size: 0.75rem;
-    margin: 0 0.5rem;
-}
-
-.order-item-price {
-    font-weight: 800;
-    color: #003D5C;
-}
-
-.order-total {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    background: linear-gradient(135deg, #f0f8ff, #e3f2fd);
-    border-radius: 10px;
-    margin-top: 1rem;
-    font-weight: 800;
-    border: 2px solid #b3d9ff;
-}
-
-.order-total-price {
-    font-size: 1.4rem;
-    color: #003D5C;
-}
-
-/* Buttons */
-.btn {
-    display: inline-block;
-    padding: 0.8rem 1.5rem;
-    border: none;
-    border-radius: 10px;
-    font-weight: 800;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    text-align: center;
-    font-size: 0.8rem;
-    letter-spacing: 0.3px;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #003D5C, #004B7A);
-    color: white;
-    width: 100%;
-    box-shadow: 0 4px 15px rgba(0,63,127,0.3);
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0,63,127,0.4);
-}
-
-.btn-secondary {
-    background: white;
-    color: #003D5C;
-    border: 2.5px solid #003D5C;
-}
-
-.btn-secondary:hover {
-    background: #f0f8ff;
-}
-
-.btn-danger {
-    background: #003D5C;
-    color: white;
-    padding: 0.55rem 1rem;
-    font-size: 0.8rem;
-}
-
-.btn-danger:hover {
-    background: #004B7A;
-}
-
-/* Alerts */
-.alert {
-    border-radius: 12px;
-    padding: 1.4rem;
-    margin-bottom: 1.8rem;
-    font-size: 0.9rem;
-}
-
-.alert-warning {
-    background: linear-gradient(135deg, #f0f8ff, #e3f2fd);
-    border: 2px solid #003D5C;
-    color: #001F3F;
-}
-
-.alert-warning h4 {
-    margin: 0 0 0.5rem 0;
-    font-weight: 800;
-    font-size: 0.95rem;
-}
-
-.alert-warning p {
-    margin: 0.2rem 0;
-    line-height: 1.6;
-}
-
-/* Orders Display */
-.orders-list {
-    display: grid;
-    gap: 1rem;
-}
-
-.order-item-card {
-    background: white;
-    border-radius: 12px;
-    padding: 1.1rem;
-    border-left: 5px solid #003D5C;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-    transition: all 0.3s ease;
-}
-
-.order-item-card:hover {
-    box-shadow: 0 6px 20px rgba(0,63,127,0.12);
-    transform: translateX(4px);
-}
-
-.order-item-info {
-    flex: 1;
-}
-
-.order-item-info-title {
-    font-weight: 800;
-    color: #1a1a1a;
-    margin-bottom: 0.2rem;
-    font-size: 0.95rem;
-}
-
-.order-item-info-details {
-    font-size: 0.8rem;
-    color: #888;
-    margin-bottom: 0.5rem;
-}
-
-.order-item-info-price {
-    font-weight: 800;
-    color: #003D5C;
-    font-size: 1rem;
-}
-
-/* Utilities */
-.text-center { text-align: center; }
-.mb-1 { margin-bottom: 0.5rem; }
-.mb-2 { margin-bottom: 1rem; }
-.mb-3 { margin-bottom: 1.5rem; }
-.mb-4 { margin-bottom: 2rem; }
-.mt-1 { margin-top: 0.5rem; }
-.mt-2 { margin-top: 1rem; }
-.text-gray { color: #888; }
-.text-sm { font-size: 0.75rem; }
-
-@media (max-width: 1024px) {
-    .hero {
-        padding: 2rem 1rem 3rem 1rem;
-        clip-path: polygon(0 0, 100% 0, 100% 90%, 0 100%);
-    }
-
-    .team-kit-label {
-        font-size: 0.7rem !important;
-    }
-
-    .admin-btn {
-        font-size: 0.65rem !important;
-        padding: 0.4rem 0.8rem !important;
-    }
-
-    .hero h1 {
-        font-size: 1.8rem;
-    }
-    
-    .section-title {
-        font-size: 1.3rem;
-    }
-    
-    .product-grid {
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 0.8rem;
-    }
-    
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .sidebar {
-        width: auto !important;
-        max-width: 380px !important;
-    }
-    
-    .checkbox-item {
-        flex-direction: column;
-    }
-    
-    .qty-input {
-        width: 100%;
-        justify-content: space-between;
-    }
-    
-    .container {
-        padding: 0 1rem;
-    }
-    
-    .form-card {
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .order-summary {
-        padding: 1rem;
-    }
-}
-
-/* Hide Django form error messages - they'll be shown as popups */
-.errorlist { display: none !important; }
-.errorlist li { display: none !important; }
-.form-group .errorlist { display: none !important; }
-ul.errorlist { display: none !important; }
-ul.errorlist li { display: none !important; }
-.form-group ul { display: none !important; }
-</style>
-
-<div class="hero">
-    <!-- Admin Dashboard in Top Right Corner -->
-    {% if request.user.is_staff %}
-    <div style="position: absolute; top: 1.5rem; right: 2rem; z-index: 10;">
-        <a href="{% url 'jersey-orders-admin' %}" class="hero-cta admin-btn">📊 Admin Dashboard</a>
+<div class="page-content">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-stone-900">ICG Store</h1>
+            <p class="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pitch-600 mt-1">Team kit</p>
+            <p class="text-sm text-stone-500 mt-1">Add one entry per wearer, then set a quantity for each item you need.</p>
+        </div>
+        {% if request.user.is_staff %}
+        <a href="{% url 'jersey-orders-admin' %}" class="btn btn-secondary btn-md">Admin summary</a>
+        {% endif %}
+    </div>
+
+    {% if ordering_deadline %}
+    <div class="rounded-2xl border p-3.5 mb-5 flex items-start gap-2.5 {% if ordering_open %}bg-emerald-50 border-emerald-200{% else %}bg-red-50 border-red-200{% endif %}">
+        <svg class="w-5 h-5 shrink-0 {% if ordering_open %}text-emerald-600{% else %}text-red-600{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <p class="text-sm {% if ordering_open %}text-emerald-900{% else %}text-red-900{% endif %}">
+            {% if ordering_open %}
+            <b class="font-extrabold">Ordering is open</b> — closes {{ ordering_deadline }}. Get your order in before then.
+            {% else %}
+            <b class="font-extrabold">Ordering is closed</b> — it ended {{ ordering_deadline }}. New orders are no longer accepted.
+            {% endif %}
+        </p>
     </div>
     {% endif %}
-    
-    <div class="hero-content">
-        <div style="margin-bottom: 1rem;">
-            <div class="team-kit-label" style="color: #FFD700; font-weight: 700; font-size: 0.5rem; margin-bottom: 0.5rem;">🏷️ TEAM KIT</div>
-        </div>
-        <h1 style="color: #FFD700;">🏏 ICG Store</h1>
-        
-        <!-- Combined Messages -->
-        <div style="margin-top: 1.5rem;">
-            <p style="color: #E8F0F8; font-size: 1rem; font-weight: 500; line-height: 1.6;">
-                Premium team kits - Order now with custom sizing<br>
-                <span style="margin-top: 0.5rem; display: block;">Add one entry per wearer, then select all items they need.</span>
-            </p>
-        </div>
-        
-        <!-- Official kit showcase (tap to enlarge) -->
-        <div style="margin-top: 2rem; display: flex; justify-content: center;" x-data="{ open: false }">
-            <div style="width: 100%; max-width: 420px;">
-                <button type="button" @click="open = true" aria-label="Enlarge team kit image"
-                        style="display:block; width:100%; padding:0; border:none; background:transparent; cursor:pointer; position:relative;">
-                    <img src="{% static 'images/team-kit.jpeg' %}"
-                         alt="ICG official team kit: navy and silver jerseys, pants, shorts and caps"
-                         style="width:100%; border-radius:16px; box-shadow:0 12px 32px rgba(0,0,0,0.45); display:block;" loading="lazy">
-                    <span style="position:absolute; bottom:0.75rem; right:0.75rem; background:rgba(0,0,0,0.55); color:#fff; font-size:0.7rem; font-weight:600; padding:0.3rem 0.75rem; border-radius:999px;">🔍 Tap to enlarge</span>
-                </button>
-                <p style="margin-top:0.6rem; font-size:0.7rem; color:#FFD9B8; line-height:1.4;">⚠️ AI-generated rough design, shown for reference only. The final manufactured kit may differ slightly or significantly.</p>
+
+    {# Chosen team kit — official ICG design showcase. #}
+    <div class="card overflow-hidden mb-5">
+        <div class="card-header flex items-center justify-between gap-2">
+            <div>
+                <h2 class="text-sm font-bold text-stone-800">Our team kit</h2>
+                <p class="text-xs text-stone-400 mt-1">The official ICG design — this is the kit your order will be made in.</p>
             </div>
-            <!-- Lightbox -->
+            <span class="badge badge-green shrink-0">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                Selected
+            </span>
+        </div>
+        <div class="bg-[#1f2f49] p-4 flex justify-center" x-data="{ open: false }">
+            {# Thumbnail — tap to open the full-size lightbox. #}
+            <button type="button" @click="open = true"
+                    class="group relative block w-full max-w-[240px] rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
+                <img src="{% static 'images/team-kit.jpeg' %}"
+                     alt="Indian Cricket Ghent official team kit: navy and silver jerseys, pants, shorts and caps"
+                     class="w-full rounded-xl shadow-lg transition-transform group-hover:scale-[1.02]" loading="lazy">
+                <span class="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                    Tap to enlarge
+                </span>
+            </button>
+
+            {# Lightbox overlay. #}
             <div x-show="open" x-cloak x-transition.opacity
                  @click="open = false" @keydown.escape.window="open = false"
-                 style="position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.85); padding:1rem;">
-                <img src="{% static 'images/team-kit.jpeg' %}" alt="ICG official team kit, full size" @click.stop
-                     style="max-height:90vh; max-width:100%; border-radius:16px; box-shadow:0 24px 60px rgba(0,0,0,0.6);">
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4">
+                <img src="{% static 'images/team-kit.jpeg' %}"
+                     alt="Indian Cricket Ghent official team kit, full size"
+                     class="max-h-[90vh] max-w-full rounded-xl shadow-2xl" @click.stop>
                 <button type="button" @click="open = false" aria-label="Close"
-                        style="position:absolute; top:1rem; right:1rem; width:44px; height:44px; border:none; border-radius:999px; background:rgba(255,255,255,0.18); color:#fff; font-size:1.4rem; line-height:1; cursor:pointer;">&times;</button>
+                        class="absolute top-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur hover:bg-white/25">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
         </div>
-
-        <!-- Centered Status Box -->
-        <div style="margin-top: 2rem; display: flex; justify-content: center;">
-            <div style="width: 100%; max-width: 600px;">
-                {% if ordering_open %}
-                <div style="background: linear-gradient(135deg, #E0F7FA, #B2EBF2); border: 2px solid #00ACC1; border-radius: 12px; padding: 1.2rem 1.8rem;">
-                    <div style="color: #00695C; font-weight: 800; font-size: 1.1rem; margin-bottom: 0.5rem;">✅ Ordering is Open!</div>
-                    <div style="color: #00695C; font-size: 0.95rem; margin-bottom: 0.5rem;">Please order your jersey before the deadline to ensure timely shipment.</div>
-                    {% if ordering_deadline %}
-                    <div style="color: #D32F2F; font-weight: 800; font-size: 0.95rem;">⏰ Deadline: {{ ordering_deadline }}</div>
-                    {% endif %}
-                </div>
-                {% else %}
-                <div style="background: linear-gradient(135deg, #FFEBEE, #FFCDD2); border: 2px solid #E57373; border-radius: 12px; padding: 1.2rem 1.8rem;">
-                    <div style="color: #C62828; font-weight: 800; font-size: 1.1rem;">⊗ Ordering is Closed</div>
-                    <div style="color: #C62828; font-size: 0.95rem; margin-top: 0.5rem;">We're not accepting new orders right now, but you can still review your submitted orders.</div>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-
-<div class="container">
-    <div class="alert alert-warning">
-        <h4>💡 Important</h4>
-        <p><strong>Prices in Indian Rupees (₹)</strong> • Excludes shipping • Family & kids can reuse jersey numbers</p>
-    </div>
-
-    <!-- Info Cards -->
-    <div class="info-grid section">
-        <div class="info-card">
-            <h3>📏 Sizing Guide</h3>
-            <p>Compare measurements from our charts with a shirt that fits well. We focus on Full Chest + Length for accuracy.</p>
-        </div>
-        <div class="info-card">
-            <h3>👶 Kids Measurement</h3>
-            <p>Measure a well-fitting garment your child owns, enter exact measurements, and our makers will customize perfectly.</p>
-        </div>
-        <div class="info-card">
-            <h3>✅ After Ordering</h3>
-            <p>Review your complete order and our team will process all orders in batches. You'll be notified of delivery dates.</p>
+        <div class="px-4 py-2.5 border-t border-stone-100 bg-amber-50/70">
+            <p class="text-[11px] leading-snug text-amber-800 flex items-start gap-1.5">
+                <svg class="w-3.5 h-3.5 shrink-0 mt-px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                <span>AI-generated rough design, shown for reference only. The final manufactured kit may differ slightly or significantly.</span>
+            </p>
         </div>
     </div>
 
-    <!-- Size Charts - Expandable Section -->
-    <div class="section">
-        <div style="background: linear-gradient(135deg, #FFF8F0, #FFE8D6); border: 2px solid #FFD9B8; border-radius: 12px; padding: 1.5rem; cursor: pointer;" onclick="toggleSizeCharts()">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; color: #FF6B35; font-weight: 700;">📊 Size Charts & Measurements</h3>
-                <span id="chartToggleIcon" style="font-size: 1.5rem; transition: transform 0.3s;">▼</span>
-            </div>
-        </div>
-        
-        <div id="sizeChartsContainer" style="display: none; padding-top: 1.5rem;">
-            <!-- Adult Shirt Chart - Expandable -->
-            <div style="margin-bottom: 2rem; background: linear-gradient(135deg, #FFF8F0, #FFE8D6); border: 2px solid #FFD9B8; border-radius: 12px; padding: 1.2rem; cursor: pointer;" onclick="toggleShirtChart()">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h4 style="margin: 0; color: #FF6B35; font-weight: 700;">👔 Adult Shirt Standard Size Chart</h4>
-                    <span id="shirtChartIcon" style="font-size: 1.2rem; transition: transform 0.3s;">▼</span>
-                </div>
-            </div>
-            <div id="shirtChartContent" style="display: none; margin-bottom: 2rem; overflow-x: auto;">
-                <p style="color: #666; font-size: 0.9rem; margin-bottom: 1rem;">Choose mainly by Full Chest + Length. Measurements are garment inches.</p>
-                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden;">
-                    <thead>
-                        <tr style="background: #FFD9B8;">
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 700;">Order Size</th>
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 700;">UK-Style Ref</th>
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 700;">Full Chest</th>
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 700;">Half Chest</th>
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 700;">Length</th>
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 700;">Shoulder</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">20</td><td style="padding: 0.75rem; color: #003D5C; font-weight: 700;">Chest 22"</td><td style="padding: 0.75rem;">22</td><td style="padding: 0.75rem;">11</td><td style="padding: 0.75rem;">16</td><td style="padding: 0.75rem;">10</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">22</td><td style="padding: 0.75rem; color: #FF6B35; font-weight: 700;">Chest 24"</td><td style="padding: 0.75rem;">24</td><td style="padding: 0.75rem;">12</td><td style="padding: 0.75rem;">17</td><td style="padding: 0.75rem;">11</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">24</td><td style="padding: 0.75rem; color: #FF6B35; font-weight: 700;">Chest 26"</td><td style="padding: 0.75rem;">26</td><td style="padding: 0.75rem;">13</td><td style="padding: 0.75rem;">18</td><td style="padding: 0.75rem;">11</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">26</td><td style="padding: 0.75rem; color: #FF6B35; font-weight: 700;">Chest 28"</td><td style="padding: 0.75rem;">28</td><td style="padding: 0.75rem;">14</td><td style="padding: 0.75rem;">18.5</td><td style="padding: 0.75rem;">11.8</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">28</td><td style="padding: 0.75rem; color: #FF6B35; font-weight: 700;">Chest 30"</td><td style="padding: 0.75rem;">30</td><td style="padding: 0.75rem;">15</td><td style="padding: 0.75rem;">21</td><td style="padding: 0.75rem;">13</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">30</td><td style="padding: 0.75rem; color: #FF6B35; font-weight: 700;">Chest 32"</td><td style="padding: 0.75rem;">32</td><td style="padding: 0.75rem;">16</td><td style="padding: 0.75rem;">23</td><td style="padding: 0.75rem;">13</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">32</td><td style="padding: 0.75rem; color: #FF6B35; font-weight: 700;">Chest 34"</td><td style="padding: 0.75rem;">34</td><td style="padding: 0.75rem;">17</td><td style="padding: 0.75rem;">24</td><td style="padding: 0.75rem;">14</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">34</td><td style="padding: 0.75rem; color: #FF6B35; font-weight: 700;">Chest 36"</td><td style="padding: 0.75rem;">36</td><td style="padding: 0.75rem;">18</td><td style="padding: 0.75rem;">25</td><td style="padding: 0.75rem;">15</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">36</td><td style="padding: 0.75rem; color: #FF6B35; font-weight: 700;">Chest 36"</td><td style="padding: 0.75rem;">36</td><td style="padding: 0.75rem;">18</td><td style="padding: 0.75rem;">26</td><td style="padding: 0.75rem;">16</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">38</td><td style="padding: 0.75rem; color: #FF6B35; font-weight: 700;">Chest 38"</td><td style="padding: 0.75rem;">38</td><td style="padding: 0.75rem;">19</td><td style="padding: 0.75rem;">27</td><td style="padding: 0.75rem;">16</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">40</td><td style="padding: 0.75rem; color: #FF6B35; font-weight: 700;">Chest 40"</td><td style="padding: 0.75rem;">40</td><td style="padding: 0.75rem;">20</td><td style="padding: 0.75rem;">28</td><td style="padding: 0.75rem;">16</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">42</td><td style="padding: 0.75rem; color: #FF6B35; font-weight: 700;">Chest 42"</td><td style="padding: 0.75rem;">42</td><td style="padding: 0.75rem;">21</td><td style="padding: 0.75rem;">28</td><td style="padding: 0.75rem;">17</td></tr>
-                        <tr><td style="padding: 0.75rem;">44</td><td style="padding: 0.75rem; color: #FF6B35; font-weight: 700;">Chest 44"</td><td style="padding: 0.75rem;">44</td><td style="padding: 0.75rem;">22</td><td style="padding: 0.75rem;">29</td><td style="padding: 0.75rem;">17</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Adult Pant Chart - Expandable -->
-            <div style="margin-bottom: 2rem; background: linear-gradient(135deg, #FFF8F0, #FFE8D6); border: 2px solid #FFD9B8; border-radius: 12px; padding: 1.2rem; cursor: pointer;" onclick="togglePantChart()">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h4 style="margin: 0; color: #FF6B35; font-weight: 700;">👖 Adult Pant / Shorts Standard Size Chart</h4>
-                    <span id="pantChartIcon" style="font-size: 1.2rem; transition: transform 0.3s;">▼</span>
-                </div>
-            </div>
-            <div id="pantChartContent" style="display: none; margin-bottom: 2rem; overflow-x: auto;">
-                <p style="color: #666; font-size: 0.9rem; margin-bottom: 1rem;">Choose mainly by Length + Relaxed Waist. Measurements are garment inches.</p>
-                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden;">
-                    <thead>
-                        <tr style="background: #FFD9B8;">
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 700;">Order Size</th>
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 700;">Length</th>
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 700;">Relaxed Waist</th>
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 700;">Half Hip</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">20</td><td style="padding: 0.75rem;">20</td><td style="padding: 0.75rem;">18</td><td style="padding: 0.75rem;">20</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">22</td><td style="padding: 0.75rem;">22</td><td style="padding: 0.75rem;">18</td><td style="padding: 0.75rem;">22</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">24</td><td style="padding: 0.75rem;">24</td><td style="padding: 0.75rem;">19</td><td style="padding: 0.75rem;">24</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">26</td><td style="padding: 0.75rem;">26</td><td style="padding: 0.75rem;">20</td><td style="padding: 0.75rem;">26</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">28</td><td style="padding: 0.75rem;">28</td><td style="padding: 0.75rem;">21</td><td style="padding: 0.75rem;">28</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">30</td><td style="padding: 0.75rem;">30</td><td style="padding: 0.75rem;">22</td><td style="padding: 0.75rem;">30</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">32</td><td style="padding: 0.75rem;">32</td><td style="padding: 0.75rem;">23</td><td style="padding: 0.75rem;">32</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">34</td><td style="padding: 0.75rem;">34</td><td style="padding: 0.75rem;">24</td><td style="padding: 0.75rem;">34</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">36</td><td style="padding: 0.75rem;">36</td><td style="padding: 0.75rem;">25</td><td style="padding: 0.75rem;">36</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">38</td><td style="padding: 0.75rem;">38</td><td style="padding: 0.75rem;">26</td><td style="padding: 0.75rem;">38</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">40</td><td style="padding: 0.75rem;">40</td><td style="padding: 0.75rem;">27</td><td style="padding: 0.75rem;">40</td></tr>
-                        <tr style="border-bottom: 1px solid #f0f0f0;"><td style="padding: 0.75rem;">42</td><td style="padding: 0.75rem;">42</td><td style="padding: 0.75rem;">28</td><td style="padding: 0.75rem;">42</td></tr>
-                        <tr><td style="padding: 0.75rem;">44</td><td style="padding: 0.75rem;">42</td><td style="padding: 0.75rem;">29</td><td style="padding: 0.75rem;">42</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <div class="card p-4 mb-5 bg-amber-50 border-amber-100">
+        <p class="text-sm font-semibold text-amber-900">Prices are in Indian rupees (&#8377;) and exclude postal/courier charges.</p>
+        <p class="text-xs text-amber-800 mt-1">Family and kids can reuse a jersey number. The number list is only a reference, not a reservation system.</p>
     </div>
 
-    <script>
-function showNotification(message, type = 'error') {
-    // Remove existing notification if any
-    const existingNotif = document.querySelector('.notification-popup');
-    if (existingNotif) {
-        existingNotif.remove();
-    }
-    
-    // Create notification element
-    const notif = document.createElement('div');
-    notif.className = 'notification-popup';
-    notif.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'error' ? '#fee' : '#efe'};
-        border-left: 4px solid ${type === 'error' ? '#d32f2f' : '#10b981'};
-        color: ${type === 'error' ? '#991b1b' : '#186754'};
-        padding: 16px 24px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 9999;
-        font-weight: 600;
-        font-size: 0.95rem;
-        max-width: 400px;
-        animation: slideInRight 0.3s ease;
-    `;
-    notif.textContent = message;
-    document.body.appendChild(notif);
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        notif.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => notif.remove(), 300);
-    }, 5000);
-}
-
-// Add CSS for animations
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-    
-    @keyframes slideOutRight {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-    }
-`;
-document.head.appendChild(style);
-
-function validateSubmit(e) {
-    console.log('validateSubmit called - removing validation, letting Django handle it');
-    // Just let the form submit - Django will validate everything
-    return true;
-}
-
-function incrementQtyProduct(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    const controls = e.target.closest('.product-qty-controls');
-    if (controls) {
-        const input = controls.querySelector('input[type="number"]');
-        if (input) {
-            input.value = Math.max(0, (parseInt(input.value) || 0) + 1);
-            const card = e.target.closest('.product-card');
-            if (card) {
-                const checkbox = card.querySelector('input[type="checkbox"][name="item_types"]');
-                if (checkbox) {
-                    checkbox.checked = true;
-                    updateItemSelection(checkbox);
-                }
-            }
-            input.dispatchEvent(new Event('change'));
-            updateOrderSummary();
-        }
-    }
-}
-
-function decrementQtyProduct(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    const controls = e.target.closest('.product-qty-controls');
-    if (controls) {
-        const input = controls.querySelector('input[type="number"]');
-        if (input) {
-            const newVal = Math.max(0, (parseInt(input.value) || 0) - 1);
-            input.value = newVal;
-            if (newVal === 0) {
-                const card = e.target.closest('.product-card');
-                if (card) {
-                    const checkbox = card.querySelector('input[type="checkbox"][name="item_types"]');
-                    if (checkbox) {
-                        checkbox.checked = false;
-                        updateItemSelection(checkbox);
-                    }
-                }
-            }
-            input.dispatchEvent(new Event('change'));
-            updateOrderSummary();
-        }
-    }
-}
-
-function incrementQty(e) {
-    e.preventDefault();
-    const input = e.target.parentElement.querySelector('input[type="number"]');
-    input.value = Math.max(0, (parseInt(input.value) || 0) + 1);
-    updateOrderSummary();
-}
-
-function decrementQty(e) {
-    e.preventDefault();
-    const input = e.target.parentElement.querySelector('input[type="number"]');
-    input.value = Math.max(0, (parseInt(input.value) || 0) - 1);
-    updateOrderSummary();
-}
-
-function updateItemSelection(checkbox) {
-    const item = checkbox.closest('.product-card');
-    if (item) {
-        if (checkbox.checked) {
-            item.classList.add('checked');
-        } else {
-            item.classList.remove('checked');
-        }
-    }
-    updateOrderSummary();
-}
-
-function updateOrderSummary() {
-    let total = 0;
-    const items = [];
-    let hasSelectedItems = false;
-    
-    document.querySelectorAll('.product-card').forEach(card => {
-        const checkbox = card.querySelector('input[type="checkbox"][name="item_types"]');
-        const quantityInput = card.querySelector('input[type="number"]');
-        
-        if (checkbox && quantityInput) {
-            const qty = parseInt(quantityInput.value) || 0;
-            if (checkbox.checked) {
-                hasSelectedItems = true;
-            }
-            if (qty > 0) {
-                const label = card.querySelector('.product-name').textContent.trim();
-                const priceText = card.querySelector('.product-price').textContent;
-                const price = parseFloat(priceText.replace('₹', '').trim());
-                const itemTotal = price * qty;
-                total += itemTotal;
-                
-                items.push({
-                    name: label,
-                    qty: qty,
-                    price: price,
-                    total: itemTotal
-                });
-            }
-        }
-    });
-
-    const summaryDiv = document.getElementById('orderSummaryItems');
-    if (items.length === 0) {
-        summaryDiv.innerHTML = '<p style="text-align: center; padding: 1rem; color: #a0aec0;">Select items to see summary</p>';
-    } else {
-        summaryDiv.innerHTML = items.map(item => `
-            <div class="order-item">
-                <span class="order-item-name">${item.name}</span>
-                <span class="order-item-qty">×${item.qty}</span>
-                <span class="order-item-price">₹${item.total.toFixed(2)}</span>
-            </div>
-        `).join('');
-    }
-    
-    document.getElementById('totalAmount').textContent = `₹${total.toFixed(2)}`;
-}
-
-function toggleSizeCharts() {
-    const container = document.getElementById('sizeChartsContainer');
-    const icon = document.getElementById('chartToggleIcon');
-    
-    if (container.style.display === 'none') {
-        container.style.display = 'block';
-        icon.style.transform = 'rotate(180deg)';
-    } else {
-        container.style.display = 'none';
-        icon.style.transform = 'rotate(0deg)';
-    }
-}
-
-function toggleShirtChart() {
-    const content = document.getElementById('shirtChartContent');
-    const icon = document.getElementById('shirtChartIcon');
-    
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        icon.style.transform = 'rotate(180deg)';
-    } else {
-        content.style.display = 'none';
-        icon.style.transform = 'rotate(0deg)';
-    }
-}
-
-function togglePantChart() {
-    const content = document.getElementById('pantChartContent');
-    const icon = document.getElementById('pantChartIcon');
-    
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        icon.style.transform = 'rotate(180deg)';
-    } else {
-        content.style.display = 'none';
-        icon.style.transform = 'rotate(0deg)';
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const forPersonSelect = document.querySelector('select[name="for_person"]');
-    if (forPersonSelect) {
-        function updateSizeDisplay() {
-            const selectedValue = forPersonSelect.value;
-            const adultSection = document.getElementById('adultSizeSection');
-            const kidsSection = document.getElementById('kidsSizeSection');
-            
-            if (selectedValue && selectedValue !== 'kid') {
-                adultSection.style.display = 'block';
-                kidsSection.style.display = 'none';
-            } 
-            else if (selectedValue === 'kid') {
-                adultSection.style.display = 'none';
-                kidsSection.style.display = 'block';
-            }
-            else {
-                adultSection.style.display = 'none';
-                kidsSection.style.display = 'none';
-            }
-        }
-        
-        updateSizeDisplay();
-        forPersonSelect.addEventListener('change', updateSizeDisplay);
-    }
-    
-    document.querySelectorAll('input[type="number"]').forEach(input => {
-        input.addEventListener('change', updateOrderSummary);
-        input.addEventListener('input', updateOrderSummary);
-    });
-    
-    document.querySelectorAll('input[type="checkbox"][name="item_types"]').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            updateItemSelection(this);
-        });
-    });
-    
-    const form = document.querySelector('form[method="post"]');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            console.log('=== FORM SUBMISSION START ===');
-            const checkboxes = form.querySelectorAll('input[type="checkbox"][name="item_types"]:checked');
-            console.log('Checked items:', checkboxes.length);
-            checkboxes.forEach(cb => {
-                const code = cb.value;
-                const qty = form.querySelector(`input[name="quantity_${code}"]`)?.value;
-                console.log(`  - ${code}: qty=${qty}`);
-            });
-            
-            const formData = new FormData(form);
-            console.log('Form data (item_types):', formData.getAll('item_types'));
-            console.log('=== FORM SUBMISSION END ===');
-        });
-    }
-    
-    updateOrderSummary();
-    
-    setTimeout(function() {
-        const form = document.querySelector('form[method="post"]');
-        if (!form) return;
-        
-        const errorLists = form.querySelectorAll('ul.errorlist, .errorlist');
-        let errorCount = 0;
-        
-        errorLists.forEach(errorList => {
-            const errorItems = errorList.querySelectorAll('li');
-            errorItems.forEach(errorItem => {
-                const errorText = errorItem.textContent.trim();
-                if (errorText && errorText.length > 0) {
-                    showNotification(errorText, 'error');
-                    errorCount++;
-                }
-            });
-        });
-        
-        if (errorCount > 0) {
-            form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-    }, 100);
-});
-</script>
-
-    <!-- Main Layout -->
-    <div class="main-layout">
-        <!-- Left: Main Content -->
-        <div>
-            <!-- Product Showcase with Quantity Selection -->
-            <div class="section">
-                <h2 class="showcase-title">🛍️ Browse & Select</h2>
-                <p class="showcase-subtitle">Choose items and quantities directly</p>
-                
-                <!-- Single Form Wrapper -->
-                <form method="post" action="{% url 'jersey-orders' %}">
-                    {% csrf_token %}
-                    
-                    <!-- Browse Section - Items -->
-                    <div class="product-grid">
-                        {% for item in item_rows %}
-                        <div class="product-card">
-                            <div class="product-info">
-                                <div style="display: flex; align-items: flex-start; gap: 0.8rem; margin-bottom: 1rem;">
-                                    <input type="checkbox" name="item_types" value="{{ item.code }}" class="product-checkbox" {% if item.checked %}checked{% endif %} onchange="updateItemSelection(this)">
-                                    <div style="flex: 1;">
-                                        <div class="product-category">{{ item.group }}</div>
-                                        <div class="product-name">{{ item.label }}</div>
-                                    </div>
-                                </div>
-                                <div class="product-price">₹{{ item.rate }}</div>
-                                <div class="product-qty-section">
-                                    <span class="product-qty-label">Qty:</span>
-                                    <div class="product-qty-controls">
-                                        <button type="button" class="qty-mini-btn" onclick="decrementQtyProduct(event)">−</button>
-                                        <input type="number" name="quantity_{{ item.code }}" value="0" min="0" max="999" class="qty-mini-input" onchange="updateOrderSummary()">
-                                        <button type="button" class="qty-mini-btn" onclick="incrementQtyProduct(event)">+</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-
-                    <!-- Order Form - Details Section -->
-                    {% if ordering_open %}
-                    <div class="form-card section">
-                        <h2>📝 Finalize Your Order</h2>
-
-                        {% if form.non_field_errors %}
-                        <div class="alert alert-warning" style="color: #c53030; background: linear-gradient(135deg, #fee, #fdd);">
-                            {{ form.non_field_errors }}
-                        </div>
-                        {% endif %}
-
-                        <!-- Step 1: Wearer Info -->
-                        <div class="form-step">
-                            <div class="form-step-title">
-                                <span class="step-number">1</span>
-                                Wearer Information
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">For <span class="required">*</span></label>
-                                    {{ form.for_person }}
-                                    {{ form.for_person.errors }}
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Gender / Fit <span class="required">*</span></label>
-                                    {{ form.gender }}
-                                    {{ form.gender.errors }}
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Wearer Name <span class="required">*</span></label>
-                                    {{ form.wearer_name }}
-                                    {{ form.wearer_name.errors }}
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Jersey Number</label>
-                                    {{ form.jersey_number }}
-                                    <p class="text-sm text-gray mt-1">Optional. Family & kids can reuse numbers.</p>
-                                    {{ form.jersey_number.errors }}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Step 2: Size Selection -->
-                        <div class="form-step">
-                            <div class="form-step-title">
-                                <span class="step-number">2</span>
-                                Choose Size
-                            </div>
-                            
-                            <!-- Adult Size Section -->
-                            <div id="adultSizeSection" style="background: linear-gradient(135deg, #f0f8ff, #e3f2fd); border: 2px solid #b3d9ff; border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; display: none;">
-                            <h4 style="font-weight: 700; color: #003D5C; margin-bottom: 0.8rem; font-size: 0.85rem;">👔 Adult Standard Sizes</h4>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Shirt Size</label>
-                                    {{ form.shirt_size }}
-                                    <p class="text-sm text-gray mt-1">Pick by Full Chest + Length from the chart above.</p>
-                                    {{ form.shirt_size.errors }}
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Pant / Shorts Size</label>
-                                    {{ form.pant_size }}
-                                    <p class="text-sm text-gray mt-1">Pick by Length + Relaxed Waist from the chart above.</p>
-                                    {{ form.pant_size.errors }}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Kids Size Section -->
-                        <div id="kidsSizeSection" style="background: linear-gradient(135deg, #f0f8ff, #e3f2fd); border: 2px solid #b3d9ff; border-radius: 12px; padding: 1.2rem; display: none;">
-                            <h4 style="font-weight: 700; color: #003D5C; margin-bottom: 0.8rem; font-size: 0.85rem;">👶 Kids Custom Measurements</h4>
-                            <p class="text-sm text-gray mb-2">Measure a well-fitting item and enter exact measurements.</p>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Shirt: Full Chest (in)</label>
-                                    {{ form.kid_shirt_full_chest }}
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Shirt: Half Chest (in)</label>
-                                    {{ form.kid_shirt_half_chest }}
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Shirt: Length (in)</label>
-                                    {{ form.kid_shirt_length }}
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Shirt: Shoulder (in)</label>
-                                    {{ form.kid_shirt_shoulder }}
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Pant: Length (in)</label>
-                                    {{ form.kid_pant_length }}
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Pant: Relaxed Waist (in)</label>
-                                    {{ form.kid_pant_relaxed_waist }}
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Pant: Half Hip (in)</label>
-                                    {{ form.kid_pant_half_hip }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Step 4: Notes -->
-                    <div class="form-step">
-                        <div class="form-step-title">
-                            <span class="step-number">3</span>
-                            Special Requests
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Notes (Optional)</label>
-                            {{ form.notes }}
-                            <p class="text-sm text-gray mt-1">Any special requests or customization notes?</p>
-                            {{ form.notes.errors }}
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary" style="margin-top: 1.5rem; width: 100%;">✨ Submit Order</button>
-                    {% endif %}
-                </form>
-            </div>
-        </div>
-
-        <!-- Right: Sidebar -->
-        <aside class="sidebar">
-            <div class="order-summary">
-                <h3>💳 Order Summary</h3>
-                <div id="orderSummaryItems">
-                    <p style="text-align: center; padding: 1rem; color: #a0aec0;">Select items to see summary</p>
+    <div class="grid grid-cols-1 lg:grid-cols-[0.95fr_1.05fr] gap-5 items-start">
+        <aside class="space-y-5 order-2 lg:order-1">
+            <div class="card overflow-hidden">
+                <div class="card-header">
+                    <h2 class="text-sm font-bold text-stone-800">Price list & product guide</h2>
+                    <p class="text-xs text-stone-400 mt-1">Visual tags are placeholders until supplier product photos are uploaded.</p>
                 </div>
-                <div class="order-total">
-                    <div>Total:</div>
-                    <div class="order-total-price" id="totalAmount">₹0</div>
-                </div>
-            </div>
-
-            <!-- Your Orders in Sidebar -->
-            <div class="order-summary" style="margin-top: 1.5rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="margin: 0;">📦 Your Orders ({{ own_orders|length }})</h3>
-                </div>
-                {% if own_orders %}
-                <div style="background: linear-gradient(135deg, #003D5C, #004B7A); color: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-weight: 700; font-size: 0.95rem;">
-                    Total: ₹{{ own_order_total|floatformat:0 }}
-                </div>
-                <div class="orders-list" style="max-height: 400px; overflow-y: auto;">
-                    {% for order in own_orders %}
-                    <div class="order-item-card" style="margin-bottom: 1rem; border-left: 4px solid #003D5C; padding: 0.75rem; background: #f8f9fa; border-radius: 6px;">
-                        <div class="order-item-info" style="font-size: 0.85rem;">
-                            <div class="order-item-info-title" style="font-weight: 700; color: #1a202c; margin-bottom: 0.25rem;">{{ order.wearer_name }} • {{ order.get_item_type_display }}</div>
-                            <div class="order-item-info-details" style="color: #718096; font-size: 0.75rem; margin-bottom: 0.5rem;">{{ order.get_gender_display }} • Size {{ order.display_size }} • Qty {{ order.quantity }}{% if order.jersey_number %} • #{{ order.jersey_number }}{% endif %}</div>
-                            <div class="order-item-info-price" style="font-weight: 700; color: #003D5C; margin-bottom: 0.5rem;">₹{{ order.line_total }}</div>
+                <div class="divide-y divide-stone-100">
+                    {% for item in catalog %}
+                    <div class="p-3 grid grid-cols-[48px_1fr_auto] gap-3 items-center">
+                        <div class="h-11 w-11 rounded-2xl bg-pitch-50 text-pitch-700 flex items-center justify-center text-[11px] font-extrabold uppercase tracking-wide">
+                            {{ item.visual }}
                         </div>
-                        {% if ordering_open %}
-                        <form method="post" action="{% url 'jersey-order-delete' order.id %}" style="display: inline;">
-                            {% csrf_token %}
-                            <input type="hidden" name="next" value="{% url 'jersey-orders' %}">
-                            <button type="submit" class="btn btn-danger" style="padding: 0.5rem 0.75rem; font-size: 0.75rem;">🗑️ Remove</button>
-                        </form>
-                        {% else %}
-                        <span style="background: #e2e8f0; color: #4a5568; padding: 0.5rem 0.75rem; border-radius: 4px; font-weight: 700; font-size: 0.7rem;">🔒 Locked</span>
-                        {% endif %}
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-stone-800">{{ item.label }}</p>
+                            <p class="text-xs text-stone-500">{{ item.group }}{% if item.note %} &middot; {{ item.note }}{% endif %}</p>
+                        </div>
+                        <div class="text-sm font-extrabold text-stone-900">&#8377;{{ item.rate }}</div>
                     </div>
                     {% endfor %}
                 </div>
+            </div>
+
+            <div class="card overflow-hidden" x-data="{ open: false }">
+                <button type="button" @click="open = !open" class="card-header w-full flex items-center justify-between gap-2 text-left">
+                    <div>
+                        <h2 class="text-sm font-bold text-stone-800">T-shirt maker size chart</h2>
+                        <p class="text-xs text-stone-400 mt-1">Maker format. Measurements are garment inches, not body measurements.</p>
+                    </div>
+                    <svg class="w-4 h-4 text-stone-400 transition-transform shrink-0" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="overflow-x-auto" x-show="open" x-cloak>
+                    <table class="min-w-full text-xs sm:text-sm">
+                        <thead class="bg-stone-50 text-[11px] uppercase tracking-wide text-stone-500">
+                            <tr>
+                                <th class="px-3 py-3 text-left">Order size</th>
+                                <th class="px-3 py-3 text-left">UK-style ref</th>
+                                <th class="px-3 py-3 text-right">Full chest</th>
+                                <th class="px-3 py-3 text-right">Half chest</th>
+                                <th class="px-3 py-3 text-right">Length</th>
+                                <th class="px-3 py-3 text-right">Shoulder</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-stone-100">
+                            {% for row in shirt_size_measurements %}
+                            <tr>
+                                <td class="px-3 py-3 font-semibold text-stone-900">{{ row.size }}</td>
+                                <td class="px-3 py-3 text-stone-600">Chest {{ row.full_chest }}"</td>
+                                <td class="px-3 py-3 text-right">{{ row.full_chest }}</td>
+                                <td class="px-3 py-3 text-right">{{ row.half_chest }}</td>
+                                <td class="px-3 py-3 text-right">{{ row.length }}</td>
+                                <td class="px-3 py-3 text-right">{{ row.shoulder }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card overflow-hidden" x-data="{ open: false }">
+                <button type="button" @click="open = !open" class="card-header w-full flex items-center justify-between gap-2 text-left">
+                    <div>
+                        <h2 class="text-sm font-bold text-stone-800">Pants/shorts maker size template</h2>
+                        <p class="text-xs text-stone-400 mt-1">Garment measurements in inches. Choose mainly by Length + Relaxed waist; maker confirms before production.</p>
+                    </div>
+                    <svg class="w-4 h-4 text-stone-400 transition-transform shrink-0" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="overflow-x-auto" x-show="open" x-cloak>
+                    <table class="min-w-full text-xs sm:text-sm">
+                        <thead class="bg-stone-50 text-[11px] uppercase tracking-wide text-stone-500">
+                            <tr>
+                                <th class="px-3 py-3 text-left">Order size</th>
+                                <th class="px-3 py-3 text-right">Length</th>
+                                <th class="px-3 py-3 text-right">Relaxed waist</th>
+                                <th class="px-3 py-3 text-right">Half hip</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-stone-100">
+                            {% for row in pant_size_measurements %}
+                            <tr>
+                                <td class="px-3 py-3 font-semibold text-stone-900">{{ row.size }}</td>
+                                <td class="px-3 py-3 text-right">{{ row.length }}</td>
+                                <td class="px-3 py-3 text-right text-amber-700">{{ row.relaxed_waist }}</td>
+                                <td class="px-3 py-3 text-right">{{ row.half_hip }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </aside>
+
+        <section class="space-y-5 order-1 lg:order-2">
+            <div class="card overflow-hidden">
+                <div class="card-header">
+                    <h2 class="text-sm font-bold text-stone-800">Add order</h2>
+                </div>
+                {% if ordering_open %}
+                <form method="post" class="card-body space-y-4"
+                      x-data="{
+                          forPerson: '{{ form.for_person.value|default:"self" }}',
+                          qty: { {% for item in item_rows %}'{{ item.code }}': {{ item.quantity_field.value|default:0 }},{% endfor %} },
+                          shirtCodes: ['collar_half','collar_full','round_half','round_full'],
+                          pantCodes: ['pant','shorts'],
+                          wearer: '{{ form.wearer_name.value|default_if_none:'' }}',
+                          num: '{{ form.jersey_number.value|default_if_none:'' }}',
+                          noNum: {% if form.no_number.value %}true{% else %}false{% endif %},
+                          reserved: JSON.parse(document.getElementById('reserved-numbers').textContent),
+                          ownNums: JSON.parse(document.getElementById('own-wearer-numbers').textContent),
+                          get isKid() { return this.forPerson === 'kid' },
+                          get hasShirt() { return this.shirtCodes.some(c => Number(this.qty[c]) > 0) },
+                          get hasPant() { return this.pantCodes.some(c => Number(this.qty[c]) > 0) },
+                          get wearerNum() { return this.ownNums[(this.wearer||'').trim().toLowerCase()] || '' },
+                          get numberBlocked() {
+                              if (this.noNum || !this.num) return false;
+                              if (this.reserved[this.num]) return true;
+                              if (this.wearerNum && this.wearerNum !== this.num) return true;
+                              return false;
+                          }
+                      }">
+                    {% csrf_token %}
+                    {{ reserved_numbers|json_script:"reserved-numbers" }}
+                    {{ own_wearer_numbers|json_script:"own-wearer-numbers" }}
+                    {% if form.non_field_errors %}
+                    <div class="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
+                        {{ form.non_field_errors }}
+                    </div>
+                    {% endif %}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label" for="{{ form.for_person.id_for_label }}">For</label>
+                            {{ form.for_person }}
+                            {{ form.for_person.errors }}
+                        </div>
+                        <div>
+                            <label class="form-label" for="{{ form.gender.id_for_label }}">Gender / fit</label>
+                            {{ form.gender }}
+                            {{ form.gender.errors }}
+                        </div>
+                        <div>
+                            <label class="form-label" for="{{ form.wearer_name.id_for_label }}">Printed name / wearer</label>
+                            {{ form.wearer_name }}
+                            {{ form.wearer_name.errors }}
+                        </div>
+                        <div>
+                            <label class="form-label" for="{{ form.jersey_number.id_for_label }}">Number</label>
+                            {{ form.jersey_number }}
+                            <label class="mt-2 flex items-center gap-2 text-xs font-medium text-stone-600">
+                                {{ form.no_number }}
+                                No number — assign me a reference
+                            </label>
+                            <p class="text-xs text-stone-400 mt-1" x-show="!noNum">One number per wearer. A number reserved by someone else can't be taken.</p>
+                            <p class="text-xs text-emerald-700 mt-1" x-show="noNum" x-cloak>This order will have no jersey number.</p>
+                            <template x-if="!noNum && num && reserved[num]">
+                                <p class="text-xs font-semibold text-red-600 mt-1" x-text="'⚠️ #' + num + ' is already reserved by ' + reserved[num] + '. Pick another, or tick “No number”.'"></p>
+                            </template>
+                            <template x-if="!noNum && num && !reserved[num] && wearerNum && wearerNum !== num">
+                                <p class="text-xs font-semibold text-red-600 mt-1" x-text="'⚠️ You already have #' + wearerNum + '. Use the same number, tick “No number”, or remove that number.'"></p>
+                            </template>
+                            {{ form.jersey_number.errors }}
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="form-label">Items needed</label>
+                            <p class="text-xs text-stone-500 mb-2">Enter a quantity for each item you want. Leave it at 0 for items you don't need.</p>
+                            <div class="space-y-2">
+                                {% for item in item_rows %}
+                                <div class="grid grid-cols-[1fr_92px] gap-2 rounded-xl border px-3 py-2.5 transition-colors"
+                                     :class="Number(qty['{{ item.code }}']) > 0 ? 'border-pitch-300 bg-pitch-50/50' : 'border-stone-200 bg-white'">
+                                    <div class="text-sm font-medium text-stone-700 self-center">
+                                        {{ item.label }}
+                                        <span class="block text-xs font-semibold text-pitch-700">&#8377;{{ item.rate }}</span>
+                                    </div>
+                                    <div>
+                                        {{ item.quantity_field }}
+                                        {% if item.quantity_field.errors %}
+                                        <p class="text-[11px] text-red-600 mt-1">{{ item.quantity_field.errors|striptags }}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        {# Size / measurements — shown based on the items chosen and whether it's a kid. #}
+                        <div class="sm:col-span-2" x-show="hasShirt || hasPant" x-cloak>
+                            <label class="form-label">Size / measurements</label>
+                            <p class="text-xs text-stone-400 mt-0.5 mb-2">Not sure which size? Refer to the size charts below.</p>
+
+                            <div x-show="hasShirt && !isKid">
+                                <label class="text-xs text-stone-500" for="{{ form.shirt_size.id_for_label }}">Adult shirt size</label>
+                                {{ form.shirt_size }}
+                                {% if form.shirt_size.errors %}<p class="text-xs text-red-600 mt-1">{{ form.shirt_size.errors|striptags }}</p>{% endif %}
+                            </div>
+
+                            <div x-show="hasPant && !isKid" class="mt-3">
+                                <label class="text-xs text-stone-500" for="{{ form.pant_size.id_for_label }}">Adult pant / shorts size</label>
+                                {{ form.pant_size }}
+                                {% if form.pant_size.errors %}<p class="text-xs text-red-600 mt-1">{{ form.pant_size.errors|striptags }}</p>{% endif %}
+                            </div>
+
+                            <div x-show="hasShirt && isKid">
+                                <p class="text-xs text-stone-500 mb-1">Kid shirt measurements (inches)</p>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div><label class="text-[11px] text-stone-400">Full chest</label>{{ form.kid_shirt_full_chest }}{% if form.kid_shirt_full_chest.errors %}<p class="text-[11px] text-red-600">{{ form.kid_shirt_full_chest.errors|striptags }}</p>{% endif %}</div>
+                                    <div><label class="text-[11px] text-stone-400">Half chest</label>{{ form.kid_shirt_half_chest }}{% if form.kid_shirt_half_chest.errors %}<p class="text-[11px] text-red-600">{{ form.kid_shirt_half_chest.errors|striptags }}</p>{% endif %}</div>
+                                    <div><label class="text-[11px] text-stone-400">Length</label>{{ form.kid_shirt_length }}{% if form.kid_shirt_length.errors %}<p class="text-[11px] text-red-600">{{ form.kid_shirt_length.errors|striptags }}</p>{% endif %}</div>
+                                    <div><label class="text-[11px] text-stone-400">Shoulder</label>{{ form.kid_shirt_shoulder }}{% if form.kid_shirt_shoulder.errors %}<p class="text-[11px] text-red-600">{{ form.kid_shirt_shoulder.errors|striptags }}</p>{% endif %}</div>
+                                </div>
+                            </div>
+
+                            <div x-show="hasPant && isKid" class="mt-3">
+                                <p class="text-xs text-stone-500 mb-1">Kid pant/shorts measurements (inches)</p>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div><label class="text-[11px] text-stone-400">Length</label>{{ form.kid_pant_length }}{% if form.kid_pant_length.errors %}<p class="text-[11px] text-red-600">{{ form.kid_pant_length.errors|striptags }}</p>{% endif %}</div>
+                                    <div><label class="text-[11px] text-stone-400">Relaxed waist</label>{{ form.kid_pant_relaxed_waist }}{% if form.kid_pant_relaxed_waist.errors %}<p class="text-[11px] text-red-600">{{ form.kid_pant_relaxed_waist.errors|striptags }}</p>{% endif %}</div>
+                                    <div><label class="text-[11px] text-stone-400">Half hip</label>{{ form.kid_pant_half_hip }}{% if form.kid_pant_half_hip.errors %}<p class="text-[11px] text-red-600">{{ form.kid_pant_half_hip.errors|striptags }}</p>{% endif %}</div>
+                                </div>
+                            </div>
+
+                            <p class="text-xs text-stone-400 mt-2">Caps/hats are free size — no size needed.</p>
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label class="form-label" for="{{ form.notes.id_for_label }}">Notes</label>
+                            {{ form.notes }}
+                            {{ form.notes.errors }}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg w-full sm:w-auto"
+                            :disabled="numberBlocked" :class="numberBlocked ? 'opacity-50 cursor-not-allowed' : ''">Add order</button>
+                </form>
                 {% else %}
-                <p style="text-align: center; color: #a0aec0; padding: 1rem; font-size: 0.9rem;">No orders yet. Create your first order above!</p>
+                <div class="card-body">
+                    <div class="rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+                        <p class="text-sm font-semibold text-red-800">Jersey ordering is closed.</p>
+                        <p class="text-xs text-red-700 mt-1">You can still review your submitted order, but new orders and member changes are blocked.</p>
+                    </div>
+                </div>
                 {% endif %}
             </div>
 
-        </aside>
+            <div class="card overflow-hidden">
+                <div class="card-header flex items-center justify-between">
+                    <h2 class="text-sm font-bold text-stone-800">Number reference</h2>
+                    <span class="badge badge-stone">{{ taken_numbers|length }} shown</span>
+                </div>
+                <div class="card-body">
+                    {% if taken_numbers %}
+                    <p class="text-xs text-stone-500 mb-3">Each wearer/number is shown once, even if they selected multiple items. You can still reuse a number if needed.</p>
+                    <div class="flex flex-wrap gap-2">
+                        {% for row in taken_numbers %}
+                        <span class="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700">
+                            #{{ row.jersey_number }} <span class="text-stone-400">{{ row.wearer_name }} &middot; by {{ row.user__username }}{% if row.item_count > 1 %} &middot; {{ row.item_count }} items{% endif %}</span>
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-sm text-stone-500">No numbers entered yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card overflow-hidden">
+                <div class="card-header">
+                    <h2 class="text-sm font-bold text-stone-800">Your order</h2>
+                </div>
+                <div class="divide-y divide-stone-100">
+                    {% for order in own_orders %}
+                    <div class="p-4" x-data="{ edit: false }">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <p class="text-sm font-semibold text-stone-800">{{ order.wearer_name }} &middot; {{ order.get_item_type_display }}</p>
+                                    {% if order.reference %}
+                                    <span class="badge {% if order.jersey_number %}badge-green{% else %}badge-stone{% endif %} shrink-0">
+                                        Ref #{{ order.reference }} &middot; {% if order.jersey_number %}#{{ order.jersey_number }} on jersey{% else %}no number{% endif %}
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <p class="text-xs text-stone-500 mt-1">{{ order.get_gender_display }} &middot; Size {{ order.display_size }} &middot; Qty {{ order.quantity }}</p>
+                                <p class="text-xs font-semibold text-pitch-700 mt-1">&#8377;{{ order.line_total }}</p>
+                            </div>
+                            {% if ordering_open %}
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button type="button" @click="edit = !edit" class="btn btn-ghost btn-sm text-stone-600" x-text="edit ? 'Cancel' : 'Edit'"></button>
+                                <form method="post" action="{% url 'jersey-order-delete' order.id %}" onsubmit="return confirm('Remove this item?')">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{% url 'jersey-orders' %}">
+                                    <button type="submit" class="btn btn-ghost btn-sm text-red-600">Remove</button>
+                                </form>
+                            </div>
+                            {% else %}
+                            <span class="badge badge-stone shrink-0">Locked</span>
+                            {% endif %}
+                        </div>
+
+                        {% if ordering_open %}
+                        <form method="post" action="{% url 'jersey-order-edit' order.id %}" x-show="edit" x-cloak class="mt-3 flex flex-wrap items-end gap-3 rounded-xl bg-stone-50 p-3 ring-1 ring-stone-100">
+                            {% csrf_token %}
+                            <div>
+                                <label class="block text-[11px] text-stone-500 mb-1">Quantity</label>
+                                <input type="number" name="quantity" min="1" value="{{ order.quantity }}" inputmode="numeric" class="form-input w-24 text-center">
+                            </div>
+                            {% if order.size_choices %}
+                            <div>
+                                <label class="block text-[11px] text-stone-500 mb-1">Size</label>
+                                <select name="size" class="form-select w-40">
+                                    {% for val, lbl in order.size_choices %}
+                                    <option value="{{ val }}" {% if val|stringformat:"s" == order.size %}selected{% endif %}>{{ lbl }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% else %}
+                            <p class="text-[11px] text-stone-400 max-w-[220px]">Size for this item can't be changed here — remove and re-add to change measurements.</p>
+                            {% endif %}
+                            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% empty %}
+                    <div class="p-4 text-sm text-stone-500">No order lines yet.</div>
+                    {% endfor %}
+                </div>
+                {% if own_orders %}
+                <div class="flex items-center justify-between gap-3 border-t border-stone-100 bg-stone-50 px-4 py-3">
+                    <span class="text-sm font-semibold text-stone-600">Total · {{ own_order_quantity }} item{{ own_order_quantity|pluralize }}</span>
+                    <span class="text-base font-extrabold text-stone-900">&#8377;{{ own_order_total }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </section>
     </div>
 </div>
-
 {% endblock %}

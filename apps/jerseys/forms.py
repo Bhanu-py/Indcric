@@ -5,9 +5,16 @@ from .models import JerseyOrder, JerseyOrderWindow
 
 
 class JerseyOrderForm(forms.ModelForm):
-    item_types = forms.MultipleChoiceField(
-        choices=JerseyOrder.ITEM_CHOICES,
-        error_messages={'required': 'Choose at least one item.'},
+    # Selected items are derived from which quantity fields are >= 1 (see clean);
+    # there are no separate item checkboxes.
+    # Opt-out of picking a specific number — we auto-assign a random 3-digit
+    # reference on save so the order is still trackable.
+    no_number = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={
+            'class': 'rounded border-stone-300 text-pitch-600 focus:ring-pitch-500',
+            'x-model': 'noNum',
+        }),
     )
     shirt_size = forms.ChoiceField(
         choices=[('', 'Choose adult shirt size')] + JerseyOrder.SHIRT_SIZE_CHOICES,
@@ -42,12 +49,16 @@ class JerseyOrderForm(forms.ModelForm):
             'wearer_name': forms.TextInput(attrs={
                 'class': 'form-input',
                 'placeholder': 'Name on jersey / wearer name',
+                '@input': 'wearer = $event.target.value',
             }),
             'jersey_number': forms.TextInput(attrs={
                 'class': 'form-input',
                 'maxlength': '3',
                 'inputmode': 'numeric',
                 'placeholder': 'e.g. 7',
+                '@input': 'num = $event.target.value',
+                ':disabled': 'noNum',
+                ':class': "noNum ? 'form-input opacity-50' : 'form-input'",
             }),
             'notes': forms.TextInput(attrs={
                 'class': 'form-input',
@@ -70,20 +81,23 @@ class JerseyOrderForm(forms.ModelForm):
                     'pattern': '[0-9]*',
                     'placeholder': '0',
                     'aria-label': f'{label} quantity',
+                    'x-model.number': f"qty['{code}']",
                 }),
             )
 
     def clean(self):
         cleaned = super().clean()
-        item_types = cleaned.get('item_types') or []
+        # An item is "selected" when its quantity is >= 1 — no separate checkbox.
+        item_types = [
+            code for code, _ in JerseyOrder.ITEM_CHOICES
+            if (cleaned.get(f'quantity_{code}') or 0) >= 1
+        ]
+        cleaned['item_types'] = item_types
+        if not item_types:
+            self.add_error(None, 'Enter a quantity for at least one item.')
         is_kid = self._uses_kid_measurements(cleaned)
         has_shirt = any(item_type in JerseyOrder.SHIRT_ITEMS for item_type in item_types)
         has_pant = any(item_type in JerseyOrder.PANT_ITEMS for item_type in item_types)
-        for item_type in item_types:
-            field_name = f'quantity_{item_type}'
-            qty = cleaned.get(field_name)
-            if not qty or qty < 1:
-                self.add_error(field_name, 'Enter quantity at least 1.')
         if is_kid:
             if has_shirt:
                 self._require_fields(cleaned, [
@@ -103,6 +117,57 @@ class JerseyOrderForm(forms.ModelForm):
                 self.add_error('shirt_size', 'Choose an adult shirt size from the maker chart.')
             if has_pant and not cleaned.get('pant_size'):
                 self.add_error('pant_size', 'Choose an adult pant/shorts size from the maker chart.')
+
+        # Number: mandate a choice. Either opt out (auto-assign a reference on
+        # save) or pick a number that isn't already reserved by another member.
+        # A member may reuse their own number across their own items/family.
+        no_number = cleaned.get('no_number')
+        number = cleaned.get('jersey_number') or ''
+        if no_number:
+            cleaned['jersey_number'] = ''  # cleared; a reference is assigned on save
+        elif not number:
+            self.add_error('jersey_number', 'Pick a number, or tick “No number”.')
+        else:
+            reserved_to = JerseyOrder.MANUAL_NUMBER_RESERVATIONS.get(number)
+            if reserved_to and (not self.user or self.user.username != reserved_to):
+                self.add_error(
+                    'jersey_number',
+                    f'#{number} is reserved for {reserved_to}. '
+                    'Pick another, or tick “No number”.',
+                )
+            else:
+                clash = (
+                    JerseyOrder.objects
+                    .filter(jersey_number=number)
+                    .exclude(user=self.user)
+                    .select_related('user')
+                    .first()
+                )
+                if clash:
+                    owner = clash.wearer_name or (clash.user.username if clash.user else 'another member')
+                    self.add_error(
+                        'jersey_number',
+                        f'#{number} is already reserved by {owner}. '
+                        'Pick another, or tick “No number”.',
+                    )
+                else:
+                    # One number per wearer: can't pick a different number than
+                    # one this wearer already has.
+                    wearer = (cleaned.get('wearer_name') or '').strip()
+                    other = (
+                        JerseyOrder.objects
+                        .filter(user=self.user, wearer_name__iexact=wearer)
+                        .exclude(jersey_number='')
+                        .exclude(jersey_number=number)
+                        .values_list('jersey_number', flat=True)
+                        .first()
+                    )
+                    if other:
+                        self.add_error(
+                            'jersey_number',
+                            f'You already have #{other}. '
+                            'Use the same number, tick “No number”, or remove that number.',
+                        )
         return cleaned
 
     @staticmethod
@@ -125,6 +190,8 @@ class JerseyOrderForm(forms.ModelForm):
     def save_orders(self):
         orders = []
         is_kid = self._uses_kid_measurements(self.cleaned_data)
+        # "No number" → the order has no number at all (left blank).
+        number = self.cleaned_data.get('jersey_number') or ''
         for item_type in self.cleaned_data['item_types']:
             quantity = self.cleaned_data[f'quantity_{item_type}']
             order = JerseyOrder(
@@ -135,12 +202,14 @@ class JerseyOrderForm(forms.ModelForm):
                 item_type=item_type,
                 size=self._size_for_item(item_type, is_kid),
                 quantity=quantity,
-                jersey_number=self.cleaned_data.get('jersey_number') or '',
+                jersey_number=number,
                 notes=self.cleaned_data.get('notes') or '',
             )
             order.full_clean()
             order.save()
             orders.append(order)
+        # Set the shared reference for this wearer (picked number, or 3-digit code).
+        JerseyOrder.sync_reference(self.user, self.cleaned_data['wearer_name'])
         return orders
 
     def _size_for_item(self, item_type, is_kid):
