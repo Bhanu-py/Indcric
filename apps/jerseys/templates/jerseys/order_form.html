@@ -190,9 +190,8 @@
                           reserved: JSON.parse(document.getElementById('reserved-numbers').textContent),
                           ownNums: JSON.parse(document.getElementById('own-wearer-numbers').textContent),
                           get isKid() { return this.forPerson === 'kid' },
-                          get items() { return Object.keys(this.qty).filter(c => Number(this.qty[c]) > 0) },
-                          get hasShirt() { return this.items.some(c => this.shirtCodes.includes(c)) },
-                          get hasPant() { return this.items.some(c => this.pantCodes.includes(c)) },
+                          get hasShirt() { return this.shirtCodes.some(c => Number(this.qty[c]) > 0) },
+                          get hasPant() { return this.pantCodes.some(c => Number(this.qty[c]) > 0) },
                           get wearerNum() { return this.ownNums[(this.wearer||'').trim().toLowerCase()] || '' },
                           get numberBlocked() {
                               if (this.noNum || !this.num) return false;
