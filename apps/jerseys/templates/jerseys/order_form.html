@@ -398,6 +398,12 @@
                     <div class="p-4 text-sm text-stone-500">No order lines yet.</div>
                     {% endfor %}
                 </div>
+                {% if own_orders %}
+                <div class="flex items-center justify-between gap-3 border-t border-stone-100 bg-stone-50 px-4 py-3">
+                    <span class="text-sm font-semibold text-stone-600">Total · {{ own_order_quantity }} item{{ own_order_quantity|pluralize }}</span>
+                    <span class="text-base font-extrabold text-stone-900">&#8377;{{ own_order_total }}</span>
+                </div>
+                {% endif %}
             </div>
         </section>
     </div>
