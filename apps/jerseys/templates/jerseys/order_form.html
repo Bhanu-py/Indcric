@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Jersey Order{% endblock %}
+{% block title %}ICG Store{% endblock %}
 
 {% block content %}
 <div class="page-content">
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
         <div>
             <p class="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pitch-600 mb-2">Team kit</p>
-            <h1 class="text-2xl sm:text-3xl font-extrabold text-stone-900">Jersey order</h1>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-stone-900">ICG Store</h1>
             <p class="text-sm text-stone-500 mt-1">Add one entry per wearer, then tick all items they need.</p>
         </div>
         {% if request.user.is_staff %}
