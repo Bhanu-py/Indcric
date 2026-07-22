@@ -13,9 +13,9 @@ services:
         value: 3.13.3
       - key: DEBUG
         value: "False"
-      # Jersey ordering hidden in prod until kit prices are finalized.
+      # Jersey ordering (ICG Store) — enabled in prod.
       - key: JERSEY_ORDERING_ENABLED
-        value: "False"
+        value: "True"
       - key: SECRET_KEY
         generateValue: true
       - key: ALLOWED_HOSTS
