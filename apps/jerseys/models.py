@@ -160,10 +160,11 @@ class JerseyOrder(models.Model):
         return random.choice(pool) if pool else str(random.randint(100, 999))
 
     @classmethod
-    def sync_reference(cls, user, wearer_name):
-        """Recompute the shared reference for a wearer's orders: the picked
-        jersey number if any exists, else a stable 3-digit temporary code."""
-        qs = cls.objects.filter(user=user, wearer_name__iexact=(wearer_name or '').strip())
+    def sync_reference(cls, user, wearer_name=None):
+        """Recompute the shared reference for ALL of a user's orders (one number
+        per user, reused for family): the picked jersey number if any exists,
+        else a stable 3-digit temporary code."""
+        qs = cls.objects.filter(user=user)
         if not qs.exists():
             return
         number = (

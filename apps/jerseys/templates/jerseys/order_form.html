@@ -184,25 +184,22 @@
                           qty: { {% for item in item_rows %}'{{ item.code }}': {{ item.quantity_field.value|default:0 }},{% endfor %} },
                           shirtCodes: ['collar_half','collar_full','round_half','round_full'],
                           pantCodes: ['pant','shorts'],
-                          wearer: '{{ form.wearer_name.value|default_if_none:'' }}',
                           num: '{{ form.jersey_number.value|default_if_none:'' }}',
                           noNum: {% if form.no_number.value %}true{% else %}false{% endif %},
                           reserved: JSON.parse(document.getElementById('reserved-numbers').textContent),
-                          ownNums: JSON.parse(document.getElementById('own-wearer-numbers').textContent),
+                          ownNum: '{{ own_user_number }}',
                           get isKid() { return this.forPerson === 'kid' },
                           get hasShirt() { return this.shirtCodes.some(c => Number(this.qty[c]) > 0) },
                           get hasPant() { return this.pantCodes.some(c => Number(this.qty[c]) > 0) },
-                          get wearerNum() { return this.ownNums[(this.wearer||'').trim().toLowerCase()] || '' },
                           get numberBlocked() {
                               if (this.noNum || !this.num) return false;
                               if (this.reserved[this.num]) return true;
-                              if (this.wearerNum && this.wearerNum !== this.num) return true;
+                              if (this.ownNum && this.ownNum !== this.num) return true;
                               return false;
                           }
                       }">
                     {% csrf_token %}
                     {{ reserved_numbers|json_script:"reserved-numbers" }}
-                    {{ own_wearer_numbers|json_script:"own-wearer-numbers" }}
                     {% if form.non_field_errors %}
                     <div class="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
                         {{ form.non_field_errors }}
@@ -231,13 +228,13 @@
                                 {{ form.no_number }}
                                 No number — assign me a reference
                             </label>
-                            <p class="text-xs text-stone-400 mt-1" x-show="!noNum">One number per wearer. A number reserved by someone else can't be taken.</p>
+                            <p class="text-xs text-stone-400 mt-1" x-show="!noNum">One number per user (reused for family). A number reserved by someone else can't be taken.</p>
                             <p class="text-xs text-emerald-700 mt-1" x-show="noNum" x-cloak>This order will have no jersey number.</p>
                             <template x-if="!noNum && num && reserved[num]">
                                 <p class="text-xs font-semibold text-red-600 mt-1" x-text="'⚠️ #' + num + ' is already reserved by ' + reserved[num] + '. Pick another, or tick “No number”.'"></p>
                             </template>
-                            <template x-if="!noNum && num && !reserved[num] && wearerNum && wearerNum !== num">
-                                <p class="text-xs font-semibold text-red-600 mt-1" x-text="'⚠️ You already have #' + wearerNum + '. Use the same number, tick “No number”, or remove that number.'"></p>
+                            <template x-if="!noNum && num && !reserved[num] && ownNum && ownNum !== num">
+                                <p class="text-xs font-semibold text-red-600 mt-1" x-text="'⚠️ You already have #' + ownNum + '. Use the same number, tick “No number”, or remove that number.'"></p>
                             </template>
                             {{ form.jersey_number.errors }}
                         </div>

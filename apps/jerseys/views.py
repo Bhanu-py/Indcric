@@ -154,12 +154,13 @@ def jersey_orders_view(request):
     for num, uname in JerseyOrder.MANUAL_NUMBER_RESERVATIONS.items():
         if request.user.username != uname:
             reserved_numbers.setdefault(num, uname)
-    # This member's existing number per wearer — one number per wearer, so the
-    # live warning flags a different number for a wearer who already has one.
-    own_wearer_numbers = {}
+    # This member's existing number (one number per user, reused for family) —
+    # the live warning flags a different number when they already have one.
+    own_user_number = ''
     for o in own_orders:
         if o.jersey_number:
-            own_wearer_numbers.setdefault(o.wearer_name.strip().lower(), o.jersey_number)
+            own_user_number = o.jersey_number
+            break
     # Size choices per own-order line, for the inline editor (adult shirt/pant only).
     for o in own_orders:
         if o.item_type in JerseyOrder.SHIRT_ITEMS:
@@ -179,7 +180,7 @@ def jersey_orders_view(request):
         'pant_size_measurements': JerseyOrder.PANT_SIZE_MEASUREMENTS,
         'taken_numbers': _taken_numbers(),
         'reserved_numbers': reserved_numbers,
-        'own_wearer_numbers': own_wearer_numbers,
+        'own_user_number': own_user_number,
         'ordering_open': ordering_open,
         'ordering_status': ordering_status,
         'ordering_deadline': ordering_deadline,
