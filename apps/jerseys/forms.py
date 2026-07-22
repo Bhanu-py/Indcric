@@ -49,7 +49,6 @@ class JerseyOrderForm(forms.ModelForm):
             'wearer_name': forms.TextInput(attrs={
                 'class': 'form-input',
                 'placeholder': 'Name on jersey / wearer name',
-                '@input': 'wearer = $event.target.value',
             }),
             'jersey_number': forms.TextInput(attrs={
                 'class': 'form-input',
@@ -151,12 +150,11 @@ class JerseyOrderForm(forms.ModelForm):
                         'Pick another, or tick “No number”.',
                     )
                 else:
-                    # One number per wearer: can't pick a different number than
-                    # one this wearer already has.
-                    wearer = (cleaned.get('wearer_name') or '').strip()
+                    # One number per user: the whole account (incl. family)
+                    # shares one number, so a different one can't be picked.
                     other = (
                         JerseyOrder.objects
-                        .filter(user=self.user, wearer_name__iexact=wearer)
+                        .filter(user=self.user)
                         .exclude(jersey_number='')
                         .exclude(jersey_number=number)
                         .values_list('jersey_number', flat=True)
