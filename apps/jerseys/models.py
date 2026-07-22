@@ -120,7 +120,7 @@ class JerseyOrder(models.Model):
     )
     # Numbers permanently booked to a specific member (username), independent of
     # actual orders — reserved for them, blocked for everyone else.
-    MANUAL_NUMBER_RESERVATIONS = {'10': 'bhanu'}
+    MANUAL_NUMBER_RESERVATIONS = {'10': 'bhanu', '8': 'Akhil_Reddy'}
 
     for_person = models.CharField(max_length=10, choices=FOR_CHOICES, default=FOR_SELF)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, default=GENDER_UNISEX)
