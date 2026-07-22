@@ -7,9 +7,9 @@
 <div class="page-content">
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
         <div>
-            <p class="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pitch-600 mb-2">Team kit</p>
             <h1 class="text-2xl sm:text-3xl font-extrabold text-stone-900">ICG Store</h1>
-            <p class="text-sm text-stone-500 mt-1">Add one entry per wearer, then tick all items they need.</p>
+            <p class="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pitch-600 mt-1">Team kit</p>
+            <p class="text-sm text-stone-500 mt-1">Add one entry per wearer, then set a quantity for each item you need.</p>
         </div>
         {% if request.user.is_staff %}
         <a href="{% url 'jersey-orders-admin' %}" class="btn btn-secondary btn-md">Admin summary</a>
