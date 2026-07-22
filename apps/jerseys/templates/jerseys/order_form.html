@@ -103,12 +103,15 @@
                 </div>
             </div>
 
-            <div class="card overflow-hidden">
-                <div class="card-header">
-                    <h2 class="text-sm font-bold text-stone-800">T-shirt maker size chart</h2>
-                    <p class="text-xs text-stone-400 mt-1">Maker format. Measurements are garment inches, not body measurements.</p>
-                </div>
-                <div class="overflow-x-auto">
+            <div class="card overflow-hidden" x-data="{ open: false }">
+                <button type="button" @click="open = !open" class="card-header w-full flex items-center justify-between gap-2 text-left">
+                    <div>
+                        <h2 class="text-sm font-bold text-stone-800">T-shirt maker size chart</h2>
+                        <p class="text-xs text-stone-400 mt-1">Maker format. Measurements are garment inches, not body measurements.</p>
+                    </div>
+                    <svg class="w-4 h-4 text-stone-400 transition-transform shrink-0" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="overflow-x-auto" x-show="open" x-cloak>
                     <table class="min-w-full text-xs sm:text-sm">
                         <thead class="bg-stone-50 text-[11px] uppercase tracking-wide text-stone-500">
                             <tr>
@@ -136,12 +139,15 @@
                 </div>
             </div>
 
-            <div class="card overflow-hidden">
-                <div class="card-header">
-                    <h2 class="text-sm font-bold text-stone-800">Pants/shorts maker size template</h2>
-                    <p class="text-xs text-stone-400 mt-1">Garment measurements in inches. Choose mainly by Length + Relaxed waist; maker confirms before production.</p>
-                </div>
-                <div class="overflow-x-auto">
+            <div class="card overflow-hidden" x-data="{ open: false }">
+                <button type="button" @click="open = !open" class="card-header w-full flex items-center justify-between gap-2 text-left">
+                    <div>
+                        <h2 class="text-sm font-bold text-stone-800">Pants/shorts maker size template</h2>
+                        <p class="text-xs text-stone-400 mt-1">Garment measurements in inches. Choose mainly by Length + Relaxed waist; maker confirms before production.</p>
+                    </div>
+                    <svg class="w-4 h-4 text-stone-400 transition-transform shrink-0" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="overflow-x-auto" x-show="open" x-cloak>
                     <table class="min-w-full text-xs sm:text-sm">
                         <thead class="bg-stone-50 text-[11px] uppercase tracking-wide text-stone-500">
                             <tr>
