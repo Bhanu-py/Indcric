@@ -21,9 +21,9 @@
         <svg class="w-5 h-5 shrink-0 {% if ordering_open %}text-emerald-600{% else %}text-red-600{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         <p class="text-sm {% if ordering_open %}text-emerald-900{% else %}text-red-900{% endif %}">
             {% if ordering_open %}
-            <b class="font-extrabold">Ordering closes {{ ordering_deadline }}.</b> Please place your order before then.
+            <b class="font-extrabold">Ordering is open</b> — closes {{ ordering_deadline }}. Get your order in before then.
             {% else %}
-            <b class="font-extrabold">Ordering closed on {{ ordering_deadline }}.</b> New orders are no longer accepted.
+            <b class="font-extrabold">Ordering is closed</b> — it ended {{ ordering_deadline }}. New orders are no longer accepted.
             {% endif %}
         </p>
     </div>
