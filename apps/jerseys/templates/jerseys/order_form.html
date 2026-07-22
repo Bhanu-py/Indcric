@@ -16,6 +16,19 @@
         {% endif %}
     </div>
 
+    {% if ordering_deadline %}
+    <div class="card p-3.5 mb-5 flex items-start gap-2.5 {% if ordering_open %}bg-emerald-50 border-emerald-100{% else %}bg-red-50 border-red-100{% endif %}">
+        <svg class="w-5 h-5 shrink-0 {% if ordering_open %}text-emerald-600{% else %}text-red-600{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <p class="text-sm {% if ordering_open %}text-emerald-900{% else %}text-red-900{% endif %}">
+            {% if ordering_open %}
+            <b class="font-extrabold">Ordering closes {{ ordering_deadline }}.</b> Please place your order before then.
+            {% else %}
+            <b class="font-extrabold">Ordering closed on {{ ordering_deadline }}.</b> New orders are no longer accepted.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+
     {# Chosen team kit — official ICG design showcase. #}
     <div class="card overflow-hidden mb-5">
         <div class="card-header flex items-center justify-between gap-2">
