@@ -5,10 +5,8 @@ from .models import JerseyOrder, JerseyOrderWindow
 
 
 class JerseyOrderForm(forms.ModelForm):
-    item_types = forms.MultipleChoiceField(
-        choices=JerseyOrder.ITEM_CHOICES,
-        error_messages={'required': 'Choose at least one item.'},
-    )
+    # Selected items are derived from which quantity fields are >= 1 (see clean);
+    # there are no separate item checkboxes.
     # Opt-out of picking a specific number — we auto-assign a random 3-digit
     # reference on save so the order is still trackable.
     no_number = forms.BooleanField(
@@ -83,20 +81,23 @@ class JerseyOrderForm(forms.ModelForm):
                     'pattern': '[0-9]*',
                     'placeholder': '0',
                     'aria-label': f'{label} quantity',
+                    'x-model.number': f"qty['{code}']",
                 }),
             )
 
     def clean(self):
         cleaned = super().clean()
-        item_types = cleaned.get('item_types') or []
+        # An item is "selected" when its quantity is >= 1 — no separate checkbox.
+        item_types = [
+            code for code, _ in JerseyOrder.ITEM_CHOICES
+            if (cleaned.get(f'quantity_{code}') or 0) >= 1
+        ]
+        cleaned['item_types'] = item_types
+        if not item_types:
+            self.add_error(None, 'Enter a quantity for at least one item.')
         is_kid = self._uses_kid_measurements(cleaned)
         has_shirt = any(item_type in JerseyOrder.SHIRT_ITEMS for item_type in item_types)
         has_pant = any(item_type in JerseyOrder.PANT_ITEMS for item_type in item_types)
-        for item_type in item_types:
-            field_name = f'quantity_{item_type}'
-            qty = cleaned.get(field_name)
-            if not qty or qty < 1:
-                self.add_error(field_name, 'Enter quantity at least 1.')
         if is_kid:
             if has_shirt:
                 self._require_fields(cleaned, [
