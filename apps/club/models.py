@@ -36,6 +36,7 @@ class ClubConsultationResponse(models.Model):
     ROLE_DIRECTOR_MEMBERSHIP = "director_membership"
     ROLE_FACILITIES = "facilities"
     ROLE_WEBSITE = "website"
+    ROLE_TOURNAMENTS = "tournaments"
     ROLE_GENERAL_HELP = "general_help"
     ROLE_SUPPORT = "role_support"
     ROLE_MORE_INFO = "role_more_info"
@@ -45,6 +46,7 @@ class ClubConsultationResponse(models.Model):
         (ROLE_DIRECTOR_MEMBERSHIP, "Director – Membership and External Relations"),
         (ROLE_FACILITIES, "Facilities and Booking Coordinator"),
         (ROLE_WEBSITE, "Website and Communication Coordinator"),
+        (ROLE_TOURNAMENTS, "Tournament and Match Coordinator"),
         (ROLE_GENERAL_HELP, "I am ready to do any help as requested"),
     ]
     ORGANIZATIONAL_ROLE_VALUES = [
@@ -53,6 +55,7 @@ class ClubConsultationResponse(models.Model):
         ROLE_DIRECTOR_MEMBERSHIP,
         ROLE_FACILITIES,
         ROLE_WEBSITE,
+        ROLE_TOURNAMENTS,
     ]
     DIRECTOR_ROLE_VALUES = [
         ROLE_DIRECTOR_ADMIN,

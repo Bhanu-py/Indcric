@@ -4,9 +4,9 @@
 
 {% block content %}
 <div class="page-content">
-    <div class="mb-6 rounded-2xl border border-pitch-100 bg-gradient-to-br from-white via-pitch-50/60 to-amber-50/40 p-5 sm:p-6">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
+    <div class="mb-6 rounded-2xl border border-pitch-100 bg-gradient-to-br from-white via-pitch-50/60 to-amber-50/40 p-5 text-center sm:p-6">
+        <div class="flex flex-col items-center gap-3">
+            <div class="max-w-4xl">
                 <p class="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pitch-600 mb-2">Member consultation</p>
                 <h1 class="text-3xl sm:text-4xl font-extrabold text-stone-900 leading-tight">Proposal to Establish a Cricket Club in Ghent</h1>
             </div>
@@ -14,10 +14,11 @@
             <a href="{% url 'club:cricket-club-admin' %}" class="btn btn-secondary btn-md shrink-0">Admin summary</a>
             {% endif %}
         </div>
-        <div class="mt-4 max-w-4xl space-y-3 text-sm sm:text-base text-stone-600">
+        <div class="mx-auto mt-4 max-w-4xl space-y-3 text-sm sm:text-base text-stone-600">
             <p>For some time, we have been discussing the possibility of establishing a formal cricket club in Ghent.</p>
             <p>Starting an official cricket club could provide <strong class="font-semibold text-pitch-800">better access to sports facilities</strong>, <strong class="font-semibold text-emerald-800">insurance coverage</strong> for registered members, <strong class="font-semibold text-amber-800">possible financial support</strong>, and a more stable structure for organizing the club.</p>
             <p>At the same time, a formal club requires <strong class="font-semibold text-pitch-800">administration</strong>, <strong class="font-semibold text-amber-800">financial management</strong>, regular reporting, coordination, and several members willing to invest time in managing the organization.</p>
+            <p>As a club, we should also plan to <strong class="font-semibold text-purple-800">play in other tournaments</strong> and <strong class="font-semibold text-purple-800">organize our own tournaments</strong> when possible.</p>
             <p>Recently, Kural and Prem discussed this possibility with representatives of the Sportdienst of the City of Ghent. This page summarizes the main advantages, requirements, responsibilities, and practical considerations.</p>
         </div>
     </div>
@@ -181,7 +182,7 @@
 
             <section id="responsibilities" data-mobile-section class="card p-5 scroll-mt-24 border-l-4 border-purple-500 bg-purple-50/30">
                 <h2>12. Interest in Organizational Roles</h2>
-                <p class="text-sm text-stone-600 mt-2">To establish and manage the club, we initially need <strong class="font-semibold text-purple-800">three directors</strong> and <strong class="font-semibold text-purple-800">two additional coordinators</strong>. Each person will take primary responsibility for one area, with support from other members when needed.</p>
+                <p class="text-sm text-stone-600 mt-2">To establish and manage the club, we initially need <strong class="font-semibold text-purple-800">three directors</strong> and <strong class="font-semibold text-purple-800">three additional coordinators</strong>. Each person will take primary responsibility for one area, with support from other members when needed.</p>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
                     <div class="rounded-xl border border-purple-100 bg-white/80 p-4 lg:col-span-2">
                         <h3>Director – General Administration</h3>
@@ -208,6 +209,10 @@
                     <div class="rounded-xl border border-pitch-100 bg-pitch-50/50 p-4">
                         <h3>Website and Communication Coordinator</h3>
                         <p class="text-sm text-stone-600 mt-2"><strong class="font-semibold text-pitch-800">Main responsibility:</strong> Maintain the website, forms, announcements, and digital communication.</p>
+                    </div>
+                    <div class="rounded-xl border border-red-100 bg-red-50/60 p-4">
+                        <h3>Tournament and Match Coordinator</h3>
+                        <p class="text-sm text-stone-600 mt-2"><strong class="font-semibold text-red-800">Main responsibility:</strong> Coordinate participation in external tournaments and help organize club tournaments or friendly competitions.</p>
                     </div>
                 </div>
                 {% include "club/partials/_section_question.html" with field=form.question_responsibilities %}
