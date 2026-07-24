@@ -127,7 +127,6 @@
                         <th class="px-4 py-3 text-left">Section</th>
                         <th class="px-4 py-3 text-left">Question</th>
                         <th class="px-4 py-3 text-left">Member</th>
-                        <th class="px-4 py-3 text-left">Email</th>
                         <th class="px-4 py-3 text-left">Updated</th>
                     </tr>
                 </thead>
@@ -137,12 +136,11 @@
                         <td class="px-4 py-3 font-semibold text-stone-700">{{ row.section }}</td>
                         <td class="px-4 py-3 text-stone-700">{{ row.question }}</td>
                         <td class="px-4 py-3">{{ row.member }}</td>
-                        <td class="px-4 py-3">{{ row.email|default:"-" }}</td>
                         <td class="px-4 py-3 text-stone-500">{{ row.updated_at|date:"d M Y, H:i" }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="px-4 py-6 text-center text-stone-500">No questions yet.</td>
+                        <td colspan="4" class="px-4 py-6 text-center text-stone-500">No questions yet.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -172,7 +170,6 @@
                     <tr>
                         <td class="px-4 py-3">
                             <div class="font-semibold text-stone-800">{{ response.name|default:response.user.username }}</div>
-                            <div class="text-xs text-stone-400">{{ response.email|default:"-" }}</div>
                         </td>
                         <td class="px-4 py-3">{{ response.get_proceed_choice_display }}</td>
                         <td class="px-4 py-3">{{ response.get_membership_preference_display }}</td>

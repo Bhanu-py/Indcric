@@ -27,7 +27,7 @@ def cricket_club_view(request):
             consultation_response = form.save(commit=False)
             consultation_response.user = request.user
             consultation_response.name = request.user.get_full_name() or request.user.username
-            consultation_response.email = request.user.email or ""
+            consultation_response.email = ""
             consultation_response.full_clean()
             consultation_response.save()
             request.session["club_consultation_submitted"] = True
@@ -121,7 +121,6 @@ def consultation_question_rows(responses):
             if question:
                 rows.append({
                     "member": display_name,
-                    "email": response.email,
                     "section": section_labels.get(field_name, field_name),
                     "question": question,
                     "updated_at": response.updated_at,

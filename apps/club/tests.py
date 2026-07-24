@@ -68,7 +68,7 @@ class ClubConsultationTests(TestCase):
         response = self.client.get(reverse("club:cricket-club"))
 
         self.assertContains(response, "Submitting as Kural")
-        self.assertContains(response, "No separate name, email, or phone entry is needed.")
+        self.assertContains(response, "No separate contact details are needed.")
         self.assertContains(response, "Director – Finance and Treasurer")
         self.assertContains(response, "Which organizational role would you be willing to take on?")
         self.assertContains(response, "Volunteers Needed Before the Club Starts")
@@ -106,7 +106,7 @@ class ClubConsultationTests(TestCase):
         consultation = ClubConsultationResponse.objects.get()
         self.assertEqual(consultation.user, self.user)
         self.assertEqual(consultation.name, "Kural")
-        self.assertEqual(consultation.email, "kural@example.com")
+        self.assertEqual(consultation.email, "")
         self.assertEqual(consultation.responsibilities, [
             ClubConsultationResponse.ROLE_DIRECTOR_ADMIN,
             ClubConsultationResponse.ROLE_WEBSITE,
@@ -233,6 +233,7 @@ class ClubConsultationTests(TestCase):
         self.assertContains(response, "data-mobile-accordion")
         self.assertNotContains(response, "Private Member")
         self.assertNotContains(response, "private@example.com")
+        self.assertNotContains(response, "Email")
         self.assertNotContains(response, "Who prepares the statutes?")
         summary = response.context["summary"]
         self.assertEqual(summary["total_responses"], 2)
@@ -300,7 +301,7 @@ class ClubConsultationTests(TestCase):
         self.assertNotContains(response, "Role primary")
         self.assertNotContains(response, "Task primary")
         self.assertContains(response, "Kural")
-        self.assertContains(response, "kural@example.com")
+        self.assertNotContains(response, "kural@example.com")
         self.assertContains(response, "Who prepares the statutes?")
         self.assertContains(response, "Who organizes the founding meeting?")
 

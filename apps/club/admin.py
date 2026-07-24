@@ -7,12 +7,11 @@ from .models import ClubConsultationResponse
 class ClubConsultationResponseAdmin(admin.ModelAdmin):
     list_display = (
         "name",
-        "email",
         "proceed_choice",
         "membership_preference",
         "volunteering_choice",
         "updated_at",
     )
     list_filter = ("proceed_choice", "membership_preference", "volunteering_choice", "created_at")
-    search_fields = ("name", "email", "phone", "connection", "comments")
+    search_fields = ("name", "phone", "connection", "comments")
     readonly_fields = ("created_at", "updated_at")
