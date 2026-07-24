@@ -163,7 +163,7 @@ class ClubConsultationTests(TestCase):
         self.assertContains(response, "Votes so far")
         self.assertContains(response, "Only counts are shown here")
         self.assertContains(response, "Question count by section")
-        self.assertContains(response, "mobile-section-jump")
+        self.assertContains(response, "mobile-section-dropdown")
         self.assertNotContains(response, "Private Member")
         self.assertNotContains(response, "private@example.com")
         self.assertNotContains(response, "Who prepares the statutes?")
