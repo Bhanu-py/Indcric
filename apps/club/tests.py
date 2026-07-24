@@ -73,7 +73,8 @@ class ClubConsultationTests(TestCase):
         self.assertContains(response, "No separate contact details are needed.")
         self.assertContains(response, "Director – Finance and Treasurer")
         self.assertContains(response, "Tournament and Match Coordinator")
-        self.assertContains(response, "Which organizational role would you be willing to take on?")
+        self.assertContains(response, "I just want to stay as a member")
+        self.assertContains(response, "data-club-followup")
         self.assertContains(response, "Volunteers Needed Before the Club Starts")
         self.assertContains(response, "I am ready to do any help as requested")
         self.assertContains(response, "data-mobile-accordion")
@@ -126,26 +127,57 @@ class ClubConsultationTests(TestCase):
             "question_startup_tasks": "Who can contact the federation?",
         })
 
-    def test_role_voting_is_optional(self):
+    def test_no_vote_does_not_require_followup_fields(self):
         self.client.force_login(self.user)
 
         response = self.client.post(
             reverse("club:cricket-club"),
-            self.valid_payload(
-                responsibilities=[],
-                startup_tasks=[],
-                question_vzw="",
-                question_startup_tasks="",
-            ),
+            {
+                "proceed_choice": ClubConsultationResponse.PROCEED_NO,
+                "question_finance": "Can this be reviewed later?",
+                "consent": "on",
+            },
         )
 
         self.assertEqual(response.status_code, 302)
         consultation = ClubConsultationResponse.objects.get()
+        self.assertEqual(consultation.proceed_choice, ClubConsultationResponse.PROCEED_NO)
+        self.assertEqual(consultation.membership_preference, "")
         self.assertEqual(consultation.responsibilities, [])
         self.assertEqual(consultation.role_primary_responsibility, "")
         self.assertEqual(consultation.startup_tasks, [])
         self.assertEqual(consultation.startup_primary_responsibility, "")
         self.assertEqual(consultation.time_commitment, "")
+        self.assertEqual(consultation.comments, "")
+        self.assertEqual(consultation.volunteering_choice, ClubConsultationResponse.VOLUNTEER_NO)
+        self.assertEqual(consultation.section_questions, {"question_finance": "Can this be reviewed later?"})
+
+    def test_yes_vote_requires_role_selection(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("club:cricket-club"),
+            self.valid_payload(responsibilities=[]),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Select at least one role option.")
+        self.assertEqual(ClubConsultationResponse.objects.count(), 0)
+
+    def test_member_only_role_counts_as_required_selection_without_volunteering(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("club:cricket-club"),
+            self.valid_payload(
+                responsibilities=[ClubConsultationResponse.ROLE_MEMBER_ONLY],
+                startup_tasks=[],
+            ),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        consultation = ClubConsultationResponse.objects.get()
+        self.assertEqual(consultation.responsibilities, [ClubConsultationResponse.ROLE_MEMBER_ONLY])
         self.assertEqual(consultation.volunteering_choice, ClubConsultationResponse.VOLUNTEER_NO)
 
     def test_removed_role_and_startup_options_are_rejected(self):
@@ -187,10 +219,12 @@ class ClubConsultationTests(TestCase):
         self.assertEqual(ClubConsultationResponse.objects.count(), 1)
         consultation = ClubConsultationResponse.objects.get()
         self.assertEqual(consultation.proceed_choice, ClubConsultationResponse.PROCEED_NO)
-        self.assertEqual(consultation.responsibilities, [ClubConsultationResponse.ROLE_DIRECTOR_FINANCE])
+        self.assertEqual(consultation.membership_preference, "")
+        self.assertEqual(consultation.responsibilities, [])
         self.assertEqual(consultation.role_primary_responsibility, "")
-        self.assertEqual(consultation.startup_tasks, [ClubConsultationResponse.STARTUP_BUDGET])
+        self.assertEqual(consultation.startup_tasks, [])
         self.assertEqual(consultation.startup_primary_responsibility, "")
+        self.assertEqual(consultation.comments, "")
         self.assertEqual(consultation.section_questions, {"question_finance": "Who files the accounts?"})
 
     def test_public_page_shows_counts_without_names_or_question_text(self):
@@ -220,7 +254,7 @@ class ClubConsultationTests(TestCase):
             name="Private Member",
             email="private@example.com",
             proceed_choice=ClubConsultationResponse.PROCEED_NO,
-            membership_preference=ClubConsultationResponse.MEMBERSHIP_PER_GAME,
+            membership_preference="",
             volunteering_choice=ClubConsultationResponse.VOLUNTEER_NO,
             responsibilities=[],
             section_questions={},

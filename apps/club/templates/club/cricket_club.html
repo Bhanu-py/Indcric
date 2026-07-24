@@ -257,7 +257,7 @@
                         <div class="space-y-2">
                             {% for row in form.proceed_rows %}
                             <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
-                                <input type="radio" name="proceed_choice" value="{{ row.value }}" class="h-4 w-4 border-stone-300 text-pitch-600 focus:ring-pitch-500" {% if row.checked %}checked{% endif %} required>
+                                <input type="radio" name="proceed_choice" value="{{ row.value }}" class="h-4 w-4 border-stone-300 text-pitch-600 focus:ring-pitch-500" data-club-proceed-option {% if row.checked %}checked{% endif %} required>
                                 <span class="flex-1">
                                     <span>{{ row.label }}</span>
                                     <span class="mt-1 block text-xs font-semibold text-stone-500">{{ row.count }} {{ row.status_label }}</span>
@@ -268,68 +268,69 @@
                         {% include "club/partials/_field_errors.html" with field=form.proceed_choice %}
                     </fieldset>
 
-                    <fieldset>
-                        <legend class="form-label">{{ form.membership_preference.label }} <span class="text-red-500">*</span></legend>
-                        <p class="text-xs text-stone-500 mb-2">Annual membership is currently recommended because it reduces administration and supports stable budgeting.</p>
-                        <div class="space-y-2">
-                            {% for row in form.membership_rows %}
-                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
-                                <input type="radio" name="membership_preference" value="{{ row.value }}" class="h-4 w-4 border-stone-300 text-pitch-600 focus:ring-pitch-500" {% if row.checked %}checked{% endif %} required>
-                                <span class="flex-1">
-                                    <span>{{ row.label }}</span>
-                                    <span class="mt-1 block text-xs font-semibold text-stone-500">{{ row.count }} {{ row.status_label }}</span>
-                                </span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                        {% include "club/partials/_field_errors.html" with field=form.membership_preference %}
-                    </fieldset>
-
-                    <div class="rounded-xl border border-purple-100 bg-purple-50/60 p-3">
-                        <h3 class="text-sm font-bold text-purple-900">Interest in Organizational Roles</h3>
-                        <p class="text-xs text-purple-800 mt-1">Select the roles you can take on, or choose the general help option.</p>
-                    </div>
-
-                    <fieldset>
-                        <legend class="form-label">{{ form.responsibilities.label }}</legend>
-                        <div class="grid grid-cols-1 gap-2">
-                            {% for row in form.responsibility_rows %}
-                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
-                                <input type="checkbox" name="responsibilities" value="{{ row.value }}" class="h-4 w-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500" {% if row.checked %}checked{% endif %}>
-                                <span class="flex-1">
-                                    <span>{{ row.label }}</span>
-                                    <span class="mt-1 block text-xs font-semibold text-purple-600">{{ row.count }} {{ row.status_label }}</span>
-                                </span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                        {% include "club/partials/_field_errors.html" with field=form.responsibilities %}
-                    </fieldset>
-
-                    <div class="rounded-xl border border-amber-100 bg-amber-50/70 p-3">
-                        <h3 class="text-sm font-bold text-amber-900">Volunteers Needed Before the Club Starts</h3>
-                        <p class="text-xs text-amber-800 mt-1">Select all start-up tasks you may be willing to help with.</p>
-                        <fieldset class="mt-3">
-                            <legend class="sr-only">{{ form.startup_tasks.label }}</legend>
-                            <div class="grid grid-cols-1 gap-2">
-                            {% for row in form.startup_task_rows %}
-                            <label class="flex gap-3 rounded-xl border border-amber-100 bg-white p-3 text-sm text-stone-700 hover:bg-amber-50">
-                                <input type="checkbox" name="startup_tasks" value="{{ row.value }}" class="h-4 w-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500" {% if row.checked %}checked{% endif %}>
-                                <span class="flex-1">
-                                    <span>{{ row.label }}</span>
-                                    <span class="mt-1 block text-xs font-semibold text-amber-700">{{ row.count }} {{ row.status_label }}</span>
-                                </span>
-                            </label>
-                            {% endfor %}
+                    <div data-club-followup {% if not form.shows_followup %}hidden{% endif %} class="space-y-5">
+                        <fieldset>
+                            <legend class="form-label">{{ form.membership_preference.label }} <span class="text-red-500">*</span></legend>
+                            <p class="text-xs text-stone-500 mb-2">Annual membership is currently recommended because it reduces administration and supports stable budgeting.</p>
+                            <div class="space-y-2">
+                                {% for row in form.membership_rows %}
+                                <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
+                                    <input type="radio" name="membership_preference" value="{{ row.value }}" class="h-4 w-4 border-stone-300 text-pitch-600 focus:ring-pitch-500" data-club-followup-input {% if row.checked %}checked{% endif %}>
+                                    <span class="flex-1">
+                                        <span>{{ row.label }}</span>
+                                        <span class="mt-1 block text-xs font-semibold text-stone-500">{{ row.count }} {{ row.status_label }}</span>
+                                    </span>
+                                </label>
+                                {% endfor %}
                             </div>
-                            {% include "club/partials/_field_errors.html" with field=form.startup_tasks %}
+                            {% include "club/partials/_field_errors.html" with field=form.membership_preference %}
                         </fieldset>
-                    </div>
 
-                    <div>
-                        <label class="form-label" for="{{ form.comments.id_for_label }}">{{ form.comments.label }}</label>
-                        {{ form.comments }}
-                        {% include "club/partials/_field_errors.html" with field=form.comments %}
+                        <div class="rounded-xl border border-purple-100 bg-purple-50/60 p-3">
+                            <h3 class="text-sm font-bold text-purple-900">Interest in Organizational Roles</h3>
+                            <p class="text-xs text-purple-800 mt-1">Select at least one option. Choose member-only if you support the club but do not want to take a role.</p>
+                            <fieldset class="mt-3">
+                                <legend class="sr-only">Organizational role options</legend>
+                                <div class="grid grid-cols-1 gap-2">
+                                    {% for row in form.responsibility_rows %}
+                                    <label class="flex gap-3 rounded-xl border border-purple-100 bg-white p-3 text-sm text-stone-700 hover:bg-purple-50">
+                                        <input type="checkbox" name="responsibilities" value="{{ row.value }}" class="h-4 w-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500" data-club-followup-input {% if row.checked %}checked{% endif %}>
+                                        <span class="flex-1">
+                                            <span>{{ row.label }}</span>
+                                            <span class="mt-1 block text-xs font-semibold text-purple-600">{{ row.count }} {{ row.status_label }}</span>
+                                        </span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                                {% include "club/partials/_field_errors.html" with field=form.responsibilities %}
+                            </fieldset>
+                        </div>
+
+                        <div class="rounded-xl border border-amber-100 bg-amber-50/70 p-3">
+                            <h3 class="text-sm font-bold text-amber-900">Volunteers Needed Before the Club Starts</h3>
+                            <p class="text-xs text-amber-800 mt-1">Select all start-up tasks you may be willing to help with.</p>
+                            <fieldset class="mt-3">
+                                <legend class="sr-only">{{ form.startup_tasks.label }}</legend>
+                                <div class="grid grid-cols-1 gap-2">
+                                {% for row in form.startup_task_rows %}
+                                <label class="flex gap-3 rounded-xl border border-amber-100 bg-white p-3 text-sm text-stone-700 hover:bg-amber-50">
+                                    <input type="checkbox" name="startup_tasks" value="{{ row.value }}" class="h-4 w-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500" data-club-followup-input {% if row.checked %}checked{% endif %}>
+                                    <span class="flex-1">
+                                        <span>{{ row.label }}</span>
+                                        <span class="mt-1 block text-xs font-semibold text-amber-700">{{ row.count }} {{ row.status_label }}</span>
+                                    </span>
+                                </label>
+                                {% endfor %}
+                                </div>
+                                {% include "club/partials/_field_errors.html" with field=form.startup_tasks %}
+                            </fieldset>
+                        </div>
+
+                        <div>
+                            <label class="form-label" for="{{ form.comments.id_for_label }}">{{ form.comments.label }}</label>
+                            {{ form.comments }}
+                            {% include "club/partials/_field_errors.html" with field=form.comments %}
+                        </div>
                     </div>
 
                     <div class="rounded-xl bg-stone-50 border border-stone-200 p-3">
@@ -361,6 +362,10 @@
     document.addEventListener("DOMContentLoaded", function () {
         var mediaQuery = window.matchMedia("(max-width: 1279px)");
         var sections = Array.prototype.slice.call(document.querySelectorAll("[data-mobile-section]"));
+        var followup = document.querySelector("[data-club-followup]");
+        var followupInputs = Array.prototype.slice.call(document.querySelectorAll("[data-club-followup-input]"));
+        var proceedOptions = Array.prototype.slice.call(document.querySelectorAll("[data-club-proceed-option]"));
+        var roleOptions = Array.prototype.slice.call(document.querySelectorAll("input[name='responsibilities']"));
         var openSectionId = "";
         var colorClasses = {
             why: "bg-pitch-50 text-pitch-800 hover:bg-pitch-100",
@@ -377,6 +382,30 @@
             responsibilities: "bg-purple-50 text-purple-800 hover:bg-purple-100",
             startup: "bg-amber-50 text-amber-800 hover:bg-amber-100"
         };
+
+        function refreshFollowup() {
+            var selected = document.querySelector("input[name='proceed_choice']:checked");
+            var showFollowup = selected && selected.value === "yes";
+            if (followup) {
+                followup.hidden = !showFollowup;
+            }
+            followupInputs.forEach(function (input) {
+                input.disabled = !showFollowup;
+            });
+        }
+
+        function syncMemberOnlyRole(changedInput) {
+            if (!changedInput || !changedInput.checked) {
+                return;
+            }
+            roleOptions.forEach(function (input) {
+                if (changedInput.value === "member_only" && input !== changedInput) {
+                    input.checked = false;
+                } else if (changedInput.value !== "member_only" && input.value === "member_only") {
+                    input.checked = false;
+                }
+            });
+        }
 
         function prepareSection(section) {
             var heading = section.querySelector("h2");
@@ -437,6 +466,16 @@
                 }
             });
         }
+
+        proceedOptions.forEach(function (input) {
+            input.addEventListener("change", refreshFollowup);
+        });
+        roleOptions.forEach(function (input) {
+            input.addEventListener("change", function () {
+                syncMemberOnlyRole(input);
+            });
+        });
+        refreshFollowup();
 
         sections.forEach(prepareSection);
         refreshSections();

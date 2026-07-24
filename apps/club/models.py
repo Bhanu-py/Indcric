@@ -37,6 +37,7 @@ class ClubConsultationResponse(models.Model):
     ROLE_FACILITIES = "facilities"
     ROLE_WEBSITE = "website"
     ROLE_TOURNAMENTS = "tournaments"
+    ROLE_MEMBER_ONLY = "member_only"
     ROLE_GENERAL_HELP = "general_help"
     ROLE_SUPPORT = "role_support"
     ROLE_MORE_INFO = "role_more_info"
@@ -47,6 +48,7 @@ class ClubConsultationResponse(models.Model):
         (ROLE_FACILITIES, "Facilities and Booking Coordinator"),
         (ROLE_WEBSITE, "Website and Communication Coordinator"),
         (ROLE_TOURNAMENTS, "Tournament and Match Coordinator"),
+        (ROLE_MEMBER_ONLY, "I just want to stay as a member"),
         (ROLE_GENERAL_HELP, "I am ready to do any help as requested"),
     ]
     ORGANIZATIONAL_ROLE_VALUES = [
@@ -128,7 +130,7 @@ class ClubConsultationResponse(models.Model):
     phone = models.CharField(max_length=40, blank=True)
     connection = models.CharField(max_length=160, blank=True)
     proceed_choice = models.CharField(max_length=20, choices=PROCEED_CHOICES)
-    membership_preference = models.CharField(max_length=20, choices=MEMBERSHIP_CHOICES)
+    membership_preference = models.CharField(max_length=20, choices=MEMBERSHIP_CHOICES, blank=True)
     volunteering_choice = models.CharField(max_length=20, choices=VOLUNTEER_CHOICES)
     responsibilities = models.JSONField(default=list, blank=True)
     other_responsibility = models.CharField(max_length=160, blank=True)

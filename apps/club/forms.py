@@ -29,6 +29,7 @@ class ClubConsultationForm(forms.ModelForm):
     )
     membership_preference = forms.ChoiceField(
         choices=ClubConsultationResponse.MEMBERSHIP_CHOICES,
+        required=False,
         widget=forms.RadioSelect(attrs={
             "class": "h-4 w-4 border-stone-300 text-pitch-600 focus:ring-pitch-500",
         }),
@@ -38,7 +39,7 @@ class ClubConsultationForm(forms.ModelForm):
         choices=ClubConsultationResponse.RESPONSIBILITY_CHOICES,
         required=False,
         widget=forms.CheckboxSelectMultiple,
-        label="Which organizational role would you be willing to take on?",
+        label="Organizational role options",
     )
     startup_tasks = forms.MultipleChoiceField(
         choices=ClubConsultationResponse.STARTUP_TASK_CHOICES,
@@ -100,11 +101,45 @@ class ClubConsultationForm(forms.ModelForm):
     def clean_startup_tasks(self):
         return list(self.cleaned_data.get("startup_tasks") or [])
 
+    def clean(self):
+        cleaned_data = super().clean()
+        proceed_choice = cleaned_data.get("proceed_choice")
+        responsibilities = cleaned_data.get("responsibilities") or []
+
+        if proceed_choice == ClubConsultationResponse.PROCEED_NO:
+            cleaned_data["membership_preference"] = ""
+            cleaned_data["responsibilities"] = []
+            cleaned_data["startup_tasks"] = []
+            cleaned_data["comments"] = ""
+            return cleaned_data
+
+        if proceed_choice == ClubConsultationResponse.PROCEED_YES:
+            if not cleaned_data.get("membership_preference"):
+                self.add_error("membership_preference", "Select a membership-payment option.")
+            if not responsibilities:
+                self.add_error("responsibilities", "Select at least one role option.")
+            elif (
+                ClubConsultationResponse.ROLE_MEMBER_ONLY in responsibilities
+                and len(responsibilities) > 1
+            ):
+                self.add_error(
+                    "responsibilities",
+                    "Choose either member-only or role/help options, not both.",
+                )
+
+        return cleaned_data
+
     def save(self, commit=True):
         response = super().save(commit=False)
+        responsibilities = self.cleaned_data.get("responsibilities") or []
+        startup_tasks = self.cleaned_data.get("startup_tasks") or []
+        has_volunteer_interest = (
+            any(value != ClubConsultationResponse.ROLE_MEMBER_ONLY for value in responsibilities)
+            or bool(startup_tasks)
+        )
         response.volunteering_choice = (
             ClubConsultationResponse.VOLUNTEER_YES
-            if self.cleaned_data.get("responsibilities") or self.cleaned_data.get("startup_tasks")
+            if has_volunteer_interest
             else ClubConsultationResponse.VOLUNTEER_NO
         )
         response.other_responsibility = ""
@@ -155,6 +190,15 @@ class ClubConsultationForm(forms.ModelForm):
             "membership_counts",
             "voted",
         )
+
+    @property
+    def shows_followup(self):
+        selected = (
+            self.data.get("proceed_choice")
+            if self.is_bound
+            else self.initial.get("proceed_choice", getattr(self.instance, "proceed_choice", "") or "")
+        )
+        return selected == ClubConsultationResponse.PROCEED_YES
 
     def _multiple_choice_rows(self, field_name, choices, summary_key, status_label):
         selected = set(
