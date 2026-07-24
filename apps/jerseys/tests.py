@@ -296,7 +296,7 @@ class JerseyOrderTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Wide-Brim Hat')
         self.assertContains(
-            resp, 'Unique number rule applies only to players (For = Self)')
+            resp, 'Family and kids can reuse a jersey number')
         self.assertContains(resp, 'How to choose the right size')
         self.assertContains(resp, 'Adult shirt standard size chart')
         self.assertContains(resp, 'Adult pant / shorts standard size chart')
