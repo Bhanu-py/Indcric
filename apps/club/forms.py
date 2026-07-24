@@ -1,0 +1,243 @@
+from django import forms
+
+from .models import ClubConsultationResponse
+
+SECTION_QUESTION_FIELDS = [
+    ("question_why", "1. Why establish a formal club?"),
+    ("question_vzw", "2. VZW structure"),
+    ("question_board", "3. Board and organizing team"),
+    ("question_address", "4. Official registered address"),
+    ("question_statutes", "5. Statutes and internal rules"),
+    ("question_membership", "6. Membership registration"),
+    ("question_payment", "7. Membership-payment options"),
+    ("question_insurance", "8. Member insurance"),
+    ("question_mutuality", "9. Mutuality reimbursement"),
+    ("question_facilities", "10. Sports facilities and possible support"),
+    ("question_finance", "11. Financial administration"),
+    ("question_responsibilities", "12. Interest in organizational roles"),
+    ("question_startup_tasks", "13. Volunteers needed before the club starts"),
+]
+
+
+class ClubConsultationForm(forms.ModelForm):
+    proceed_choice = forms.ChoiceField(
+        choices=ClubConsultationResponse.PROCEED_CHOICES,
+        widget=forms.RadioSelect(attrs={
+            "class": "h-4 w-4 border-stone-300 text-pitch-600 focus:ring-pitch-500",
+        }),
+        label="Do you agree that we should proceed with establishing a formal cricket club in Ghent?",
+    )
+    membership_preference = forms.ChoiceField(
+        choices=ClubConsultationResponse.MEMBERSHIP_CHOICES,
+        required=False,
+        widget=forms.RadioSelect(attrs={
+            "class": "h-4 w-4 border-stone-300 text-pitch-600 focus:ring-pitch-500",
+        }),
+        label="Which membership-payment system would you prefer?",
+    )
+    responsibilities = forms.MultipleChoiceField(
+        choices=ClubConsultationResponse.RESPONSIBILITY_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Organizational role options",
+    )
+    startup_tasks = forms.MultipleChoiceField(
+        choices=ClubConsultationResponse.STARTUP_TASK_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Volunteers Needed Before the Club Starts",
+    )
+    consent = forms.BooleanField(
+        required=True,
+        label=(
+            "I understand that my response will be linked to my member account and used only "
+            "to assess interest in establishing the cricket club and organizing responsibilities."
+        ),
+        error_messages={"required": "Confirm the consultation data-use statement."},
+    )
+
+    class Meta:
+        model = ClubConsultationResponse
+        fields = [
+            "proceed_choice",
+            "membership_preference",
+            "responsibilities",
+            "startup_tasks",
+            "comments",
+            "consent",
+        ]
+        widgets = {
+            "comments": forms.Textarea(attrs={
+                "class": "form-input min-h-[120px]",
+                "rows": 5,
+                "placeholder": "Optional general comments or questions",
+            }),
+        }
+        labels = {
+            "comments": "General comments or questions",
+        }
+
+    def __init__(self, *args, user=None, **kwargs):
+        self.user = user
+        self.summary = kwargs.pop("summary", None) or {}
+        super().__init__(*args, **kwargs)
+        section_questions = getattr(self.instance, "section_questions", None) or {}
+        for field_name, label in SECTION_QUESTION_FIELDS:
+            self.fields[field_name] = forms.CharField(
+                required=False,
+                label=f"Question about {label}",
+                initial=section_questions.get(field_name, ""),
+                widget=forms.Textarea(attrs={
+                    "class": "form-input min-h-[92px]",
+                    "rows": 3,
+                    "placeholder": "Type your question about this section...",
+                    "form": "club-consultation-form",
+                }),
+            )
+
+    def clean_responsibilities(self):
+        return list(self.cleaned_data.get("responsibilities") or [])
+
+    def clean_startup_tasks(self):
+        return list(self.cleaned_data.get("startup_tasks") or [])
+
+    def clean(self):
+        cleaned_data = super().clean()
+        proceed_choice = cleaned_data.get("proceed_choice")
+        responsibilities = cleaned_data.get("responsibilities") or []
+
+        if proceed_choice == ClubConsultationResponse.PROCEED_NO:
+            cleaned_data["membership_preference"] = ""
+            cleaned_data["responsibilities"] = []
+            cleaned_data["startup_tasks"] = []
+            cleaned_data["comments"] = ""
+            return cleaned_data
+
+        if proceed_choice == ClubConsultationResponse.PROCEED_YES:
+            if not cleaned_data.get("membership_preference"):
+                self.add_error("membership_preference", "Select a membership-payment option.")
+            if not responsibilities:
+                self.add_error("responsibilities", "Select at least one role option.")
+            elif (
+                ClubConsultationResponse.ROLE_MEMBER_ONLY in responsibilities
+                and len(responsibilities) > 1
+            ):
+                self.add_error(
+                    "responsibilities",
+                    "Choose either member-only or role/help options, not both.",
+                )
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        response = super().save(commit=False)
+        responsibilities = self.cleaned_data.get("responsibilities") or []
+        startup_tasks = self.cleaned_data.get("startup_tasks") or []
+        has_volunteer_interest = (
+            any(value != ClubConsultationResponse.ROLE_MEMBER_ONLY for value in responsibilities)
+            or bool(startup_tasks)
+        )
+        response.volunteering_choice = (
+            ClubConsultationResponse.VOLUNTEER_YES
+            if has_volunteer_interest
+            else ClubConsultationResponse.VOLUNTEER_NO
+        )
+        response.other_responsibility = ""
+        response.role_primary_responsibility = ""
+        response.startup_other_task = ""
+        response.startup_primary_responsibility = ""
+        response.section_questions = self.cleaned_section_questions()
+        if commit:
+            response.save()
+        return response
+
+    def cleaned_section_questions(self):
+        questions = {}
+        for field_name, label in SECTION_QUESTION_FIELDS:
+            value = (self.cleaned_data.get(field_name) or "").strip()
+            if value:
+                questions[field_name] = value
+        return questions
+
+    def responsibility_rows(self):
+        return self._multiple_choice_rows(
+            "responsibilities",
+            ClubConsultationResponse.RESPONSIBILITY_CHOICES,
+            "role_choice_counts",
+            "interested",
+        )
+
+    def startup_task_rows(self):
+        return self._multiple_choice_rows(
+            "startup_tasks",
+            ClubConsultationResponse.STARTUP_TASK_CHOICES,
+            "startup_choice_counts",
+            "interested",
+        )
+
+    def proceed_rows(self):
+        return self._single_choice_rows(
+            "proceed_choice",
+            ClubConsultationResponse.PROCEED_CHOICES,
+            "proceed_counts",
+            "voted",
+        )
+
+    def membership_rows(self):
+        return self._single_choice_rows(
+            "membership_preference",
+            ClubConsultationResponse.MEMBERSHIP_CHOICES,
+            "membership_counts",
+            "voted",
+        )
+
+    @property
+    def shows_followup(self):
+        selected = (
+            self.data.get("proceed_choice")
+            if self.is_bound
+            else self.initial.get("proceed_choice", getattr(self.instance, "proceed_choice", "") or "")
+        )
+        return selected == ClubConsultationResponse.PROCEED_YES
+
+    def _multiple_choice_rows(self, field_name, choices, summary_key, status_label):
+        selected = set(
+            self.data.getlist(field_name)
+            if self.is_bound
+            else self.initial.get(field_name, getattr(self.instance, field_name, []) or [])
+        )
+        counts = self._summary_counts(summary_key)
+        return [
+            {
+                "value": value,
+                "label": label,
+                "checked": value in selected,
+                "count": counts.get(value, 0),
+                "status_label": status_label,
+            }
+            for value, label in choices
+        ]
+
+    def _single_choice_rows(self, field_name, choices, summary_key, status_label):
+        selected = (
+            self.data.get(field_name)
+            if self.is_bound
+            else self.initial.get(field_name, getattr(self.instance, field_name, "") or "")
+        )
+        counts = self._summary_counts(summary_key)
+        return [
+            {
+                "value": value,
+                "label": label,
+                "checked": value == selected,
+                "count": counts.get(value, 0),
+                "status_label": status_label,
+            }
+            for value, label in choices
+        ]
+
+    def _summary_counts(self, summary_key):
+        return {
+            row["value"]: row.get("count", row.get("interested", 0))
+            for row in self.summary.get(summary_key, [])
+        }

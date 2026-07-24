@@ -29,6 +29,11 @@
                     <span class="hidden sm:inline">Support</span>
                 </a>
 
+                <a href="{% url 'club:cricket-club' %}" title="Cricket club proposal" class="flex items-center gap-1.5 h-10 px-2.5 sm:px-3 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium">
+                    <svg class="w-5 h-5 sm:w-4 sm:h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21h18M5 21V7l8-4 6 3v15M9 9h1m-1 4h1m4-4h1m-1 4h1M8 21v-4h8v4"/></svg>
+                    <span class="hidden sm:inline">Club</span>
+                </a>
+
                 {% if jersey_ordering_enabled %}
                 <a href="{% url 'jersey-orders' %}" title="ICG Store" class="flex items-center gap-1.5 h-10 px-2.5 sm:px-3 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium">
                     <svg class="w-5 h-5 sm:w-4 sm:h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 3h12l2 5-3 2v11H7V10L4 8l2-5z"/></svg>
@@ -128,6 +133,10 @@
                 <a href="{% url 'support' %}" class="flex items-center gap-1.5 h-10 px-3 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium">
                     <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
                     <span class="hidden sm:inline">Support</span>
+                </a>
+                <a href="{% url 'club:cricket-club' %}" class="flex items-center gap-1.5 h-10 px-3 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium">
+                    <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21h18M5 21V7l8-4 6 3v15M9 9h1m-1 4h1m4-4h1m-1 4h1M8 21v-4h8v4"/></svg>
+                    <span class="hidden sm:inline">Club</span>
                 </a>
                 <a href="{% url 'account_login' %}" class="flex items-center gap-1.5 h-10 px-4 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium">Login</a>
                 <a href="{% url 'account_signup' %}?next={% url 'profile-onboarding' %}" class="flex items-center btn btn-md btn-amber ml-1">Sign Up</a>

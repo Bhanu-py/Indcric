@@ -50,12 +50,14 @@ def _taken_numbers():
     references = {}
     orders = (
         JerseyOrder.objects
+        .filter(for_person=JerseyOrder.FOR_SELF)
         .exclude(jersey_number='')
         .select_related('user')
         .order_by('jersey_number', 'wearer_name', 'user__username')
     )
     for order in orders:
-        key = (order.jersey_number, order.wearer_name.strip().lower(), order.user_id)
+        key = (order.jersey_number,
+               order.wearer_name.strip().lower(), order.user_id)
         if key not in references:
             references[key] = {
                 'jersey_number': order.jersey_number,
@@ -66,17 +68,6 @@ def _taken_numbers():
             }
         references[key]['item_count'] += 1
     rows = list(references.values())
-    # Manually-booked numbers always appear as reserved, even without an order.
-    shown = {r['jersey_number'] for r in rows}
-    for num, uname in JerseyOrder.MANUAL_NUMBER_RESERVATIONS.items():
-        if num not in shown:
-            rows.append({
-                'jersey_number': num,
-                'wearer_name': 'Reserved',
-                'gender': '',
-                'user__username': uname,
-                'item_count': 0,
-            })
     rows.sort(key=lambda r: (len(r['jersey_number']), r['jersey_number']))
     return rows
 
@@ -128,7 +119,8 @@ def jersey_orders_view(request):
     )
     if request.method == 'POST':
         if not ordering_open:
-            messages.error(request, 'Jersey ordering is closed. No new orders can be added now.')
+            messages.error(
+                request, 'Jersey ordering is closed. No new orders can be added now.')
             return redirect('jersey-orders')
         form = JerseyOrderForm(request.POST, user=request.user)
         if form.is_valid():
@@ -139,27 +131,10 @@ def jersey_orders_view(request):
             )
             return redirect('jersey-orders')
 
-    own_orders = list(JerseyOrder.objects.filter(user=request.user).order_by('-created_at'))
+    own_orders = list(JerseyOrder.objects.filter(
+        user=request.user).order_by('-created_at'))
     own_order_total = sum((order.line_total for order in own_orders), start=0)
     own_order_quantity = sum((order.quantity for order in own_orders), start=0)
-    # Numbers reserved by OTHER members — used for the live "already reserved"
-    # warning as the user types (own numbers are reusable, so excluded).
-    reserved_numbers = {}
-    for o in (
-        JerseyOrder.objects.exclude(jersey_number='')
-        .exclude(user=request.user).select_related('user')
-    ):
-        reserved_numbers.setdefault(o.jersey_number, o.wearer_name or (o.user.username if o.user else 'another member'))
-    # Manually-booked numbers count as reserved for everyone except their owner.
-    for num, uname in JerseyOrder.MANUAL_NUMBER_RESERVATIONS.items():
-        if request.user.username != uname:
-            reserved_numbers.setdefault(num, uname)
-    # This member's existing number per wearer — one number per wearer, so the
-    # live warning flags a different number for a wearer who already has one.
-    own_wearer_numbers = {}
-    for o in own_orders:
-        if o.jersey_number:
-            own_wearer_numbers.setdefault(o.wearer_name.strip().lower(), o.jersey_number)
     # Size choices per own-order line, for the inline editor (adult shirt/pant only).
     for o in own_orders:
         if o.item_type in JerseyOrder.SHIRT_ITEMS:
@@ -178,8 +153,6 @@ def jersey_orders_view(request):
         'shirt_size_measurements': JerseyOrder.SIZE_MEASUREMENTS,
         'pant_size_measurements': JerseyOrder.PANT_SIZE_MEASUREMENTS,
         'taken_numbers': _taken_numbers(),
-        'reserved_numbers': reserved_numbers,
-        'own_wearer_numbers': own_wearer_numbers,
         'ordering_open': ordering_open,
         'ordering_status': ordering_status,
         'ordering_deadline': ordering_deadline,
@@ -198,7 +171,8 @@ def edit_jersey_order_view(request, order_id):
         messages.error(request, "You cannot edit another member's order.")
         return redirect('jersey-orders')
     if not request.user.is_staff and not JerseyOrderWindow.ordering_is_open():
-        messages.error(request, 'Jersey ordering is closed. Existing orders can no longer be changed.')
+        messages.error(
+            request, 'Jersey ordering is closed. Existing orders can no longer be changed.')
         return redirect('jersey-orders')
     if request.method == 'POST':
         try:
@@ -243,7 +217,8 @@ def delete_jersey_order_view(request, order_id):
         messages.error(request, "You cannot delete another member's order.")
         return redirect('jersey-orders')
     if not request.user.is_staff and not JerseyOrderWindow.ordering_is_open():
-        messages.error(request, 'Jersey ordering is closed. Existing orders can no longer be changed.')
+        messages.error(
+            request, 'Jersey ordering is closed. Existing orders can no longer be changed.')
         return redirect('jersey-orders')
     if request.method == 'POST':
         owner, wearer = order.user, order.wearer_name
@@ -261,7 +236,8 @@ def jersey_orders_admin_view(request):
     order_window = JerseyOrderWindow.current()
     window_form = JerseyOrderWindowForm(instance=order_window)
     if request.method == 'POST' and request.POST.get('action') == 'update_order_window':
-        window_form = JerseyOrderWindowForm(request.POST, instance=order_window)
+        window_form = JerseyOrderWindowForm(
+            request.POST, instance=order_window)
         if window_form.is_valid():
             order_window = window_form.save()
             messages.success(request, 'Jersey order close date updated.')
@@ -339,9 +315,12 @@ def export_jersey_orders_view(request):
             order.wearer_name,
             order.get_item_type_display(),
             order.display_size,
-            order.display_size if order.item_type in JerseyOrder.SHIRT_ITEMS and not order.display_size.startswith('Kid custom') else '',
-            order.display_size if order.item_type in JerseyOrder.PANT_ITEMS and not order.display_size.startswith('Kid custom') else '',
-            order.display_size if order.display_size.startswith('Kid custom') else '',
+            order.display_size if order.item_type in JerseyOrder.SHIRT_ITEMS and not order.display_size.startswith(
+                'Kid custom') else '',
+            order.display_size if order.item_type in JerseyOrder.PANT_ITEMS and not order.display_size.startswith(
+                'Kid custom') else '',
+            order.display_size if order.display_size.startswith(
+                'Kid custom') else '',
             order.quantity,
             order.jersey_number,
             order.unit_price,
@@ -351,7 +330,8 @@ def export_jersey_orders_view(request):
 
     for column_cells in worksheet.columns:
         width = max(len(str(cell.value or '')) for cell in column_cells) + 2
-        worksheet.column_dimensions[column_cells[0].column_letter].width = min(width, 40)
+        worksheet.column_dimensions[column_cells[0].column_letter].width = min(
+            width, 40)
 
     output = BytesIO()
     workbook.save(output)

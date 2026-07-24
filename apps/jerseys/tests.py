@@ -38,9 +38,12 @@ class JerseyOrderTests(TestCase):
         self.assertEqual(order.gender, 'male')
         self.assertEqual(order.size, '38')
         self.assertEqual(order.jersey_number, '7')
-        self.assertEqual(order.line_total, JerseyOrder.rate_for('collar_half') * 2)
-        self.assertEqual(JerseyOrder.objects.get(item_type='player_cap').quantity, 1)
-        self.assertEqual(JerseyOrder.objects.get(item_type='player_cap').size, JerseyOrder.FREE_SIZE)
+        self.assertEqual(order.line_total,
+                         JerseyOrder.rate_for('collar_half') * 2)
+        self.assertEqual(JerseyOrder.objects.get(
+            item_type='player_cap').quantity, 1)
+        self.assertEqual(JerseyOrder.objects.get(
+            item_type='player_cap').size, JerseyOrder.FREE_SIZE)
 
     def test_adult_shirt_and_pant_use_separate_standard_sizes(self):
         resp = self.client.post(reverse('jersey-orders'), {
@@ -57,10 +60,11 @@ class JerseyOrderTests(TestCase):
         })
 
         self.assertEqual(resp.status_code, 302)
-        self.assertEqual(JerseyOrder.objects.get(item_type='collar_half').size, '40')
+        self.assertEqual(JerseyOrder.objects.get(
+            item_type='collar_half').size, '40')
         self.assertEqual(JerseyOrder.objects.get(item_type='pant').size, '32')
 
-    def test_duplicate_jersey_number_is_allowed(self):
+    def test_duplicate_number_is_allowed_for_non_self_orders(self):
         other = User.objects.create_user(username='other', password='x')
         JerseyOrder.objects.create(
             user=other,
@@ -88,7 +92,37 @@ class JerseyOrderTests(TestCase):
         })
 
         self.assertEqual(resp.status_code, 302)
-        self.assertEqual(JerseyOrder.objects.filter(jersey_number='10').count(), 2)
+        self.assertEqual(JerseyOrder.objects.filter(
+            jersey_number='10').count(), 2)
+
+    def test_self_number_must_be_unique_across_players(self):
+        other = User.objects.create_user(username='other-player', password='x')
+        JerseyOrder.objects.create(
+            user=other,
+            for_person='self',
+            gender='male',
+            wearer_name='Other Player',
+            item_type='collar_half',
+            size='38',
+            quantity=1,
+            jersey_number='25',
+        )
+
+        resp = self.client.post(reverse('jersey-orders'), {
+            'for_person': 'self',
+            'gender': 'male',
+            'wearer_name': 'Current Player',
+            'item_types': ['round_half'],
+            'shirt_size': '40',
+            'quantity_round_half': '1',
+            'jersey_number': '25',
+            'notes': '',
+        })
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'already used by another player')
+        self.assertEqual(JerseyOrder.objects.filter(
+            user=self.user, jersey_number='25').count(), 0)
 
     def test_headwear_does_not_require_size(self):
         cap_resp = self.client.post(reverse('jersey-orders'), {
@@ -102,7 +136,8 @@ class JerseyOrderTests(TestCase):
         })
 
         self.assertEqual(cap_resp.status_code, 302)
-        self.assertEqual(JerseyOrder.objects.get(item_type='umpire_cap').size, JerseyOrder.FREE_SIZE)
+        self.assertEqual(JerseyOrder.objects.get(
+            item_type='umpire_cap').size, JerseyOrder.FREE_SIZE)
 
         shirt_resp = self.client.post(reverse('jersey-orders'), {
             'for_person': 'self',
@@ -115,7 +150,8 @@ class JerseyOrderTests(TestCase):
         })
 
         self.assertEqual(shirt_resp.status_code, 200)
-        self.assertContains(shirt_resp, 'Choose an adult shirt size from the maker chart.')
+        self.assertContains(
+            shirt_resp, 'Choose an adult shirt size from the maker chart.')
         self.assertEqual(JerseyOrder.objects.count(), 1)
 
     def test_kid_custom_measurements_are_saved(self):
@@ -138,8 +174,10 @@ class JerseyOrderTests(TestCase):
         })
 
         self.assertEqual(resp.status_code, 302)
-        self.assertIn('Kid custom shirt', JerseyOrder.objects.get(item_type='round_full').size)
-        self.assertIn('Kid custom pant', JerseyOrder.objects.get(item_type='shorts').size)
+        self.assertIn('Kid custom shirt', JerseyOrder.objects.get(
+            item_type='round_full').size)
+        self.assertIn('Kid custom pant', JerseyOrder.objects.get(
+            item_type='shorts').size)
 
     def test_number_reference_deduplicates_multiple_items_for_same_wearer(self):
         for item_type in ['collar_half', 'collar_full', 'player_cap']:
@@ -164,6 +202,21 @@ class JerseyOrderTests(TestCase):
         self.assertEqual(references[0]['item_count'], 3)
         self.assertContains(resp, '1 shown')
         self.assertContains(resp, '3 items')
+
+    def test_number_reference_excludes_non_self_orders(self):
+        JerseyOrder.objects.create(
+            user=self.user,
+            for_person='kid',
+            gender='boy',
+            wearer_name='Kid One',
+            item_type='round_half',
+            size='Kid custom shirt',
+            quantity=1,
+            jersey_number='66',
+        )
+
+        refs = _taken_numbers()
+        self.assertEqual(refs, [])
 
     def test_member_page_shows_cart_total(self):
         JerseyOrder.objects.create(
@@ -195,7 +248,8 @@ class JerseyOrderTests(TestCase):
         self.assertContains(resp, '&#8377;1160.00')
 
     def test_staff_delete_from_member_page_returns_to_member_form(self):
-        staff = User.objects.create_user(username='staff-owner', password='x', is_staff=True)
+        staff = User.objects.create_user(
+            username='staff-owner', password='x', is_staff=True)
         self.client.force_login(staff)
         order = JerseyOrder.objects.create(
             user=staff,
@@ -216,7 +270,8 @@ class JerseyOrderTests(TestCase):
         self.assertFalse(JerseyOrder.objects.filter(id=order.id).exists())
 
     def test_staff_delete_without_next_still_returns_to_admin(self):
-        staff = User.objects.create_user(username='staff-admin', password='x', is_staff=True)
+        staff = User.objects.create_user(
+            username='staff-admin', password='x', is_staff=True)
         self.client.force_login(staff)
         order = JerseyOrder.objects.create(
             user=staff,
@@ -229,7 +284,8 @@ class JerseyOrderTests(TestCase):
             jersey_number='18',
         )
 
-        resp = self.client.post(reverse('jersey-order-delete', args=[order.id]))
+        resp = self.client.post(
+            reverse('jersey-order-delete', args=[order.id]))
 
         self.assertRedirects(resp, reverse('jersey-orders-admin'))
         self.assertFalse(JerseyOrder.objects.filter(id=order.id).exists())
@@ -239,7 +295,8 @@ class JerseyOrderTests(TestCase):
 
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Wide-Brim Hat')
-        self.assertContains(resp, 'Family/kids may reuse the same number')
+        self.assertContains(
+            resp, 'Family and kids can reuse a jersey number')
         self.assertContains(resp, 'How to choose the right size')
         self.assertContains(resp, 'Adult shirt standard size chart')
         self.assertContains(resp, 'Adult pant / shorts standard size chart')
@@ -277,7 +334,8 @@ class JerseyOrderTests(TestCase):
             quantity=1,
             jersey_number='12',
         )
-        delete_resp = self.client.post(reverse('jersey-order-delete', args=[order.id]))
+        delete_resp = self.client.post(
+            reverse('jersey-order-delete', args=[order.id]))
 
         self.assertEqual(delete_resp.status_code, 302)
         self.assertTrue(JerseyOrder.objects.filter(id=order.id).exists())
@@ -287,9 +345,11 @@ class JerseyOrderTests(TestCase):
         self.assertContains(page_resp, 'Locked')
 
     def test_staff_can_set_close_date_shown_bold_to_members(self):
-        staff = User.objects.create_user(username='window-staff', password='x', is_staff=True)
+        staff = User.objects.create_user(
+            username='window-staff', password='x', is_staff=True)
         self.client.force_login(staff)
-        closes_at = timezone.localtime(timezone.now() + timedelta(days=3)).replace(second=0, microsecond=0)
+        closes_at = timezone.localtime(
+            timezone.now() + timedelta(days=3)).replace(second=0, microsecond=0)
 
         resp = self.client.post(reverse('jersey-orders-admin'), {
             'action': 'update_order_window',
@@ -300,7 +360,8 @@ class JerseyOrderTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         window = JerseyOrderWindow.objects.get()
         self.assertTrue(window.is_enabled)
-        self.assertEqual(window.closes_at_label(), closes_at.strftime('%d %b %Y, %H:%M'))
+        self.assertEqual(window.closes_at_label(),
+                         closes_at.strftime('%d %b %Y, %H:%M'))
 
         self.client.force_login(self.user)
         page_resp = self.client.get(reverse('jersey-orders'))
@@ -309,13 +370,14 @@ class JerseyOrderTests(TestCase):
         self.assertContains(page_resp, 'Please order before that.')
         self.assertContains(
             page_resp,
-            f'<strong class="font-extrabold">{window.closes_at_label()}</strong>',
+            f'<strong class="font-extrabold text-red-700">{window.closes_at_label()}</strong>',
             html=True,
         )
         self.assertNotContains(page_resp, 'Order close date:')
 
     def test_staff_can_export_orders(self):
-        staff = User.objects.create_user(username='staff', password='x', is_staff=True)
+        staff = User.objects.create_user(
+            username='staff', password='x', is_staff=True)
         JerseyOrder.objects.create(
             user=self.user,
             for_person='kid',

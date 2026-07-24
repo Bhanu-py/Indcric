@@ -1,0 +1,13 @@
+<details class="mt-4 rounded-xl border border-stone-200 bg-stone-50 p-3">
+    <summary class="cursor-pointer text-sm font-semibold text-pitch-800">Ask a question about this section</summary>
+    {% if request.user.is_authenticated %}
+    <div class="mt-3">
+        <label class="sr-only" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        <p class="text-xs text-stone-500 mt-1">This question will be saved when you submit the vote form.</p>
+        {% include "club/partials/_field_errors.html" with field=field %}
+    </div>
+    {% else %}
+    <p class="text-xs text-stone-500 mt-2">Sign in with your member account to add a question.</p>
+    {% endif %}
+</details>

@@ -17,22 +17,31 @@ class JerseyOrderForm(forms.ModelForm):
         }),
     )
     shirt_size = forms.ChoiceField(
-        choices=[('', 'Choose adult shirt size')] + JerseyOrder.SHIRT_SIZE_CHOICES,
+        choices=[('', 'Choose adult shirt size')] +
+        JerseyOrder.SHIRT_SIZE_CHOICES,
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
     pant_size = forms.ChoiceField(
-        choices=[('', 'Choose adult pant/shorts size')] + JerseyOrder.PANT_SIZE_CHOICES,
+        choices=[('', 'Choose adult pant/shorts size')] +
+        JerseyOrder.PANT_SIZE_CHOICES,
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
-    kid_shirt_full_chest = forms.DecimalField(required=False, min_value=1, widget=forms.NumberInput(attrs={'class': 'form-input', 'step': '0.1', 'placeholder': 'e.g. 30'}))
-    kid_shirt_half_chest = forms.DecimalField(required=False, min_value=1, widget=forms.NumberInput(attrs={'class': 'form-input', 'step': '0.1', 'placeholder': 'e.g. 15'}))
-    kid_shirt_length = forms.DecimalField(required=False, min_value=1, widget=forms.NumberInput(attrs={'class': 'form-input', 'step': '0.1', 'placeholder': 'e.g. 21'}))
-    kid_shirt_shoulder = forms.DecimalField(required=False, min_value=1, widget=forms.NumberInput(attrs={'class': 'form-input', 'step': '0.1', 'placeholder': 'e.g. 13'}))
-    kid_pant_length = forms.DecimalField(required=False, min_value=1, widget=forms.NumberInput(attrs={'class': 'form-input', 'step': '0.1', 'placeholder': 'e.g. 28'}))
-    kid_pant_relaxed_waist = forms.DecimalField(required=False, min_value=1, widget=forms.NumberInput(attrs={'class': 'form-input', 'step': '0.1', 'placeholder': 'e.g. 21'}))
-    kid_pant_half_hip = forms.DecimalField(required=False, min_value=1, widget=forms.NumberInput(attrs={'class': 'form-input', 'step': '0.1', 'placeholder': 'e.g. 28'}))
+    kid_shirt_full_chest = forms.DecimalField(required=False, min_value=1, widget=forms.NumberInput(
+        attrs={'class': 'form-input', 'step': '0.1', 'placeholder': 'e.g. 30'}))
+    kid_shirt_half_chest = forms.DecimalField(required=False, min_value=1, widget=forms.NumberInput(
+        attrs={'class': 'form-input', 'step': '0.1', 'placeholder': 'e.g. 15'}))
+    kid_shirt_length = forms.DecimalField(required=False, min_value=1, widget=forms.NumberInput(
+        attrs={'class': 'form-input', 'step': '0.1', 'placeholder': 'e.g. 21'}))
+    kid_shirt_shoulder = forms.DecimalField(required=False, min_value=1, widget=forms.NumberInput(
+        attrs={'class': 'form-input', 'step': '0.1', 'placeholder': 'e.g. 13'}))
+    kid_pant_length = forms.DecimalField(required=False, min_value=1, widget=forms.NumberInput(
+        attrs={'class': 'form-input', 'step': '0.1', 'placeholder': 'e.g. 28'}))
+    kid_pant_relaxed_waist = forms.DecimalField(required=False, min_value=1, widget=forms.NumberInput(
+        attrs={'class': 'form-input', 'step': '0.1', 'placeholder': 'e.g. 21'}))
+    kid_pant_half_hip = forms.DecimalField(required=False, min_value=1, widget=forms.NumberInput(
+        attrs={'class': 'form-input', 'step': '0.1', 'placeholder': 'e.g. 28'}))
 
     class Meta:
         model = JerseyOrder
@@ -49,7 +58,6 @@ class JerseyOrderForm(forms.ModelForm):
             'wearer_name': forms.TextInput(attrs={
                 'class': 'form-input',
                 'placeholder': 'Name on jersey / wearer name',
-                '@input': 'wearer = $event.target.value',
             }),
             'jersey_number': forms.TextInput(attrs={
                 'class': 'form-input',
@@ -96,8 +104,10 @@ class JerseyOrderForm(forms.ModelForm):
         if not item_types:
             self.add_error(None, 'Enter a quantity for at least one item.')
         is_kid = self._uses_kid_measurements(cleaned)
-        has_shirt = any(item_type in JerseyOrder.SHIRT_ITEMS for item_type in item_types)
-        has_pant = any(item_type in JerseyOrder.PANT_ITEMS for item_type in item_types)
+        has_shirt = any(
+            item_type in JerseyOrder.SHIRT_ITEMS for item_type in item_types)
+        has_pant = any(
+            item_type in JerseyOrder.PANT_ITEMS for item_type in item_types)
         if is_kid:
             if has_shirt:
                 self._require_fields(cleaned, [
@@ -114,60 +124,35 @@ class JerseyOrderForm(forms.ModelForm):
                 ], 'Enter kid pant/shorts measurements.')
         else:
             if has_shirt and not cleaned.get('shirt_size'):
-                self.add_error('shirt_size', 'Choose an adult shirt size from the maker chart.')
+                self.add_error(
+                    'shirt_size', 'Choose an adult shirt size from the maker chart.')
             if has_pant and not cleaned.get('pant_size'):
-                self.add_error('pant_size', 'Choose an adult pant/shorts size from the maker chart.')
+                self.add_error(
+                    'pant_size', 'Choose an adult pant/shorts size from the maker chart.')
 
-        # Number: mandate a choice. Either opt out (auto-assign a reference on
-        # save) or pick a number that isn't already reserved by another member.
-        # A member may reuse their own number across their own items/family.
+        # Number: mandate a choice, but do not reserve or block numbers.
+        # The number list is a reference only; family/kids and other members can
+        # reuse a number if needed.
         no_number = cleaned.get('no_number')
         number = cleaned.get('jersey_number') or ''
         if no_number:
-            cleaned['jersey_number'] = ''  # cleared; a reference is assigned on save
+            # cleared; a reference is assigned on save
+            cleaned['jersey_number'] = ''
         elif not number:
-            self.add_error('jersey_number', 'Pick a number, or tick “No number”.')
-        else:
-            reserved_to = JerseyOrder.MANUAL_NUMBER_RESERVATIONS.get(number)
-            if reserved_to and (not self.user or self.user.username != reserved_to):
+            self.add_error('jersey_number',
+                           'Pick a number, or tick “No number”.')
+        elif cleaned.get('for_person') == JerseyOrder.FOR_SELF:
+            taken_by_other_player = (
+                JerseyOrder.objects
+                .filter(for_person=JerseyOrder.FOR_SELF, jersey_number=number)
+                .exclude(user=self.user)
+                .exists()
+            )
+            if taken_by_other_player:
                 self.add_error(
                     'jersey_number',
-                    f'#{number} is reserved for {reserved_to}. '
-                    'Pick another, or tick “No number”.',
+                    'This number is already used by another player. Please choose a different number.'
                 )
-            else:
-                clash = (
-                    JerseyOrder.objects
-                    .filter(jersey_number=number)
-                    .exclude(user=self.user)
-                    .select_related('user')
-                    .first()
-                )
-                if clash:
-                    owner = clash.wearer_name or (clash.user.username if clash.user else 'another member')
-                    self.add_error(
-                        'jersey_number',
-                        f'#{number} is already reserved by {owner}. '
-                        'Pick another, or tick “No number”.',
-                    )
-                else:
-                    # One number per wearer: can't pick a different number than
-                    # one this wearer already has.
-                    wearer = (cleaned.get('wearer_name') or '').strip()
-                    other = (
-                        JerseyOrder.objects
-                        .filter(user=self.user, wearer_name__iexact=wearer)
-                        .exclude(jersey_number='')
-                        .exclude(jersey_number=number)
-                        .values_list('jersey_number', flat=True)
-                        .first()
-                    )
-                    if other:
-                        self.add_error(
-                            'jersey_number',
-                            f'You already have #{other}. '
-                            'Use the same number, tick “No number”, or remove that number.',
-                        )
         return cleaned
 
     @staticmethod
@@ -185,7 +170,8 @@ class JerseyOrderForm(forms.ModelForm):
             return ''
         if not number.isdigit():
             raise forms.ValidationError('Use numbers only.')
-        return str(int(number))
+        # Keep exactly what the member entered (including leading zeros like 08).
+        return number
 
     def save_orders(self):
         orders = []
@@ -237,7 +223,8 @@ class JerseyOrderForm(forms.ModelForm):
         return ''
 
     def item_rows(self):
-        selected = set(self.data.getlist('item_types')) if self.is_bound else set()
+        selected = set(self.data.getlist('item_types')
+                       ) if self.is_bound else set()
         rows = []
         for code, label in JerseyOrder.ITEM_CHOICES:
             field_name = f'quantity_{code}'
@@ -277,7 +264,8 @@ class JerseyOrderWindowForm(forms.Form):
             if instance.closes_at:
                 initial.setdefault(
                     'closes_at',
-                    timezone.localtime(instance.closes_at).strftime('%Y-%m-%dT%H:%M'),
+                    timezone.localtime(instance.closes_at).strftime(
+                        '%Y-%m-%dT%H:%M'),
                 )
         super().__init__(*args, initial=initial, **kwargs)
 

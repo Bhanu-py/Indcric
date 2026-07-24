@@ -39,6 +39,11 @@
 
                 <!-- Poll status / Confirmed pill -->
                 <div class="flex items-center gap-2">
+                    {% if session.is_cancelled %}
+                    <span class="badge shrink-0 bg-red-100 text-red-700 border border-red-200">
+                        Cancelled
+                    </span>
+                    {% endif %}
                     {% if is_past %}
                     <span class="badge badge-stone shrink-0">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -63,6 +68,15 @@
                     {% endif %}
                 </div>
             </div>
+
+            {% if session.is_cancelled %}
+            <div class="mb-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
+                <p class="font-semibold">This session has been cancelled.</p>
+                {% if session.cancelled_reason %}
+                <p class="text-xs mt-1">Reason: {{ session.cancelled_reason }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
 
             <!-- Session name + staff actions menu -->
             <div class="flex items-start justify-between gap-2 !mb-1.5">
@@ -136,6 +150,31 @@
                             </svg>
                             <span>Manage Scoring Access</span>
                         </a>
+
+                        <form method="POST" action="{% url 'cancel_session' session.id %}"
+                              {% if not session.is_cancelled %}onsubmit="const reason = prompt('Reason for cancellation (optional):', 'Cancelled due to weather'); if (reason === null) { return false; } this.querySelector('[name=cancel_reason]').value = reason.trim(); return confirm('Cancel this session?');"{% endif %}>
+                            {% csrf_token %}
+                            {% if session.is_cancelled %}
+                            <input type="hidden" name="action" value="reopen">
+                            <button type="submit"
+                                    class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-emerald-700 hover:bg-emerald-50 transition-colors text-left">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8 8 0 005.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                                Reopen Session
+                            </button>
+                            {% else %}
+                            <input type="hidden" name="action" value="cancel">
+                            <input type="hidden" name="cancel_reason" value="">
+                            <button type="submit"
+                                    class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-700 hover:bg-amber-50 transition-colors text-left">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-7.938 4h15.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L2.33 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                                Cancel Session
+                            </button>
+                            {% endif %}
+                        </form>
 
                         <div class="my-1 border-t border-stone-100"></div>
 

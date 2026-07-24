@@ -15,11 +15,16 @@ class Session(models.Model):
     date = models.DateField()
     date_option_1 = models.DateField(null=True, blank=True)
     date_option_2 = models.DateField(null=True, blank=True)
-    final_play_day = models.CharField(max_length=10, choices=PLAY_DAY_CHOICES, null=True, blank=True)
+    final_play_day = models.CharField(
+        max_length=10, choices=PLAY_DAY_CHOICES, null=True, blank=True)
     time = models.TimeField()
     location = models.CharField(max_length=100)
-    cost_per_person = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    cost_per_person = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True)
     attendance_confirmed = models.BooleanField(default=False)
+    is_cancelled = models.BooleanField(default=False)
+    cancelled_reason = models.CharField(max_length=200, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(
         'accounts.User',
         on_delete=models.SET_NULL,

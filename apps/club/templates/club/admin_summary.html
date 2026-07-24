@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Cricket Club Consultation Admin{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+        <div>
+            <p class="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pitch-600 mb-2">Member consultation</p>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-stone-900">Cricket club consultation admin</h1>
+            <p class="text-sm text-stone-500 mt-1">Review member votes and questions. Public pages show only counts.</p>
+        </div>
+        <a href="{% url 'club:cricket-club' %}" class="btn btn-secondary btn-md">Member page</a>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+        <div class="card p-4 border-pitch-100 bg-pitch-50">
+            <p class="text-xs font-semibold text-pitch-700 uppercase tracking-wide">Responses</p>
+            <p class="text-2xl font-extrabold text-pitch-900 mt-1">{{ summary.total_responses }}</p>
+        </div>
+        <div class="card p-4 border-purple-100 bg-purple-50">
+            <p class="text-xs font-semibold text-purple-700 uppercase tracking-wide">Questions</p>
+            <p class="text-2xl font-extrabold text-purple-900 mt-1">{{ summary.total_questions }}</p>
+        </div>
+        <div class="card p-4 border-emerald-100 bg-emerald-50">
+            <p class="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Role votes</p>
+            <p class="text-2xl font-extrabold text-emerald-900 mt-1">{{ summary.total_role_votes }}</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+        <section class="card overflow-hidden">
+            <div class="card-header">
+                <h2 class="text-sm font-bold text-stone-800">Club decision count</h2>
+            </div>
+            <div class="card-body grid grid-cols-2 gap-3">
+                {% for row in summary.proceed_counts %}
+                <div class="rounded-xl border {% if row.value == 'yes' %}border-emerald-100 bg-emerald-50 text-emerald-900{% else %}border-red-100 bg-red-50 text-red-900{% endif %} p-4">
+                    <p class="text-xs font-semibold uppercase tracking-wide">{{ row.value|title }}</p>
+                    <p class="text-3xl font-extrabold">{{ row.count }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="card overflow-hidden">
+            <div class="card-header">
+                <h2 class="text-sm font-bold text-stone-800">Membership preference count</h2>
+            </div>
+            <div class="card-body space-y-2">
+                {% for row in summary.membership_counts %}
+                <div class="flex items-center justify-between gap-3 rounded-xl border border-stone-100 bg-stone-50 p-3 text-sm">
+                    <span class="text-stone-700">{{ row.label }}</span>
+                    <span class="badge badge-pitch">{{ row.count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <section class="card overflow-hidden mb-5">
+        <div class="card-header">
+            <h2 class="text-sm font-bold text-stone-800">Interest in Organizational Roles</h2>
+            <p class="text-xs text-stone-500 mt-1">Results show interest only. Directors and responsibilities must be confirmed later through discussion and voting.</p>
+        </div>
+        <div class="card-body grid grid-cols-1 md:grid-cols-2 gap-3">
+            {% for row in summary.organizational_role_results %}
+            <div class="rounded-xl border border-stone-100 bg-white p-3 text-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <span class="font-semibold text-stone-800">{{ row.label }}</span>
+                    <span class="badge badge-purple">{{ row.interested }}</span>
+                </div>
+                <div class="mt-2 flex flex-wrap gap-2 text-xs text-stone-500">
+                    <span>{{ row.need_label }}: {{ row.need_count }}</span>
+                    <span>Interested: {{ row.interested }}</span>
+                    <span class="badge {{ row.status_class }}">{{ row.status }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+        <section class="card overflow-hidden">
+            <div class="card-header">
+                <h2 class="text-sm font-bold text-stone-800">Start-up task volunteers</h2>
+                <p class="text-xs text-stone-500 mt-1">Shows how many members selected each start-up task.</p>
+            </div>
+            <div class="card-body space-y-2 max-h-96 overflow-y-auto">
+                {% for row in summary.startup_task_results %}
+                <div class="rounded-xl border border-amber-100 bg-amber-50/70 p-3 text-sm">
+                    <div class="flex items-start justify-between gap-3">
+                        <span class="font-semibold text-stone-800">{{ row.label }}</span>
+                        <span class="badge badge-amber">{{ row.interested }}</span>
+                    </div>
+                    <div class="mt-2 flex flex-wrap gap-2 text-xs text-stone-500">
+                        <span>Interested volunteers: {{ row.interested }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="card overflow-hidden">
+            <div class="card-header">
+                <h2 class="text-sm font-bold text-stone-800">Question count by section</h2>
+            </div>
+            <div class="card-body space-y-2 max-h-96 overflow-y-auto">
+                {% for row in summary.section_question_counts %}
+                <div class="flex items-center justify-between gap-3 rounded-xl border border-purple-100 bg-purple-50/70 p-3 text-sm">
+                    <span class="text-stone-700">{{ row.label }}</span>
+                    <span class="badge badge-purple">{{ row.count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <section class="card overflow-hidden mb-5">
+        <div class="card-header">
+            <h2 class="text-sm font-bold text-stone-800">Questions from members</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-stone-50 text-xs uppercase tracking-wide text-stone-500">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Section</th>
+                        <th class="px-4 py-3 text-left">Question</th>
+                        <th class="px-4 py-3 text-left">Member</th>
+                        <th class="px-4 py-3 text-left">Updated</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100">
+                    {% for row in question_rows %}
+                    <tr>
+                        <td class="px-4 py-3 font-semibold text-stone-700">{{ row.section }}</td>
+                        <td class="px-4 py-3 text-stone-700">{{ row.question }}</td>
+                        <td class="px-4 py-3">{{ row.member }}</td>
+                        <td class="px-4 py-3 text-stone-500">{{ row.updated_at|date:"d M Y, H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-4 py-6 text-center text-stone-500">No questions yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="card overflow-hidden">
+        <div class="card-header">
+            <h2 class="text-sm font-bold text-stone-800">Member responses</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-stone-50 text-xs uppercase tracking-wide text-stone-500">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Member</th>
+                        <th class="px-4 py-3 text-left">Decision</th>
+                        <th class="px-4 py-3 text-left">Membership</th>
+                        <th class="px-4 py-3 text-left">Roles</th>
+                        <th class="px-4 py-3 text-left">Start-up tasks</th>
+                        <th class="px-4 py-3 text-left">Comments</th>
+                        <th class="px-4 py-3 text-left">Updated</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100">
+                    {% for response in responses %}
+                    <tr>
+                        <td class="px-4 py-3">
+                            <div class="font-semibold text-stone-800">{{ response.name|default:response.user.username }}</div>
+                        </td>
+                        <td class="px-4 py-3">{{ response.get_proceed_choice_display }}</td>
+                        <td class="px-4 py-3">{{ response.get_membership_preference_display|default:"-" }}</td>
+                        <td class="px-4 py-3">
+                            {% for label in response.selected_responsibility_labels %}
+                            <span class="badge badge-stone mb-1">{{ label }}</span>
+                            {% empty %}
+                            <span class="text-stone-400">No role selected</span>
+                            {% endfor %}
+                        </td>
+                        <td class="px-4 py-3">
+                            {% for label in response.selected_startup_task_labels %}
+                            <span class="badge badge-amber mb-1">{{ label }}</span>
+                            {% empty %}
+                            <span class="text-stone-400">No task selected</span>
+                            {% endfor %}
+                        </td>
+                        <td class="px-4 py-3 text-stone-600">{{ response.comments|default:"-" }}</td>
+                        <td class="px-4 py-3 text-stone-500">{{ response.updated_at|date:"d M Y, H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-4 py-6 text-center text-stone-500">No responses yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

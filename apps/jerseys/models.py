@@ -118,10 +118,6 @@ class JerseyOrder(models.Model):
         on_delete=models.CASCADE,
         related_name='jersey_orders',
     )
-    # Numbers permanently booked to a specific member (username), independent of
-    # actual orders — reserved for them, blocked for everyone else.
-    MANUAL_NUMBER_RESERVATIONS = {'10': 'bhanu', '8': 'Akhil_Reddy'}
-
     for_person = models.CharField(max_length=10, choices=FOR_CHOICES, default=FOR_SELF)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, default=GENDER_UNISEX)
     wearer_name = models.CharField(max_length=80)
@@ -148,22 +144,22 @@ class JerseyOrder(models.Model):
 
     @classmethod
     def _new_reference(cls):
-        """A random unused 3-digit code (100–999), avoiding existing references,
-        jersey numbers and manually-booked numbers."""
+        """A random unused 3-digit code (100–999), avoiding existing references
+        and jersey numbers."""
         import random
         used = (
             set(cls.objects.exclude(reference='').values_list('reference', flat=True))
             | set(cls.objects.exclude(jersey_number='').values_list('jersey_number', flat=True))
-            | set(cls.MANUAL_NUMBER_RESERVATIONS.keys())
         )
         pool = [str(n) for n in range(100, 1000) if str(n) not in used]
         return random.choice(pool) if pool else str(random.randint(100, 999))
 
     @classmethod
-    def sync_reference(cls, user, wearer_name):
-        """Recompute the shared reference for a wearer's orders: the picked
-        jersey number if any exists, else a stable 3-digit temporary code."""
-        qs = cls.objects.filter(user=user, wearer_name__iexact=(wearer_name or '').strip())
+    def sync_reference(cls, user, wearer_name=None):
+        """Recompute the shared reference for ALL of a user's orders (one number
+        per user, reused for family): the picked jersey number if any exists,
+        else a stable 3-digit temporary code."""
+        qs = cls.objects.filter(user=user)
         if not qs.exists():
             return
         number = (
