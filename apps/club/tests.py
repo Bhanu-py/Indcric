@@ -49,6 +49,8 @@ class ClubConsultationTests(TestCase):
         self.assertContains(response, "Volunteers Needed Before the Club Starts")
         self.assertContains(response, "play in other tournaments")
         self.assertContains(response, "Tournament and Match Coordinator")
+        self.assertContains(response, "A person with Belgian citizenship or permanent residence is preferred")
+        self.assertContains(response, "address-change filing and costs")
         self.assertContains(response, "Director – General Administration")
         self.assertNotContains(response, "Request a membership reimbursement certificate")
         self.assertNotContains(response, "I need more information before deciding.")
