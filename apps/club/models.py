@@ -16,13 +16,11 @@ class ClubConsultationResponse(models.Model):
     MEMBERSHIP_MONTHLY = "monthly"
     MEMBERSHIP_PER_GAME = "per_game"
     MEMBERSHIP_COMBINED = "combined"
-    MEMBERSHIP_NOT_SURE = "not_sure"
     MEMBERSHIP_CHOICES = [
         (MEMBERSHIP_ANNUAL, "Annual membership"),
         (MEMBERSHIP_MONTHLY, "Monthly membership"),
         (MEMBERSHIP_PER_GAME, "Payment for each game or training session"),
         (MEMBERSHIP_COMBINED, "A combination of annual and occasional membership"),
-        (MEMBERSHIP_NOT_SURE, "I am not sure yet"),
     ]
 
     VOLUNTEER_YES = "yes"
@@ -37,13 +35,11 @@ class ClubConsultationResponse(models.Model):
     TIME_MONTHLY = "monthly"
     TIME_SPECIFIC = "specific_task"
     TIME_OCCASIONAL = "occasional"
-    TIME_NOT_SURE = "not_sure"
     TIME_CHOICES = [
         (TIME_WEEKLY, "A few hours each week"),
         (TIME_MONTHLY, "A few hours each month"),
         (TIME_SPECIFIC, "Only when a specific task is assigned"),
         (TIME_OCCASIONAL, "Only occasionally"),
-        (TIME_NOT_SURE, "I am not sure yet"),
     ]
 
     RESPONSIBILITY_OTHER = "other"
@@ -52,12 +48,7 @@ class ClubConsultationResponse(models.Model):
         ("registered_address", "Provide an official registered address"),
         ("statutes", "Help prepare the statutes and internal rules"),
         ("chairperson", "Serve as chairperson or general coordinator"),
-        ("secretary", "Serve as secretary"),
-        ("treasurer", "Serve as treasurer"),
-        ("bank_account", "Manage the club bank account"),
-        ("financial_records", "Maintain financial records"),
-        ("budgets_reports", "Prepare budgets and annual financial reports"),
-        ("tax_admin", "Handle tax-related or administrative submissions"),
+        ("treasurer", "Serve as treasurer and take care of financial records"),
         ("membership_registration", "Manage membership registration"),
         ("membership_payments", "Monitor membership payments"),
         ("membership_certificates", "Prepare membership certificates for mutuality reimbursement"),

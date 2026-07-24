@@ -41,6 +41,11 @@ class ClubConsultationTests(TestCase):
         self.assertNotContains(response, "Request a membership reimbursement certificate")
         self.assertNotContains(response, "I need more information before deciding.")
         self.assertNotContains(response, "Maybe, depending on the role and time required")
+        self.assertNotContains(response, "I am not sure yet")
+        self.assertNotContains(response, "Serve as secretary")
+        self.assertNotContains(response, "Maintain financial records")
+        self.assertNotContains(response, "Prepare budgets and annual financial reports")
+        self.assertNotContains(response, "Handle tax-related or administrative submissions")
 
     def test_authenticated_page_uses_member_account_not_manual_contact_fields(self):
         self.client.force_login(self.user)
@@ -49,6 +54,12 @@ class ClubConsultationTests(TestCase):
 
         self.assertContains(response, "Submitting as Kural")
         self.assertContains(response, "No separate name, email, or phone entry is needed.")
+        self.assertContains(response, "Serve as treasurer and take care of financial records")
+        self.assertNotContains(response, "I am not sure yet")
+        self.assertNotContains(response, "Serve as secretary")
+        self.assertNotContains(response, "Maintain financial records")
+        self.assertNotContains(response, "Prepare budgets and annual financial reports")
+        self.assertNotContains(response, "Handle tax-related or administrative submissions")
         self.assertNotContains(response, "Your full name")
         self.assertNotContains(response, "you@example.com")
 
