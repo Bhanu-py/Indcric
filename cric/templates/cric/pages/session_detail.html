@@ -84,8 +84,8 @@
                     {{ session.name|default:"Untitled session" }}
                 </h1>
                 {% if user.is_staff %}
-                <div x-data="{ open: false }" class="relative shrink-0 -mt-1 -mr-1">
-                    <button @click="open = !open" @click.away="open = false" type="button"
+                <div x-data="{ open: false }" @click.away="open = false" class="relative shrink-0 -mt-1 -mr-1">
+                    <button @click="open = !open" type="button"
                             class="w-9 h-9 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-100 active:bg-stone-200 transition-colors"
                             aria-label="Session actions" title="Session actions">
                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -151,10 +151,9 @@
                             <span>Manage Scoring Access</span>
                         </a>
 
-                        <form method="POST" action="{% url 'cancel_session' session.id %}"
-                              {% if not session.is_cancelled %}onsubmit="const reason = prompt('Reason for cancellation (optional):', 'Cancelled due to weather'); if (reason === null) { return false; } this.querySelector('[name=cancel_reason]').value = reason.trim(); return confirm('Cancel this session?');"{% endif %}>
+                        {% if session.is_cancelled %}
+                        <form method="POST" action="{% url 'cancel_session' session.id %}">
                             {% csrf_token %}
-                            {% if session.is_cancelled %}
                             <input type="hidden" name="action" value="reopen">
                             <button type="submit"
                                     class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-emerald-700 hover:bg-emerald-50 transition-colors text-left">
@@ -163,18 +162,29 @@
                                 </svg>
                                 Reopen Session
                             </button>
-                            {% else %}
-                            <input type="hidden" name="action" value="cancel">
-                            <input type="hidden" name="cancel_reason" value="">
-                            <button type="submit"
+                        </form>
+                        {% else %}
+                        <div x-data="{ confirmCancel: false }">
+                            <button type="button" @click="confirmCancel = true" x-show="!confirmCancel"
                                     class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-700 hover:bg-amber-50 transition-colors text-left">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-7.938 4h15.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L2.33 16c-.77 1.333.192 3 1.732 3z"/>
                                 </svg>
                                 Cancel Session
                             </button>
-                            {% endif %}
-                        </form>
+                            <form method="POST" action="{% url 'cancel_session' session.id %}" x-show="confirmCancel" x-cloak class="px-4 py-3 bg-amber-50/60">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="cancel">
+                                <label class="block text-xs font-medium text-stone-600 mb-1">Reason for cancellation (optional)</label>
+                                <input type="text" name="cancel_reason" maxlength="200"
+                                       class="form-input text-sm w-full">
+                                <div class="flex items-center gap-2 mt-2">
+                                    <button type="submit" class="btn btn-sm bg-red-600 text-white hover:bg-red-700">Cancel session</button>
+                                    <button type="button" @click="confirmCancel = false" class="btn btn-secondary btn-sm">Back</button>
+                                </div>
+                            </form>
+                        </div>
+                        {% endif %}
 
                         <div class="my-1 border-t border-stone-100"></div>
 
