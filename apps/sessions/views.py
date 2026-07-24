@@ -68,10 +68,13 @@ def _session_vote_summary(poll):
     unavailable_votes = len(unavailable_voters)
     available_votes = saturday_votes + sunday_votes + both_votes
     total_votes = saturday_votes + sunday_votes + both_votes + unavailable_votes
-    saturday_percentage = (saturday_votes / total_votes) * 100 if total_votes else 0
-    sunday_percentage = (sunday_votes / total_votes) * 100 if total_votes else 0
+    saturday_percentage = (saturday_votes / total_votes) * \
+        100 if total_votes else 0
+    sunday_percentage = (sunday_votes / total_votes) * \
+        100 if total_votes else 0
     both_percentage = (both_votes / total_votes) * 100 if total_votes else 0
-    unavailable_percentage = (unavailable_votes / total_votes) * 100 if total_votes else 0
+    unavailable_percentage = (
+        unavailable_votes / total_votes) * 100 if total_votes else 0
     return {
         'saturday_votes': saturday_votes,
         'sunday_votes': sunday_votes,
@@ -131,8 +134,14 @@ def _live_match_session_ids(sessions):
 
 def home(request):
     today = timezone.now().date()
-    upcoming_sessions = list(Session.objects.filter(date__gte=today).order_by('date', 'time'))
-    previous_sessions = list(Session.objects.filter(date__lt=today).order_by('-date', '-time')[:10])
+    upcoming_sessions = list(
+        Session.objects.filter(
+            date__gte=today, is_cancelled=False).order_by('date', 'time')
+    )
+    previous_sessions = list(
+        Session.objects.filter(date__lt=today, is_cancelled=False).order_by(
+            '-date', '-time')[:10]
+    )
 
     all_sessions = upcoming_sessions + previous_sessions
     live_session_ids = _live_match_session_ids(all_sessions)
@@ -172,7 +181,8 @@ def home(request):
             vote = Vote.objects.filter(
                 poll=next_session.poll, user=request.user
             ).first()
-            next_session_user_vote = _vote_choice(vote.choice, next_session) if vote else None
+            next_session_user_vote = _vote_choice(
+                vote.choice, next_session) if vote else None
 
     context = {
         'upcoming_sessions': upcoming_sessions,
@@ -192,8 +202,10 @@ def home(request):
 @login_required
 def create_session_view(request):
     if request.method == 'POST':
-        name = (request.POST.get('name') or 'Cricket this week').strip() or 'Cricket this week'
-        date_option_1_str = request.POST.get('date_option_1') or request.POST.get('date')
+        name = (request.POST.get('name')
+                or 'Cricket this week').strip() or 'Cricket this week'
+        date_option_1_str = request.POST.get(
+            'date_option_1') or request.POST.get('date')
         date_option_2_str = request.POST.get('date_option_2')
         time_str = request.POST.get('time')
         duration = request.POST.get('duration', 3)
@@ -222,16 +234,20 @@ def create_session_view(request):
 
         if date_option_1_str:
             try:
-                date_option_1 = timezone.datetime.strptime(date_option_1_str, '%Y-%m-%d').date()
+                date_option_1 = timezone.datetime.strptime(
+                    date_option_1_str, '%Y-%m-%d').date()
             except ValueError:
-                messages.error(request, "Invalid date format. Please use YYYY-MM-DD.")
+                messages.error(
+                    request, "Invalid date format. Please use YYYY-MM-DD.")
                 return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
 
         if date_option_2_str:
             try:
-                date_option_2 = timezone.datetime.strptime(date_option_2_str, '%Y-%m-%d').date()
+                date_option_2 = timezone.datetime.strptime(
+                    date_option_2_str, '%Y-%m-%d').date()
             except ValueError:
-                messages.error(request, "Invalid second date format. Please use YYYY-MM-DD.")
+                messages.error(
+                    request, "Invalid second date format. Please use YYYY-MM-DD.")
                 return render(request, 'cric/pages/create_session.html', {'users': User.objects.all()})
 
         try:
@@ -287,7 +303,8 @@ def resend_poll_notifications_view(request, session_id):
     Meta outage, access-token issue).
     """
     if not request.user.is_staff:
-        messages.error(request, "You don't have permission to perform this action.")
+        messages.error(
+            request, "You don't have permission to perform this action.")
         return redirect('session_detail', session_id=session_id)
 
     session = get_object_or_404(Session, id=session_id)
@@ -301,7 +318,8 @@ def resend_poll_notifications_view(request, session_id):
     from apps.notifications.services import (
         resend_poll_invite, SCOPE_NON_VOTERS, SCOPE_ALL,
     )
-    requested_scope = (request.POST.get('scope') or request.GET.get('scope') or '').strip().lower()
+    requested_scope = (request.POST.get('scope')
+                       or request.GET.get('scope') or '').strip().lower()
     scope = SCOPE_ALL if requested_scope == 'all' else SCOPE_NON_VOTERS
 
     try:
@@ -341,9 +359,11 @@ def resend_poll_notifications_view(request, session_id):
         )
     elif targets == 0:
         if scope == SCOPE_NON_VOTERS:
-            messages.info(request, 'No DMs to send — everyone with a phone has already voted.')
+            messages.info(
+                request, 'No DMs to send — everyone with a phone has already voted.')
         else:
-            messages.warning(request, 'No DMs sent — no members have a phone on file.')
+            messages.warning(
+                request, 'No DMs sent — no members have a phone on file.')
     else:
         messages.error(
             request,
@@ -356,7 +376,8 @@ def resend_poll_notifications_view(request, session_id):
 @login_required
 def delete_session_view(request, session_id):
     if not request.user.is_staff:
-        messages.error(request, "You don't have permission to perform this action.")
+        messages.error(
+            request, "You don't have permission to perform this action.")
         return redirect('home')
 
     session = get_object_or_404(Session, id=session_id)
@@ -370,9 +391,50 @@ def delete_session_view(request, session_id):
             from apps.matches.models import Innings
             Innings.objects.filter(match__session=session).delete()
             session.delete()
-        messages.success(request, f"Session '{session_name}' has been deleted.")
+        messages.success(
+            request, f"Session '{session_name}' has been deleted.")
         return redirect('home')
     return redirect('session_detail', session_id=session_id)
+
+
+@login_required
+def cancel_session_view(request, session_id):
+    if not request.user.is_staff:
+        messages.error(
+            request, "You don't have permission to perform this action.")
+        return redirect('home')
+
+    session = get_object_or_404(Session, id=session_id)
+    if request.method != 'POST':
+        return redirect('session_detail', session_id=session_id)
+
+    action = (request.POST.get('action') or 'cancel').strip().lower()
+    if action == 'reopen':
+        if not session.is_cancelled:
+            messages.info(request, 'Session is already active.')
+            return redirect('session_detail', session_id=session.id)
+
+        session.is_cancelled = False
+        session.cancelled_reason = ''
+        session.cancelled_at = None
+        session.save(update_fields=['is_cancelled',
+                     'cancelled_reason', 'cancelled_at'])
+        messages.success(request, 'Session reopened.')
+        return redirect('session_detail', session_id=session.id)
+
+    reason = (request.POST.get('cancel_reason') or '').strip()
+    session.is_cancelled = True
+    session.cancelled_reason = reason
+    session.cancelled_at = timezone.now()
+    session.save(update_fields=['is_cancelled',
+                 'cancelled_reason', 'cancelled_at'])
+
+    if hasattr(session, 'poll') and session.poll.is_open:
+        session.poll.is_open = False
+        session.poll.save(update_fields=['is_open'])
+
+    messages.success(request, 'Session cancelled successfully.')
+    return redirect('session_detail', session_id=session.id)
 
 
 @login_required
@@ -383,22 +445,29 @@ def session_detail_view(request, session_id):
 
     def _combined_rating(u):
         """Avg of batting/bowling/fielding ratings, rounded to 2dp. Defaults each None to 2.5."""
-        bat  = u.batting_rating  if u.batting_rating  is not None else Decimal('2.5')
-        bowl = u.bowling_rating  if u.bowling_rating  is not None else Decimal('2.5')
-        fld  = u.fielding_rating if u.fielding_rating is not None else Decimal('2.5')
+        bat = u.batting_rating if u.batting_rating is not None else Decimal(
+            '2.5')
+        bowl = u.bowling_rating if u.bowling_rating is not None else Decimal(
+            '2.5')
+        fld = u.fielding_rating if u.fielding_rating is not None else Decimal(
+            '2.5')
         return float(((bat + bowl + fld) / Decimal('3')).quantize(Decimal('0.01')))
 
     def _player_skills(u):
         """Per-skill numbers + combined rating for the team-balancer meter."""
-        bat  = float(u.batting_rating  if u.batting_rating  is not None else Decimal('2.5'))
-        bowl = float(u.bowling_rating  if u.bowling_rating  is not None else Decimal('2.5'))
+        bat = float(
+            u.batting_rating if u.batting_rating is not None else Decimal('2.5'))
+        bowl = float(
+            u.bowling_rating if u.bowling_rating is not None else Decimal('2.5'))
         return {
             'batting': bat,
             'bowling': bowl,
             'rating': _combined_rating(u),
         }
 
-    _ROLE_ORDER = {'batsman': 0, 'allrounder': 1, 'all-rounder': 1, 'bowler': 2}
+    _ROLE_ORDER = {'batsman': 0, 'allrounder': 1,
+                   'all-rounder': 1, 'bowler': 2}
+
     def _role_sort_key(p):
         return _ROLE_ORDER.get((p['user'].role or '').lower(), 3)
 
@@ -435,7 +504,8 @@ def session_detail_view(request, session_id):
         no_percentage = summary['no_percentage']
         both_percentage = summary['both_percentage']
         unavailable_percentage = summary['unavailable_percentage']
-        yes_voters = [{'user': u, 'team_assigned': False, **_player_skills(u)} for u in summary['saturday_voters']]
+        yes_voters = [{'user': u, 'team_assigned': False, **
+                       _player_skills(u)} for u in summary['saturday_voters']]
         no_voters = summary['sunday_voters']
         both_voters = summary['both_voters']
         unavailable_voters = summary['unavailable_voters']
@@ -470,15 +540,21 @@ def session_detail_view(request, session_id):
         }
         if availability['is_two_day']:
             _defs = [
-                ('sat', session.date_option_1_label, session.date_option_1, saturday_votes,    summary['saturday_percentage'],    summary['saturday_voters'],    'emerald', True),
-                ('sun', session.date_option_2_label, session.date_option_2, sunday_votes,      summary['sunday_percentage'],      summary['sunday_voters'],      'sky',     True),
-                ('all', 'Either date',               None,                  both_votes,        summary['both_percentage'],        summary['both_voters'],        'purple',  False),
-                ('out', "Can't make it",             None,                  unavailable_votes, summary['unavailable_percentage'], summary['unavailable_voters'], 'red',     False),
+                ('sat', session.date_option_1_label, session.date_option_1, saturday_votes,
+                 summary['saturday_percentage'],    summary['saturday_voters'],    'emerald', True),
+                ('sun', session.date_option_2_label, session.date_option_2, sunday_votes,
+                 summary['sunday_percentage'],      summary['sunday_voters'],      'sky',     True),
+                ('all', 'Either date',               None,                  both_votes,
+                 summary['both_percentage'],        summary['both_voters'],        'purple',  False),
+                ('out', "Can't make it",             None,                  unavailable_votes,
+                 summary['unavailable_percentage'], summary['unavailable_voters'], 'red',     False),
             ]
         else:
             _defs = [
-                ('yes', 'Yes', session.date, yes_votes, summary['saturday_percentage'], summary['saturday_voters'], 'emerald', True),
-                ('no',  'No',  session.date, no_votes,  summary['sunday_percentage'],   summary['sunday_voters'],   'red',     True),
+                ('yes', 'Yes', session.date, yes_votes,
+                 summary['saturday_percentage'], summary['saturday_voters'], 'emerald', True),
+                ('no',  'No',  session.date, no_votes,
+                 summary['sunday_percentage'],   summary['sunday_voters'],   'red',     True),
             ]
         for key, label, date, count, pct, voters, accent, primary in _defs:
             poll_choices.append({
@@ -494,11 +570,13 @@ def session_detail_view(request, session_id):
                     c['status'] = 'finalized'
                 elif c['key'] in ('sat', 'sun'):
                     c['status'] = 'cancelled'
-        user_choice = next((c for c in poll_choices if c['key'] == user_vote), None)
+        user_choice = next(
+            (c for c in poll_choices if c['key'] == user_vote), None)
         other_choices = [c for c in poll_choices if c['key'] != user_vote]
 
     matches = list(
-        session.matches.prefetch_related('teams__players__user', 'innings').order_by('id')
+        session.matches.prefetch_related(
+            'teams__players__user', 'innings').order_by('id')
     )
     # Match ids with a recorded scorecard (>=1 ball) — their deletion is guarded
     # (see delete_match_view, issue #39).
@@ -534,7 +612,8 @@ def session_detail_view(request, session_id):
                 match.purple_cap_user_id = awards['purple']['player'].user_id
 
     # Player of the Session — shown once at least one match has a result.
-    session_award = match_scoring.session_awards(session) if any_completed else None
+    session_award = match_scoring.session_awards(
+        session) if any_completed else None
 
     edit_match_id = request.GET.get('edit_match')
     edit_match = edit_team1 = edit_team2 = None
@@ -542,7 +621,8 @@ def session_detail_view(request, session_id):
     edit_team2_players = []
 
     if edit_match_id:
-        edit_match = get_object_or_404(Match, id=edit_match_id, session=session)
+        edit_match = get_object_or_404(
+            Match, id=edit_match_id, session=session)
         teams = list(edit_match.teams.order_by('id'))
         if len(teams) >= 1:
             edit_team1 = teams[0]
@@ -557,7 +637,8 @@ def session_detail_view(request, session_id):
                 for p in edit_team2.players.select_related('user').all()
             ], key=_role_sort_key)
 
-    assigned_ids = {p['user'].id for p in edit_team1_players + edit_team2_players}
+    assigned_ids = {
+        p['user'].id for p in edit_team1_players + edit_team2_players}
     for voter in team_pool_voters:
         voter['team_assigned'] = voter['user'].id in assigned_ids
 
@@ -584,7 +665,8 @@ def session_detail_view(request, session_id):
                 **_player_skills(u),
             })
 
-    eligible_vote_count = len(eligible_voter_users) if eligible_voter_users else yes_votes
+    eligible_vote_count = len(
+        eligible_voter_users) if eligible_voter_users else yes_votes
     cost_split_count = eligible_vote_count
     cost_split_label = 'Available'
     cost_per_person_est = None
@@ -602,7 +684,8 @@ def session_detail_view(request, session_id):
         if summary is None:
             summary = _session_vote_summary(session.poll)
         unavailable_user_ids = set(
-            session.poll.votes.filter(choice='out').values_list('user_id', flat=True)
+            session.poll.votes.filter(
+                choice='out').values_list('user_id', flat=True)
         )
         if session.has_two_date_options and not session.final_play_day:
             attendance_waiting_for_play_day = True
@@ -613,7 +696,8 @@ def session_detail_view(request, session_id):
                 .values_list('user_id', flat=True)
                 .distinct()
             )
-            eligible_user_ids = {u.id for u in _eligible_voters_for_play_day(session, summary)}
+            eligible_user_ids = {
+                u.id for u in _eligible_voters_for_play_day(session, summary)}
             if scorecard_user_ids:
                 roster_user_ids = scorecard_user_ids
                 default_present_user_ids = scorecard_user_ids
@@ -622,7 +706,8 @@ def session_detail_view(request, session_id):
                 default_present_user_ids = eligible_user_ids
 
             for uid in roster_user_ids:
-                sp, _ = SessionPlayer.objects.get_or_create(session=session, user_id=uid)
+                sp, _ = SessionPlayer.objects.get_or_create(
+                    session=session, user_id=uid)
                 should_attend = uid in default_present_user_ids
                 attendance, _ = Attendance.objects.get_or_create(
                     match_player=sp, defaults={'attended': should_attend}
@@ -638,7 +723,8 @@ def session_detail_view(request, session_id):
                 .order_by('user__username')
             )
             attendance_present_ids = list(
-                Attendance.objects.filter(match_player__session=session, attended=True)
+                Attendance.objects.filter(
+                    match_player__session=session, attended=True)
                 .values_list('match_player_id', flat=True)
             )
             attendance_chargeable_ids = list(
@@ -670,7 +756,8 @@ def session_detail_view(request, session_id):
         cost_split_label = 'Charged'
 
     if not session.cost_per_person and cost_split_count > 0 and session.cost:
-        cost_per_person_est = (session.cost / Decimal(cost_split_count)).quantize(Decimal('0.01'))
+        cost_per_person_est = (
+            session.cost / Decimal(cost_split_count)).quantize(Decimal('0.01'))
 
     whatsapp_share_url = ''
     if hasattr(session, 'poll'):
@@ -732,6 +819,10 @@ def vote_session_view(request, poll_id):
     session = poll.session
 
     if request.method == 'POST':
+        if session.is_cancelled:
+            messages.error(
+                request, 'This session is cancelled. Voting is unavailable.')
+            return redirect('session_detail', session_id=session.id)
         if not poll.is_open:
             messages.error(request, "This poll is closed.")
             return redirect('session_detail', session_id=session.id)
@@ -740,7 +831,8 @@ def vote_session_view(request, poll_id):
             return redirect('session_detail', session_id=session.id)
 
         choice = _vote_choice(request.POST.get('choice'), session)
-        valid_choices = ['sat', 'sun', 'all', 'out'] if session.has_two_date_options else ['yes', 'no']
+        valid_choices = ['sat', 'sun', 'all',
+                         'out'] if session.has_two_date_options else ['yes', 'no']
         if choice in valid_choices:
             Vote.objects.update_or_create(
                 poll=poll, user=request.user, defaults={'choice': choice}
@@ -767,7 +859,8 @@ def vote_session_view(request, poll_id):
 @login_required
 def close_poll_view(request, poll_id):
     if not request.user.is_staff:
-        messages.error(request, "You don't have permission to perform this action.")
+        messages.error(
+            request, "You don't have permission to perform this action.")
         return redirect('home')
 
     poll = get_object_or_404(Poll, id=poll_id)
@@ -787,10 +880,16 @@ def finalize_play_day_view(request, session_id):
     session = get_object_or_404(Session, id=session_id)
 
     if not request.user.is_staff:
-        messages.error(request, "You don't have permission to perform this action.")
+        messages.error(
+            request, "You don't have permission to perform this action.")
         return redirect('session_detail', session_id=session.id)
 
     if request.method != 'POST':
+        return redirect('session_detail', session_id=session.id)
+
+    if session.is_cancelled:
+        messages.error(
+            request, 'This session is cancelled. Reopen it before setting a play day.')
         return redirect('session_detail', session_id=session.id)
 
     choice = (request.POST.get('play_day') or '').strip().lower()
@@ -800,9 +899,11 @@ def finalize_play_day_view(request, session_id):
         session.save(update_fields=['final_play_day'])
         messages.success(request, "Play day cleared. The poll stays open.")
         return redirect('session_detail', session_id=session.id)
-    allowed_choices = {'sat', 'sun'} if session.has_two_date_options else {session.single_play_day}
+    allowed_choices = {'sat', 'sun'} if session.has_two_date_options else {
+        session.single_play_day}
     if choice not in allowed_choices:
-        messages.error(request, 'Please choose one of the available play days.')
+        messages.error(
+            request, 'Please choose one of the available play days.')
         return redirect('session_detail', session_id=session.id)
 
     session.final_play_day = choice
@@ -851,10 +952,12 @@ def _sync_teams_in_place(match, teams, t1_name, t2_name, t1_ids, t2_ids, t1_cap_
     involved_player_ids = set()
     for field in ('striker_id', 'non_striker_id', 'bowler_id', 'out_player_id', 'fielder_id'):
         involved_player_ids.update(
-            dq.exclude(**{field + '__isnull': True}).values_list(field, flat=True)
+            dq.exclude(**{field + '__isnull': True}
+                       ).values_list(field, flat=True)
         )
     involved_user_ids = set(
-        Player.objects.filter(id__in=involved_player_ids).values_list('user_id', flat=True)
+        Player.objects.filter(id__in=involved_player_ids).values_list(
+            'user_id', flat=True)
     )
 
     # Drop only players with no deliveries who are no longer on their team's list.
@@ -874,7 +977,8 @@ def _sync_teams_in_place(match, teams, t1_name, t2_name, t1_ids, t2_ids, t1_cap_
                 continue
             u = User.objects.filter(id=uid).first()
             if u:
-                Player.objects.get_or_create(user=u, team=team, defaults={'role': u.role or 'batsman'})
+                Player.objects.get_or_create(user=u, team=team, defaults={
+                                             'role': u.role or 'batsman'})
                 # Auto-create SessionPlayer + Attendance for this user
                 sp, created = SessionPlayer.objects.get_or_create(
                     session=match.session,
@@ -890,7 +994,7 @@ def _sync_teams_in_place(match, teams, t1_name, t2_name, t1_ids, t2_ids, t1_cap_
 @login_required
 def save_teams_view(request, session_id):
     session = get_object_or_404(Session, id=session_id)
-    
+
     # Check permission: staff OR player with valid scoring access for this session
     has_permission = request.user.is_staff
     if not has_permission:
@@ -900,14 +1004,21 @@ def save_teams_view(request, session_id):
             is_active=True,
             expires_at__gt=timezone.now()
         ).exists()
-    
+
     if not has_permission:
-        messages.error(request, "You don't have permission to perform this action.")
+        messages.error(
+            request, "You don't have permission to perform this action.")
+        return redirect('session_detail', session_id=session_id)
+
+    if session.is_cancelled:
+        messages.error(
+            request, 'This session is cancelled. Reopen it before editing teams.')
         return redirect('session_detail', session_id=session_id)
 
     # Prevent team edits when attendance is already confirmed
     if session.attendance_confirmed:
-        messages.error(request, "Attendance already confirmed. Cannot modify teams.")
+        messages.error(
+            request, "Attendance already confirmed. Cannot modify teams.")
         return redirect('session_detail', session_id=session_id)
 
     if request.method == 'POST':
@@ -923,7 +1034,8 @@ def save_teams_view(request, session_id):
         team1_ids = [p for p in team1_players_str.split(',') if p.strip()]
         team2_ids = [p for p in team2_players_str.split(',') if p.strip()]
         if len(team1_ids) < 5 or len(team2_ids) < 5:
-            messages.error(request, "Each team must have at least 5 players before saving.")
+            messages.error(
+                request, "Each team must have at least 5 players before saving.")
             return redirect('session_detail', session_id=session_id)
 
         if match_id:
@@ -933,7 +1045,8 @@ def save_teams_view(request, session_id):
                 match.save(update_fields=['name'])
         else:
             if session.date < timezone.now().date():
-                messages.error(request, "This session has already ended — new matches can't be added.")
+                messages.error(
+                    request, "This session has already ended — new matches can't be added.")
                 return redirect('session_detail', session_id=session_id)
             match_number = session.matches.count() + 1
             match = Match.objects.create(
@@ -952,8 +1065,10 @@ def save_teams_view(request, session_id):
             )
         else:
             match.teams.all().delete()
-            team1_captain = User.objects.filter(id=team1_captain_id).first() if team1_captain_id else None
-            team1 = Team.objects.create(match=match, name=team1_name, captain=team1_captain)
+            team1_captain = User.objects.filter(
+                id=team1_captain_id).first() if team1_captain_id else None
+            team1 = Team.objects.create(
+                match=match, name=team1_name, captain=team1_captain)
             for pid in team1_ids:
                 try:
                     u = User.objects.get(id=int(pid))
@@ -961,8 +1076,10 @@ def save_teams_view(request, session_id):
                 except (User.DoesNotExist, ValueError):
                     pass
 
-            team2_captain = User.objects.filter(id=team2_captain_id).first() if team2_captain_id else None
-            team2 = Team.objects.create(match=match, name=team2_name, captain=team2_captain)
+            team2_captain = User.objects.filter(
+                id=team2_captain_id).first() if team2_captain_id else None
+            team2 = Team.objects.create(
+                match=match, name=team2_name, captain=team2_captain)
             for pid in team2_ids:
                 try:
                     u = User.objects.get(id=int(pid))
@@ -1004,7 +1121,7 @@ def save_teams_view(request, session_id):
 @login_required
 def add_match_view(request, session_id):
     session = get_object_or_404(Session, id=session_id)
-    
+
     # Check permission: staff OR player with valid scoring access for this session
     has_permission = request.user.is_staff
     if not has_permission:
@@ -1014,26 +1131,30 @@ def add_match_view(request, session_id):
             is_active=True,
             expires_at__gt=timezone.now()
         ).exists()
-    
+
     if not has_permission:
-        messages.error(request, "You don't have permission to perform this action.")
+        messages.error(
+            request, "You don't have permission to perform this action.")
         return redirect('session_detail', session_id=session_id)
 
     if session.date < timezone.now().date():
-        messages.error(request, "This session has already ended — new matches can't be added.")
+        messages.error(
+            request, "This session has already ended — new matches can't be added.")
         return redirect('session_detail', session_id=session_id)
 
     if request.method == 'POST':
         last_match = session.matches.order_by('-id').first()
         match_number = session.matches.count() + 1
-        new_match = Match.objects.create(session=session, name=f"Match {match_number}")
+        new_match = Match.objects.create(
+            session=session, name=f"Match {match_number}")
         if last_match:
             for old_team in last_match.teams.order_by('id'):
                 new_team = Team.objects.create(
                     match=new_match, name=old_team.name, captain=old_team.captain
                 )
                 for old_player in old_team.players.select_related('user').all():
-                    Player.objects.create(user=old_player.user, team=new_team, role=old_player.role)
+                    Player.objects.create(
+                        user=old_player.user, team=new_team, role=old_player.role)
         return redirect(f"{reverse('session_detail', args=[session_id])}?edit_match={new_match.id}")
 
     return redirect('session_detail', session_id=session_id)
@@ -1042,7 +1163,8 @@ def add_match_view(request, session_id):
 @login_required
 def record_score_view(request, match_id):
     if not request.user.is_staff:
-        messages.error(request, "You don't have permission to perform this action.")
+        messages.error(
+            request, "You don't have permission to perform this action.")
         return redirect('home')
 
     match = get_object_or_404(Match, id=match_id)
@@ -1052,10 +1174,12 @@ def record_score_view(request, match_id):
         if len(teams) >= 2:
             try:
                 teams[0].runs = max(0, int(request.POST.get('team1_runs', 0)))
-                teams[0].wickets = min(10, max(0, int(request.POST.get('team1_wickets', 0))))
+                teams[0].wickets = min(
+                    10, max(0, int(request.POST.get('team1_wickets', 0))))
                 teams[0].save()
                 teams[1].runs = max(0, int(request.POST.get('team2_runs', 0)))
-                teams[1].wickets = min(10, max(0, int(request.POST.get('team2_wickets', 0))))
+                teams[1].wickets = min(
+                    10, max(0, int(request.POST.get('team2_wickets', 0))))
                 teams[1].save()
                 if teams[0].runs > teams[1].runs:
                     match.winner = teams[0]
@@ -1075,7 +1199,7 @@ def record_score_view(request, match_id):
 def delete_match_view(request, match_id):
     match = get_object_or_404(Match, id=match_id)
     session_id = match.session.id
-    
+
     # Check permission: staff OR player with valid scoring access for this session
     has_permission = request.user.is_staff
     if not has_permission and request.user.is_authenticated:
@@ -1085,9 +1209,10 @@ def delete_match_view(request, match_id):
             is_active=True,
             expires_at__gt=timezone.now()
         ).exists()
-    
+
     if not has_permission:
-        messages.error(request, "You don't have permission to perform this action.")
+        messages.error(
+            request, "You don't have permission to perform this action.")
         return redirect('home')
 
     if request.method == 'POST':
@@ -1127,7 +1252,8 @@ def add_attendee_view(request, session_id):
         return redirect('session_detail', session_id=session.id)
 
     if not request.user.is_staff:
-        messages.error(request, "You don't have permission to perform this action.")
+        messages.error(
+            request, "You don't have permission to perform this action.")
         return redirect('session_detail', session_id=session.id)
 
     user_id = request.POST.get('user_id')
@@ -1142,8 +1268,10 @@ def add_attendee_view(request, session_id):
         return redirect('session_detail', session_id=session.id)
 
     with transaction.atomic():
-        sp, created = SessionPlayer.objects.get_or_create(session=session, user=added_user)
-        Attendance.objects.get_or_create(match_player=sp, defaults={'attended': True})
+        sp, created = SessionPlayer.objects.get_or_create(
+            session=session, user=added_user)
+        Attendance.objects.get_or_create(
+            match_player=sp, defaults={'attended': True})
 
     if created:
         messages.success(
@@ -1152,7 +1280,8 @@ def add_attendee_view(request, session_id):
             "Hit Save attendance to apply the new cost split."
         )
     else:
-        messages.info(request, f"{added_user.username} was already on the roster.")
+        messages.info(
+            request, f"{added_user.username} was already on the roster.")
 
     return redirect('session_detail', session_id=session.id)
 
@@ -1172,7 +1301,8 @@ def session_attendance_detail_view(request, session_id):
         return redirect('session_detail', session_id=session.id)
 
     if not request.user.is_staff:
-        messages.error(request, "You don't have permission to perform this action.")
+        messages.error(
+            request, "You don't have permission to perform this action.")
         return redirect('session_detail', session_id=session.id)
 
     present_sp_ids = set(request.POST.getlist('present'))
@@ -1187,7 +1317,8 @@ def session_attendance_detail_view(request, session_id):
             is_chargeable = is_present and str(sp.id) in chargeable_sp_ids
             attendance, _ = Attendance.objects.get_or_create(
                 match_player=sp,
-                defaults={'attended': is_present, 'cost_exempt': is_present and not is_chargeable},
+                defaults={'attended': is_present,
+                          'cost_exempt': is_present and not is_chargeable},
             )
             cost_exempt = is_present and not is_chargeable
             update_fields = []
@@ -1211,10 +1342,12 @@ def session_attendance_detail_view(request, session_id):
         if present_count == 0:
             session.cost_per_person = None
             session.attendance_confirmed = False
-            session.save(update_fields=['cost_per_person', 'attendance_confirmed'])
+            session.save(update_fields=[
+                         'cost_per_person', 'attendance_confirmed'])
             # Remove any pending payments — no one attended.
             Payment.objects.filter(session=session, status='pending').delete()
-            messages.warning(request, 'No attendees marked — attendance cleared, no cost split.')
+            messages.warning(
+                request, 'No attendees marked — attendance cleared, no cost split.')
             return redirect('session_detail', session_id=session.id)
 
         # Attendees present but the session has no cost (free game) → still confirm
@@ -1222,7 +1355,8 @@ def session_attendance_detail_view(request, session_id):
         if chargeable_count == 0:
             session.cost_per_person = None
             session.attendance_confirmed = True
-            session.save(update_fields=['cost_per_person', 'attendance_confirmed'])
+            session.save(update_fields=[
+                         'cost_per_person', 'attendance_confirmed'])
             Payment.objects.filter(session=session, status='pending').delete()
             messages.success(
                 request,
@@ -1234,7 +1368,8 @@ def session_attendance_detail_view(request, session_id):
         if not session.cost:
             session.cost_per_person = None
             session.attendance_confirmed = True
-            session.save(update_fields=['cost_per_person', 'attendance_confirmed'])
+            session.save(update_fields=[
+                         'cost_per_person', 'attendance_confirmed'])
             # No cost → drop stale pending payments; keep any historic paid records.
             Payment.objects.filter(session=session, status='pending').delete()
             messages.success(
@@ -1245,7 +1380,8 @@ def session_attendance_detail_view(request, session_id):
             return redirect('session_detail', session_id=session.id)
 
         # 2. Recompute the per-person split.
-        cost_per_person = (session.cost / Decimal(chargeable_count)).quantize(Decimal('0.01'))
+        cost_per_person = (
+            session.cost / Decimal(chargeable_count)).quantize(Decimal('0.01'))
         session.cost_per_person = cost_per_person
         session.attendance_confirmed = True
         session.save(update_fields=['cost_per_person', 'attendance_confirmed'])
@@ -1273,7 +1409,8 @@ def session_attendance_detail_view(request, session_id):
         for uid in chargeable_set:
             payment, created = Payment.objects.get_or_create(
                 user_id=uid, session=session,
-                defaults={'amount': cost_per_person, 'status': 'pending', 'method': 'cash'},
+                defaults={'amount': cost_per_person,
+                          'status': 'pending', 'method': 'cash'},
             )
             if not created and payment.status == 'pending' and payment.amount != cost_per_person:
                 payment.amount = cost_per_person
@@ -1309,7 +1446,8 @@ def payments_view(request):
         date__gte=thirty_days_ago, date__lte=today, attendance_confirmed=True
     ).count()
     # "Settled" = members with no pending payments (out of those who have any payments)
-    members_with_payments = User.objects.filter(payment__isnull=False).distinct()
+    members_with_payments = User.objects.filter(
+        payment__isnull=False).distinct()
     settled_count = members_with_payments.exclude(
         payment__status='pending'
     ).distinct().count()
@@ -1353,7 +1491,8 @@ def payments_view(request):
     # Paid past sessions whose attendance was never confirmed — not yet ready for
     # payments. Surfaced with a nudge to go confirm attendance first.
     pending_attendance_sessions = list(
-        Session.objects.filter(date__lt=today, attendance_confirmed=False, cost__gt=0)
+        Session.objects.filter(
+            date__lt=today, attendance_confirmed=False, cost__gt=0)
         .order_by('-date', '-time')
     )
 
@@ -1367,7 +1506,8 @@ def payments_view(request):
     # POST: toggle paid status for a selected session ────────────
     if request.method == 'POST':
         if not request.user.is_staff:
-            messages.error(request, "You don't have permission to perform this action.")
+            messages.error(
+                request, "You don't have permission to perform this action.")
             return redirect('manage-payments')
         session_id = request.POST.get('session_id')
         try:
@@ -1401,7 +1541,8 @@ def payments_view(request):
                             status='paid',
                         )
                         payment.method = 'wallet'
-                        deducted.append((payment.user.username, payment.amount))
+                        deducted.append(
+                            (payment.user.username, payment.amount))
                     else:
                         payment.method = 'cash'
                     payment.status = 'paid'
@@ -1414,7 +1555,8 @@ def payments_view(request):
                             amount=payment.amount,
                             status='refund',
                         )
-                        refunded.append((payment.user.username, payment.amount))
+                        refunded.append(
+                            (payment.user.username, payment.amount))
                     payment.status = 'pending'
                     payment.save(update_fields=['status'])
 
@@ -1448,24 +1590,28 @@ def payments_view(request):
         if session_id:
             # Selectable: a confirmed paid session, or a past free session.
             selected_session = Session.objects.filter(
-                models.Q(attendance_confirmed=True) | models.Q(cost__lte=0, date__lt=today),
+                models.Q(attendance_confirmed=True) | models.Q(
+                    cost__lte=0, date__lt=today),
                 pk=session_id,
             ).first()
         if selected_session is None:
             selected_session = confirmed_sessions.first()
 
-        selected_is_free = selected_session is not None and (selected_session.cost or 0) <= 0
+        selected_is_free = selected_session is not None and (
+            selected_session.cost or 0) <= 0
 
         if selected_is_free:
             # Free session → no payments to collect. Just list the attendees with
             # their wallet balance (no cash/paid checklist).
             present_sps = (
-                SessionPlayer.objects.filter(session=selected_session, attendance__attended=True)
+                SessionPlayer.objects.filter(
+                    session=selected_session, attendance__attended=True)
                 .select_related('user')
                 .order_by('user__username')
             )
             selected_attendees = [
-                {'user': sp.user, 'wallet': wallet_by_user.get(sp.user_id, Decimal('0'))}
+                {'user': sp.user, 'wallet': wallet_by_user.get(
+                    sp.user_id, Decimal('0'))}
                 for sp in present_sps
             ]
         elif selected_session is not None:
@@ -1494,7 +1640,8 @@ def payments_view(request):
                     'covers': covers,
                     'projected_wallet': projected,
                 })
-            selected_paid_count = sum(1 for r in selected_payments if r['payment'].status == 'paid')
+            selected_paid_count = sum(
+                1 for r in selected_payments if r['payment'].status == 'paid')
             selected_outstanding = sum(
                 (r['payment'].amount for r in selected_payments if r['payment'].status != 'paid'),
                 Decimal('0'),
@@ -1512,7 +1659,8 @@ def payments_view(request):
                 paid_amount=Sum('amount', filter=models.Q(status='paid')),
             )
         )
-        user_map = {u.id: u for u in User.objects.filter(payment__isnull=False).distinct()}
+        user_map = {u.id: u for u in User.objects.filter(
+            payment__isnull=False).distinct()}
         for row in payment_users:
             u = user_map.get(row['user_id'])
             if u is None:
