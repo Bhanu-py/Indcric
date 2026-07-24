@@ -4,17 +4,17 @@
 
 {% block content %}
 <div class="page-content">
-    <div class="mb-6 rounded-2xl border border-pitch-100 bg-gradient-to-br from-white via-pitch-50/60 to-amber-50/40 p-5 text-center sm:p-6">
-        <div class="flex flex-col items-center gap-3">
+    <div class="card mb-6 border-t-4 border-pitch-600 p-5 sm:p-6">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div class="max-w-4xl">
                 <p class="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pitch-600 mb-2">Member consultation</p>
-                <h1 class="text-3xl sm:text-4xl font-extrabold text-stone-900 leading-tight">Proposal to Establish a Cricket Club in Ghent</h1>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-stone-900 leading-tight">Proposal to Establish a Cricket Club in Ghent</h1>
             </div>
             {% if request.user.is_staff %}
             <a href="{% url 'club:cricket-club-admin' %}" class="btn btn-secondary btn-md shrink-0">Admin summary</a>
             {% endif %}
         </div>
-        <div class="mx-auto mt-4 max-w-4xl space-y-3 text-left text-sm sm:text-base text-stone-600">
+        <div class="mt-4 max-w-4xl space-y-3 text-sm sm:text-base text-stone-600">
             <p>For some time, we have been discussing the possibility of establishing a formal cricket club in Ghent.</p>
             <p>Starting an official cricket club could provide <strong class="font-semibold text-pitch-800">better access to sports facilities</strong>, <strong class="font-semibold text-emerald-800">insurance coverage</strong> for registered members, <strong class="font-semibold text-amber-800">possible financial support</strong>, and a more stable structure for organizing the club.</p>
             <p>At the same time, a formal club requires <strong class="font-semibold text-pitch-800">administration</strong>, <strong class="font-semibold text-amber-800">financial management</strong>, regular reporting, coordination, and several members willing to invest time in managing the organization.</p>
@@ -51,7 +51,7 @@
         </aside>
 
         <main class="space-y-5 order-1 xl:order-none" data-mobile-accordion>
-            <section id="why" data-mobile-section class="card p-5 scroll-mt-24 border-l-4 border-pitch-500 bg-pitch-50/30">
+            <section id="why" data-mobile-section class="card p-5 scroll-mt-24 border-t-4 border-pitch-600">
                 <h2>1. Why establish a formal club?</h2>
                 <p class="text-sm text-stone-600 mt-2">A formal club structure may allow the group to work under a recognized organization and manage cricket activities more transparently.</p>
                 <ul class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 pl-5 list-disc marker:text-pitch-700 text-sm leading-relaxed text-stone-700">
@@ -68,7 +68,7 @@
                 {% include "club/partials/_section_question.html" with field=form.question_why %}
             </section>
 
-            <section id="vzw" data-mobile-section class="card p-5 scroll-mt-24 border-l-4 border-amber-500 bg-amber-50/30">
+            <section id="vzw" data-mobile-section class="card p-5 scroll-mt-24 border-t-4 border-amber-500">
                 <h2>2. VZW structure</h2>
                 <p class="text-sm text-stone-600 mt-2">The proposed club would be established as a Belgian non-profit association, or <strong class="font-semibold text-amber-800">VZW</strong>. A VZW gives the club a formal legal structure, but it also brings obligations.</p>
                 <ul class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 pl-5 list-disc marker:text-amber-700 text-sm leading-relaxed text-stone-700">
@@ -82,7 +82,7 @@
                 {% include "club/partials/_section_question.html" with field=form.question_vzw %}
             </section>
 
-            <section id="board" data-mobile-section class="card p-5 scroll-mt-24 border-l-4 border-purple-500 bg-purple-50/30">
+            <section id="board" data-mobile-section class="card p-5 scroll-mt-24 border-t-4 border-purple-500">
                 <h2>3. Board and organizing team</h2>
                 <p class="text-sm text-stone-600 mt-2">At least <strong class="font-semibold text-purple-800">three committed people</strong> are expected to be needed for the initial board or leadership structure, subject to the final statutes and legal advice.</p>
                 <p class="text-sm text-stone-600 mt-3">Responsibilities should be divided across several people. The club should not depend on only one or two organizers.</p>
@@ -99,28 +99,28 @@
                 {% include "club/partials/_section_question.html" with field=form.question_board %}
             </section>
 
-            <section id="address" data-mobile-section class="card p-5 scroll-mt-24 border-l-4 border-stone-400 bg-stone-50/40">
+            <section id="address" data-mobile-section class="card p-5 scroll-mt-24 border-t-4 border-stone-200">
                 <h2>4. Official registered address</h2>
                 <p class="text-sm text-stone-600 mt-2">The VZW needs an official registered address in Belgium. The person providing it should have a stable address, be actively involved, understand that official correspondence may be sent there, and be willing to monitor and forward relevant documents.</p>
                 <p class="text-xs text-stone-500 mt-3">Home ownership, Belgian citizenship, or permanent residence should not be presented as automatic legal requirements.</p>
                 {% include "club/partials/_section_question.html" with field=form.question_address %}
             </section>
 
-            <section id="statutes" data-mobile-section class="card p-5 scroll-mt-24 border-l-4 border-stone-400 bg-stone-50/40">
+            <section id="statutes" data-mobile-section class="card p-5 scroll-mt-24 border-t-4 border-stone-200">
                 <h2>5. Statutes and internal rules</h2>
                 <p class="text-sm text-stone-600 mt-2">The statutes should cover the club name and purpose, membership conditions, membership fees, member rights and responsibilities, appointment and removal of directors, <strong class="font-semibold text-stone-800">voting procedures</strong>, meetings, financial management, amendments, and dissolution.</p>
                 <p class="text-xs text-stone-500 mt-3">Additional internal rules can cover practical club administration.</p>
                 {% include "club/partials/_section_question.html" with field=form.question_statutes %}
             </section>
 
-            <section id="membership" data-mobile-section class="card p-5 scroll-mt-24 border-l-4 border-emerald-500 bg-emerald-50/30">
+            <section id="membership" data-mobile-section class="card p-5 scroll-mt-24 border-t-4 border-emerald-500">
                 <h2>6. Membership registration</h2>
                 <p class="text-sm text-stone-600 mt-2">A person becomes an official member only after completing registration, providing required information, <strong class="font-semibold text-emerald-800">paying the applicable fee</strong>, and where relevant being registered with the federation.</p>
                 <p class="text-sm text-stone-600 mt-3">Formal registration is needed for insurance, membership administration, voting rights, federation registration, financial planning, and official club records.</p>
                 {% include "club/partials/_section_question.html" with field=form.question_membership %}
             </section>
 
-            <section id="payments" data-mobile-section class="card p-5 scroll-mt-24 border-l-4 border-sky-500 bg-sky-50/30">
+            <section id="payments" data-mobile-section class="card p-5 scroll-mt-24 border-t-4 border-sky-500">
                 <h2>7. Membership-payment options</h2>
                 <div class="space-y-3 mt-4">
                     <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
@@ -140,7 +140,7 @@
                 {% include "club/partials/_section_question.html" with field=form.question_payment %}
             </section>
 
-            <section id="insurance" data-mobile-section class="card p-5 scroll-mt-24 border-l-4 border-red-500 bg-red-50/30">
+            <section id="insurance" data-mobile-section class="card p-5 scroll-mt-24 border-t-4 border-red-500">
                 <h2>8. Member insurance</h2>
                 <p class="text-sm text-stone-600 mt-2">Registered members may be covered through the club’s federation or sports-insurance policy. Cricket Vlaanderen currently describes collective civil-liability and sports-accident coverage for properly registered and licensed members of affiliated clubs, including relevant training sessions, matches, and travel, subject to the policy conditions.</p>
                 <ul class="mt-4 space-y-2 pl-5 list-disc marker:text-red-700 text-sm leading-relaxed text-stone-700">
@@ -152,7 +152,7 @@
                 {% include "club/partials/_section_question.html" with field=form.question_insurance %}
             </section>
 
-            <section id="mutuality" data-mobile-section class="card p-5 border-emerald-100 bg-emerald-50/60 scroll-mt-24">
+            <section id="mutuality" data-mobile-section class="card p-5 scroll-mt-24 border-t-4 border-emerald-500">
                 <h2>9. Possible reimbursement through your health-insurance fund</h2>
                 <p class="text-sm text-emerald-900 mt-2">Some Belgian health-insurance funds provide their members with a partial annual reimbursement of sports-club membership fees.</p>
                 <p class="text-sm text-emerald-900 mt-3">After paying the club membership fee, an eligible member may ask the club to complete or sign the reimbursement form from their mutuality, or provide a membership certificate with the required information.</p>
@@ -166,25 +166,25 @@
                 {% include "club/partials/_section_question.html" with field=form.question_mutuality %}
             </section>
 
-            <section id="facilities" data-mobile-section class="card p-5 scroll-mt-24 border-l-4 border-sky-500 bg-sky-50/30">
+            <section id="facilities" data-mobile-section class="card p-5 scroll-mt-24 border-t-4 border-sky-500">
                 <h2>10. Sports facilities and possible support</h2>
                 <p class="text-sm text-stone-600 mt-2">Formal recognition may provide access to <strong class="font-semibold text-sky-800">reduced tariffs</strong> or possible subsidies. Exact rental reductions depend on the facility and applicable regulations.</p>
                 <p class="text-sm text-stone-600 mt-3">The previously discussed reduction of up to approximately 80% must be confirmed. Reimbursement for alternative facilities is not automatic and may require proof and prior authorization.</p>
                 {% include "club/partials/_section_question.html" with field=form.question_facilities %}
             </section>
 
-            <section id="finance" data-mobile-section class="card p-5 scroll-mt-24 border-l-4 border-amber-500 bg-amber-50/30">
+            <section id="finance" data-mobile-section class="card p-5 scroll-mt-24 border-t-4 border-amber-500">
                 <h2>11. Financial administration</h2>
                 <p class="text-sm text-stone-600 mt-2">The club would need a VZW bank account, accurate income and expense records, invoices, receipts, a membership-payment register, annual budget, <strong class="font-semibold text-amber-800">annual accounts</strong> or financial report, member approval where required, and timely filings.</p>
                 <p class="text-xs text-stone-500 mt-3">Missed deadlines can lead to penalties or administrative consequences.</p>
                 {% include "club/partials/_section_question.html" with field=form.question_finance %}
             </section>
 
-            <section id="responsibilities" data-mobile-section class="card p-5 scroll-mt-24 border-l-4 border-purple-500 bg-purple-50/30">
+            <section id="responsibilities" data-mobile-section class="card p-5 scroll-mt-24 border-t-4 border-purple-500">
                 <h2>12. Interest in Organizational Roles</h2>
                 <p class="text-sm text-stone-600 mt-2">To establish and manage the club, we initially need <strong class="font-semibold text-purple-800">three directors</strong> and <strong class="font-semibold text-purple-800">three additional coordinators</strong>. Each person will take primary responsibility for one area, with support from other members when needed.</p>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-                    <div class="rounded-xl border border-purple-100 bg-white/80 p-4 lg:col-span-2">
+                    <div class="rounded-xl border border-purple-100 bg-white p-4 lg:col-span-2">
                         <h3>Director – General Administration</h3>
                         <p class="text-sm text-stone-600 mt-2"><strong class="font-semibold text-purple-800">Main responsibility:</strong> Act as the main director and coordinate the overall administration and formation of the club.</p>
                         <ul class="text-sm text-stone-600 mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 pl-5 list-disc marker:text-purple-700 leading-relaxed">
@@ -218,10 +218,10 @@
                 {% include "club/partials/_section_question.html" with field=form.question_responsibilities %}
             </section>
 
-            <section id="startup" data-mobile-section class="card p-5 scroll-mt-24 border-l-4 border-amber-500 bg-amber-50/30">
+            <section id="startup" data-mobile-section class="card p-5 scroll-mt-24 border-t-4 border-amber-500">
                 <h2>13. Volunteers Needed Before the Club Starts</h2>
-                <p class="text-sm text-stone-600 mt-2">In addition to the five main roles, we need volunteers to help complete several tasks before the club can be formally established.</p>
-                <div class="mt-4 rounded-xl border border-amber-100 bg-white/80 p-4">
+                <p class="text-sm text-stone-600 mt-2">In addition to the main roles, we need volunteers to help complete several tasks before the club can be formally established.</p>
+                <div class="mt-4 rounded-xl border border-amber-100 bg-white p-4">
                     <h3>Start-up task voting</h3>
                     <p class="text-sm text-stone-600 mt-2">Members can select every task they can help with. The poll shows interest only; formal directors and responsibilities must be confirmed later through discussion and voting.</p>
                 </div>
@@ -394,7 +394,7 @@
             label.innerHTML = heading.innerHTML;
 
             var arrow = document.createElement("span");
-            arrow.className = "club-section-arrow inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/80 text-sm leading-none transition-transform xl:hidden";
+            arrow.className = "club-section-arrow inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-sm leading-none transition-transform xl:hidden";
             arrow.setAttribute("aria-hidden", "true");
             arrow.innerHTML = '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
 
