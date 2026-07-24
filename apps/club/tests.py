@@ -54,6 +54,10 @@ class ClubConsultationTests(TestCase):
         self.assertNotContains(response, "I need more information before deciding.")
         self.assertNotContains(response, "Maybe, depending on the role and time required")
         self.assertNotContains(response, "I am not sure yet")
+        self.assertNotContains(response, "I need more information")
+        self.assertNotContains(response, "I can support one of these roles")
+        self.assertNotContains(response, "Help identify three directors and a registered address")
+        self.assertNotContains(response, "Help organize the founding meeting and voting")
         self.assertNotContains(response, "Serve as secretary")
         self.assertNotContains(response, "Maintain financial records")
         self.assertNotContains(response, "Prepare budgets and annual financial reports")
@@ -69,7 +73,16 @@ class ClubConsultationTests(TestCase):
         self.assertContains(response, "Director – Finance and Treasurer")
         self.assertContains(response, "Which organizational role would you be willing to take on?")
         self.assertContains(response, "Which start-up tasks would you be willing to help with?")
+        self.assertContains(response, "I am ready to do any help as requested")
+        self.assertContains(response, "data-mobile-accordion")
         self.assertNotContains(response, "I am not sure yet")
+        self.assertNotContains(response, "I need more information")
+        self.assertNotContains(response, "I can support one of these roles")
+        self.assertNotContains(response, "Help identify three directors and a registered address")
+        self.assertNotContains(response, "Help organize the founding meeting and voting")
+        self.assertNotContains(response, "Other organizational role")
+        self.assertNotContains(response, "Other start-up task")
+        self.assertNotContains(response, "Time contribution")
         self.assertNotContains(response, "Serve as secretary")
         self.assertNotContains(response, "Maintain financial records")
         self.assertNotContains(response, "Prepare budgets and annual financial reports")
@@ -134,31 +147,19 @@ class ClubConsultationTests(TestCase):
         self.assertEqual(consultation.time_commitment, "")
         self.assertEqual(consultation.volunteering_choice, ClubConsultationResponse.VOLUNTEER_NO)
 
-    def test_other_role_requires_description(self):
-        self.client.force_login(self.user)
-
-        response = self.client.post(
-            reverse("club:cricket-club"),
-            self.valid_payload(responsibilities=["other"], other_responsibility=""),
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Describe the other role or responsibility.")
-        self.assertEqual(ClubConsultationResponse.objects.count(), 0)
-
-    def test_other_startup_task_requires_description(self):
+    def test_removed_role_and_startup_options_are_rejected(self):
         self.client.force_login(self.user)
 
         response = self.client.post(
             reverse("club:cricket-club"),
             self.valid_payload(
+                responsibilities=[ClubConsultationResponse.RESPONSIBILITY_OTHER],
                 startup_tasks=[ClubConsultationResponse.STARTUP_OTHER],
-                startup_other_task="",
             ),
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Describe the other start-up task.")
+        self.assertContains(response, "Select a valid choice")
         self.assertEqual(ClubConsultationResponse.objects.count(), 0)
 
     def test_authenticated_member_updates_existing_response(self):
@@ -239,7 +240,7 @@ class ClubConsultationTests(TestCase):
         self.assertContains(response, "Only counts are shown here")
         self.assertContains(response, "Question count by section")
         self.assertContains(response, "Start-up task volunteers")
-        self.assertContains(response, "mobile-section-dropdown")
+        self.assertContains(response, "data-mobile-accordion")
         self.assertNotContains(response, "Private Member")
         self.assertNotContains(response, "private@example.com")
         self.assertNotContains(response, "Who prepares the statutes?")

@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -37,6 +36,7 @@ class ClubConsultationResponse(models.Model):
     ROLE_DIRECTOR_MEMBERSHIP = "director_membership"
     ROLE_FACILITIES = "facilities"
     ROLE_WEBSITE = "website"
+    ROLE_GENERAL_HELP = "general_help"
     ROLE_SUPPORT = "role_support"
     ROLE_MORE_INFO = "role_more_info"
     RESPONSIBILITY_CHOICES = [
@@ -45,9 +45,7 @@ class ClubConsultationResponse(models.Model):
         (ROLE_DIRECTOR_MEMBERSHIP, "Director – Membership and External Relations"),
         (ROLE_FACILITIES, "Facilities and Booking Coordinator"),
         (ROLE_WEBSITE, "Website and Communication Coordinator"),
-        (ROLE_SUPPORT, "I can support one of these roles"),
-        (ROLE_MORE_INFO, "I need more information"),
-        (RESPONSIBILITY_OTHER, "Other"),
+        (ROLE_GENERAL_HELP, "I am ready to do any help as requested"),
     ]
     ORGANIZATIONAL_ROLE_VALUES = [
         ROLE_DIRECTOR_ADMIN,
@@ -90,14 +88,10 @@ class ClubConsultationResponse(models.Model):
         (STARTUP_MEMBERS, "Collect the details of people interested in becoming members"),
         (STARTUP_STATUTES, "Help draft the club statutes or bylaws"),
         (STARTUP_VZW, "Research the VZW registration requirements"),
-        (STARTUP_DIRECTORS, "Help identify three directors and a registered address"),
         (STARTUP_BUDGET, "Help prepare the initial budget and membership-fee proposal"),
-        (STARTUP_FOUNDING, "Help organize the founding meeting and voting"),
         (STARTUP_FORMS, "Help prepare registration forms and official documents"),
         (STARTUP_ADMIN, "Help with general administration during the formation process"),
         (STARTUP_OCCASIONAL, "I can help occasionally when needed"),
-        (STARTUP_MORE_INFO, "I need more information"),
-        (STARTUP_OTHER, "Other"),
     ]
     STARTUP_RESULT_CHOICES = [
         (STARTUP_FEDERATION, "Sports federation and insurance"),
@@ -105,9 +99,7 @@ class ClubConsultationResponse(models.Model):
         (STARTUP_MEMBERS, "Potential member registration"),
         (STARTUP_STATUTES, "Statutes or bylaws"),
         (STARTUP_VZW, "VZW registration research"),
-        (STARTUP_DIRECTORS, "Directors and registered address"),
         (STARTUP_BUDGET, "Initial budget and membership fee"),
-        (STARTUP_FOUNDING, "Founding meeting and voting"),
         (STARTUP_FORMS, "Registration forms and documents"),
         (STARTUP_ADMIN, "General formation support"),
     ]
@@ -167,27 +159,12 @@ class ClubConsultationResponse(models.Model):
     def __str__(self):
         return f"{self.name} - {self.get_proceed_choice_display()}"
 
-    def clean(self):
-        super().clean()
-        responsibilities = self.responsibilities or []
-        if self.RESPONSIBILITY_OTHER in responsibilities and not self.other_responsibility.strip():
-            raise ValidationError({"other_responsibility": "Describe the other responsibility."})
-        startup_tasks = self.startup_tasks or []
-        if self.STARTUP_OTHER in startup_tasks and not self.startup_other_task.strip():
-            raise ValidationError({"startup_other_task": "Describe the other start-up task."})
-
     @property
     def selected_responsibility_labels(self):
         labels = dict(self.RESPONSIBILITY_CHOICES)
-        selected = [labels.get(value, value) for value in self.responsibilities or []]
-        if self.other_responsibility:
-            selected.append(self.other_responsibility)
-        return selected
+        return [labels[value] for value in self.responsibilities or [] if value in labels]
 
     @property
     def selected_startup_task_labels(self):
         labels = dict(self.STARTUP_TASK_CHOICES)
-        selected = [labels.get(value, value) for value in self.startup_tasks or []]
-        if self.startup_other_task:
-            selected.append(self.startup_other_task)
-        return selected
+        return [labels[value] for value in self.startup_tasks or [] if value in labels]

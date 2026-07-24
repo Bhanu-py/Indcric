@@ -3,6 +3,11 @@ from django import forms
 from .models import ClubConsultationResponse
 
 
+STARTUP_PRIMARY_FORM_CHOICES = [
+    choice for choice in ClubConsultationResponse.STARTUP_PRIMARY_CHOICES
+    if choice[0] != ClubConsultationResponse.STARTUP_PRIMARY_MORE_INFO
+]
+
 SECTION_QUESTION_FIELDS = [
     ("question_why", "1. Why establish a formal club?"),
     ("question_vzw", "2. VZW structure"),
@@ -56,7 +61,7 @@ class ClubConsultationForm(forms.ModelForm):
         label="Which start-up tasks would you be willing to help with?",
     )
     startup_primary_responsibility = forms.ChoiceField(
-        choices=ClubConsultationResponse.STARTUP_PRIMARY_CHOICES,
+        choices=STARTUP_PRIMARY_FORM_CHOICES,
         required=False,
         widget=forms.RadioSelect(attrs={
             "class": "h-4 w-4 border-stone-300 text-pitch-600 focus:ring-pitch-500",
@@ -78,23 +83,13 @@ class ClubConsultationForm(forms.ModelForm):
             "proceed_choice",
             "membership_preference",
             "responsibilities",
-            "other_responsibility",
             "role_primary_responsibility",
             "startup_tasks",
-            "startup_other_task",
             "startup_primary_responsibility",
             "comments",
             "consent",
         ]
         widgets = {
-            "other_responsibility": forms.TextInput(attrs={
-                "class": "form-input",
-                "placeholder": "Please describe",
-            }),
-            "startup_other_task": forms.TextInput(attrs={
-                "class": "form-input",
-                "placeholder": "Please describe",
-            }),
             "comments": forms.Textarea(attrs={
                 "class": "form-input min-h-[120px]",
                 "rows": 5,
@@ -102,8 +97,6 @@ class ClubConsultationForm(forms.ModelForm):
             }),
         }
         labels = {
-            "other_responsibility": "Other organizational role",
-            "startup_other_task": "Other start-up task",
             "comments": "General comments or questions",
         }
 
@@ -130,28 +123,6 @@ class ClubConsultationForm(forms.ModelForm):
     def clean_startup_tasks(self):
         return list(self.cleaned_data.get("startup_tasks") or [])
 
-    def clean(self):
-        cleaned = super().clean()
-        responsibilities = cleaned.get("responsibilities") or []
-        other_responsibility = (cleaned.get("other_responsibility") or "").strip()
-        startup_tasks = cleaned.get("startup_tasks") or []
-        startup_other_task = (cleaned.get("startup_other_task") or "").strip()
-        if (
-            ClubConsultationResponse.RESPONSIBILITY_OTHER in responsibilities
-            and not other_responsibility
-        ):
-            self.add_error("other_responsibility", "Describe the other role or responsibility.")
-        if ClubConsultationResponse.RESPONSIBILITY_OTHER not in responsibilities:
-            cleaned["other_responsibility"] = ""
-        if (
-            ClubConsultationResponse.STARTUP_OTHER in startup_tasks
-            and not startup_other_task
-        ):
-            self.add_error("startup_other_task", "Describe the other start-up task.")
-        if ClubConsultationResponse.STARTUP_OTHER not in startup_tasks:
-            cleaned["startup_other_task"] = ""
-        return cleaned
-
     def save(self, commit=True):
         response = super().save(commit=False)
         response.volunteering_choice = (
@@ -159,6 +130,8 @@ class ClubConsultationForm(forms.ModelForm):
             if self.cleaned_data.get("responsibilities") or self.cleaned_data.get("startup_tasks")
             else ClubConsultationResponse.VOLUNTEER_NO
         )
+        response.other_responsibility = ""
+        response.startup_other_task = ""
         response.section_questions = self.cleaned_section_questions()
         if commit:
             response.save()

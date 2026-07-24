@@ -76,9 +76,17 @@ def consultation_summary(responses=None):
     startup_values = Counter()
     startup_primary_values = Counter()
     section_question_values = Counter()
+    active_role_values = {value for value, label in ClubConsultationResponse.RESPONSIBILITY_CHOICES}
+    active_startup_values = {value for value, label in ClubConsultationResponse.STARTUP_TASK_CHOICES}
     for response in responses:
-        role_values.update(response.responsibilities or [])
-        startup_tasks = response.startup_tasks or []
+        role_values.update(
+            value for value in response.responsibilities or []
+            if value in active_role_values
+        )
+        startup_tasks = [
+            value for value in response.startup_tasks or []
+            if value in active_startup_values
+        ]
         startup_values.update(startup_tasks)
         if response.startup_primary_responsibility in {
             ClubConsultationResponse.STARTUP_PRIMARY_YES,
