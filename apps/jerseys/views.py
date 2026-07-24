@@ -66,17 +66,6 @@ def _taken_numbers():
             }
         references[key]['item_count'] += 1
     rows = list(references.values())
-    # Manually-booked numbers always appear as reserved, even without an order.
-    shown = {r['jersey_number'] for r in rows}
-    for num, uname in JerseyOrder.MANUAL_NUMBER_RESERVATIONS.items():
-        if num not in shown:
-            rows.append({
-                'jersey_number': num,
-                'wearer_name': 'Reserved',
-                'gender': '',
-                'user__username': uname,
-                'item_count': 0,
-            })
     rows.sort(key=lambda r: (len(r['jersey_number']), r['jersey_number']))
     return rows
 
@@ -142,25 +131,6 @@ def jersey_orders_view(request):
     own_orders = list(JerseyOrder.objects.filter(user=request.user).order_by('-created_at'))
     own_order_total = sum((order.line_total for order in own_orders), start=0)
     own_order_quantity = sum((order.quantity for order in own_orders), start=0)
-    # Numbers reserved by OTHER members — used for the live "already reserved"
-    # warning as the user types (own numbers are reusable, so excluded).
-    reserved_numbers = {}
-    for o in (
-        JerseyOrder.objects.exclude(jersey_number='')
-        .exclude(user=request.user).select_related('user')
-    ):
-        reserved_numbers.setdefault(o.jersey_number, o.wearer_name or (o.user.username if o.user else 'another member'))
-    # Manually-booked numbers count as reserved for everyone except their owner.
-    for num, uname in JerseyOrder.MANUAL_NUMBER_RESERVATIONS.items():
-        if request.user.username != uname:
-            reserved_numbers.setdefault(num, uname)
-    # This member's existing number (one number per user, reused for family) —
-    # the live warning flags a different number when they already have one.
-    own_user_number = ''
-    for o in own_orders:
-        if o.jersey_number:
-            own_user_number = o.jersey_number
-            break
     # Size choices per own-order line, for the inline editor (adult shirt/pant only).
     for o in own_orders:
         if o.item_type in JerseyOrder.SHIRT_ITEMS:
@@ -179,8 +149,6 @@ def jersey_orders_view(request):
         'shirt_size_measurements': JerseyOrder.SIZE_MEASUREMENTS,
         'pant_size_measurements': JerseyOrder.PANT_SIZE_MEASUREMENTS,
         'taken_numbers': _taken_numbers(),
-        'reserved_numbers': reserved_numbers,
-        'own_user_number': own_user_number,
         'ordering_open': ordering_open,
         'ordering_status': ordering_status,
         'ordering_deadline': ordering_deadline,

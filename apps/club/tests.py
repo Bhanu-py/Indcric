@@ -126,6 +126,86 @@ class ClubConsultationTests(TestCase):
         self.assertEqual(consultation.responsibilities, ["treasurer"])
         self.assertEqual(consultation.section_questions, {"question_finance": "Who files the accounts?"})
 
+    def test_public_page_shows_counts_without_names_or_question_text(self):
+        other = User.objects.create_user(
+            username="private",
+            email="private@example.com",
+            password="x",
+            first_name="Private",
+        )
+        ClubConsultationResponse.objects.create(
+            user=self.user,
+            name="Kural",
+            email="kural@example.com",
+            proceed_choice=ClubConsultationResponse.PROCEED_YES,
+            membership_preference=ClubConsultationResponse.MEMBERSHIP_ANNUAL,
+            volunteering_choice=ClubConsultationResponse.VOLUNTEER_YES,
+            responsibilities=["website", "treasurer"],
+            time_commitment=ClubConsultationResponse.TIME_MONTHLY,
+            section_questions={"question_vzw": "Who prepares the statutes?"},
+            consent=True,
+        )
+        ClubConsultationResponse.objects.create(
+            user=other,
+            name="Private Member",
+            email="private@example.com",
+            proceed_choice=ClubConsultationResponse.PROCEED_NO,
+            membership_preference=ClubConsultationResponse.MEMBERSHIP_PER_GAME,
+            volunteering_choice=ClubConsultationResponse.VOLUNTEER_NO,
+            responsibilities=[],
+            section_questions={},
+            consent=True,
+        )
+
+        response = self.client.get(reverse("club:cricket-club"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Votes so far")
+        self.assertContains(response, "Only counts are shown here")
+        self.assertContains(response, "Question count by section")
+        self.assertContains(response, "mobile-section-jump")
+        self.assertNotContains(response, "Private Member")
+        self.assertNotContains(response, "private@example.com")
+        self.assertNotContains(response, "Who prepares the statutes?")
+        summary = response.context["summary"]
+        self.assertEqual(summary["total_responses"], 2)
+        self.assertEqual(summary["total_questions"], 1)
+        self.assertEqual(summary["total_role_votes"], 2)
+
+    def test_staff_admin_summary_shows_member_votes_and_questions(self):
+        staff = User.objects.create_user(username="staff", password="x", is_staff=True)
+        ClubConsultationResponse.objects.create(
+            user=self.user,
+            name="Kural",
+            email="kural@example.com",
+            proceed_choice=ClubConsultationResponse.PROCEED_YES,
+            membership_preference=ClubConsultationResponse.MEMBERSHIP_ANNUAL,
+            volunteering_choice=ClubConsultationResponse.VOLUNTEER_YES,
+            responsibilities=["website"],
+            time_commitment=ClubConsultationResponse.TIME_MONTHLY,
+            section_questions={"question_vzw": "Who prepares the statutes?"},
+            comments="Good idea.",
+            consent=True,
+        )
+        self.client.force_login(staff)
+
+        response = self.client.get(reverse("club:cricket-club-admin"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Cricket club consultation admin")
+        self.assertContains(response, "Club decision count")
+        self.assertContains(response, "Question count by section")
+        self.assertContains(response, "Kural")
+        self.assertContains(response, "kural@example.com")
+        self.assertContains(response, "Who prepares the statutes?")
+
+    def test_non_staff_cannot_open_consultation_admin_summary(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("club:cricket-club-admin"))
+
+        self.assertEqual(response.status_code, 302)
+
     def test_anonymous_submission_redirects_to_login(self):
         response = self.client.post(reverse("club:cricket-club"), self.valid_payload())
 

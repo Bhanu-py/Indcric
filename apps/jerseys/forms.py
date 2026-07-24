@@ -117,55 +117,15 @@ class JerseyOrderForm(forms.ModelForm):
             if has_pant and not cleaned.get('pant_size'):
                 self.add_error('pant_size', 'Choose an adult pant/shorts size from the maker chart.')
 
-        # Number: mandate a choice. Either opt out (auto-assign a reference on
-        # save) or pick a number that isn't already reserved by another member.
-        # A member may reuse their own number across their own items/family.
+        # Number: mandate a choice, but do not reserve or block numbers.
+        # The number list is a reference only; family/kids and other members can
+        # reuse a number if needed.
         no_number = cleaned.get('no_number')
         number = cleaned.get('jersey_number') or ''
         if no_number:
             cleaned['jersey_number'] = ''  # cleared; a reference is assigned on save
         elif not number:
             self.add_error('jersey_number', 'Pick a number, or tick “No number”.')
-        else:
-            reserved_to = JerseyOrder.MANUAL_NUMBER_RESERVATIONS.get(number)
-            if reserved_to and (not self.user or self.user.username != reserved_to):
-                self.add_error(
-                    'jersey_number',
-                    f'#{number} is reserved for {reserved_to}. '
-                    'Pick another, or tick “No number”.',
-                )
-            else:
-                clash = (
-                    JerseyOrder.objects
-                    .filter(jersey_number=number)
-                    .exclude(user=self.user)
-                    .select_related('user')
-                    .first()
-                )
-                if clash:
-                    owner = clash.wearer_name or (clash.user.username if clash.user else 'another member')
-                    self.add_error(
-                        'jersey_number',
-                        f'#{number} is already reserved by {owner}. '
-                        'Pick another, or tick “No number”.',
-                    )
-                else:
-                    # One number per user: the whole account (incl. family)
-                    # shares one number, so a different one can't be picked.
-                    other = (
-                        JerseyOrder.objects
-                        .filter(user=self.user)
-                        .exclude(jersey_number='')
-                        .exclude(jersey_number=number)
-                        .values_list('jersey_number', flat=True)
-                        .first()
-                    )
-                    if other:
-                        self.add_error(
-                            'jersey_number',
-                            f'You already have #{other}. '
-                            'Use the same number, tick “No number”, or remove that number.',
-                        )
         return cleaned
 
     @staticmethod

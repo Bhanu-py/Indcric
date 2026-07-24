@@ -309,7 +309,7 @@ class JerseyOrderTests(TestCase):
         self.assertContains(page_resp, 'Please order before that.')
         self.assertContains(
             page_resp,
-            f'<strong class="font-extrabold">{window.closes_at_label()}</strong>',
+            f'<strong class="font-extrabold text-red-700">{window.closes_at_label()}</strong>',
             html=True,
         )
         self.assertNotContains(page_resp, 'Order close date:')

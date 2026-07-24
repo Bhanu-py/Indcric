@@ -30,7 +30,7 @@
                 <span class="font-extrabold text-red-700">Closed</span>
                 <span class="text-red-800"> — closed on </span>
                 {% endif %}
-                <strong class="font-extrabold">{{ ordering_deadline }}</strong>{% if ordering_open %}. Please order before that.{% else %}.{% endif %}
+                <strong class="font-extrabold text-red-700">{{ ordering_deadline }}</strong>{% if ordering_open %}. Please order before that.{% else %}.{% endif %}
             </p>
             {% else %}
             <p class="text-xs font-semibold mt-1">{{ ordering_status }}</p>

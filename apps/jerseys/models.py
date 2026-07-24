@@ -118,10 +118,6 @@ class JerseyOrder(models.Model):
         on_delete=models.CASCADE,
         related_name='jersey_orders',
     )
-    # Numbers permanently booked to a specific member (username), independent of
-    # actual orders — reserved for them, blocked for everyone else.
-    MANUAL_NUMBER_RESERVATIONS = {'10': 'bhanu', '8': 'Akhil_Reddy'}
-
     for_person = models.CharField(max_length=10, choices=FOR_CHOICES, default=FOR_SELF)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, default=GENDER_UNISEX)
     wearer_name = models.CharField(max_length=80)
@@ -148,13 +144,12 @@ class JerseyOrder(models.Model):
 
     @classmethod
     def _new_reference(cls):
-        """A random unused 3-digit code (100–999), avoiding existing references,
-        jersey numbers and manually-booked numbers."""
+        """A random unused 3-digit code (100–999), avoiding existing references
+        and jersey numbers."""
         import random
         used = (
             set(cls.objects.exclude(reference='').values_list('reference', flat=True))
             | set(cls.objects.exclude(jersey_number='').values_list('jersey_number', flat=True))
-            | set(cls.MANUAL_NUMBER_RESERVATIONS.keys())
         )
         pool = [str(n) for n in range(100, 1000) if str(n) not in used]
         return random.choice(pool) if pool else str(random.randint(100, 999))

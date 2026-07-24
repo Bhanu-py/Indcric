@@ -5,8 +5,15 @@
 {% block content %}
 <div class="page-content">
     <div class="mb-6 rounded-2xl border border-pitch-100 bg-gradient-to-br from-white via-pitch-50/60 to-amber-50/40 p-5 sm:p-6">
-        <p class="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pitch-600 mb-2">Member consultation</p>
-        <h1 class="text-3xl sm:text-4xl font-extrabold text-stone-900 leading-tight">Proposal to Establish a Cricket Club in Ghent</h1>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+                <p class="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pitch-600 mb-2">Member consultation</p>
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-stone-900 leading-tight">Proposal to Establish a Cricket Club in Ghent</h1>
+            </div>
+            {% if request.user.is_staff %}
+            <a href="{% url 'club:cricket-club-admin' %}" class="btn btn-secondary btn-md shrink-0">Admin summary</a>
+            {% endif %}
+        </div>
         <div class="mt-4 max-w-4xl space-y-3 text-sm sm:text-base text-stone-600">
             <p>For some time, we have been discussing the possibility of establishing a formal cricket club in Ghent.</p>
             <p>Starting an official cricket club could provide <strong class="font-semibold text-pitch-800">better access to sports facilities</strong>, <strong class="font-semibold text-emerald-800">insurance coverage</strong> for registered members, <strong class="font-semibold text-amber-800">possible financial support</strong>, and a more stable structure for organizing the club.</p>
@@ -21,8 +28,30 @@
     </div>
     {% endif %}
 
+    <div class="xl:hidden sticky top-16 z-30 mb-5">
+        <div class="card p-3 max-w-md mx-auto bg-white/95 backdrop-blur">
+            <label class="form-label text-center" for="mobile-section-jump">Jump to information</label>
+            <select id="mobile-section-jump" class="form-select text-center" onchange="if (this.value) { window.location.hash = this.value; }">
+                <option value="">Choose a section</option>
+                <option value="#why">1. Why establish?</option>
+                <option value="#vzw">2. VZW structure</option>
+                <option value="#board">3. Board/team</option>
+                <option value="#address">4. Address</option>
+                <option value="#statutes">5. Statutes</option>
+                <option value="#membership">6. Membership</option>
+                <option value="#payments">7. Payments</option>
+                <option value="#insurance">8. Insurance</option>
+                <option value="#mutuality">9. Mutuality</option>
+                <option value="#facilities">10. Facilities</option>
+                <option value="#finance">11. Finance</option>
+                <option value="#responsibilities">12. Responsibilities</option>
+                <option value="#consultation">Submit your vote</option>
+            </select>
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 xl:grid-cols-[220px_minmax(0,1fr)_360px] gap-5 items-start">
-        <aside class="card p-4 xl:sticky xl:top-24 border-pitch-100 bg-white">
+        <aside class="card p-4 hidden xl:block xl:sticky xl:top-24 border-pitch-100 bg-white">
             <p class="micro-label text-pitch-600 mb-3">Page navigation</p>
             <nav class="grid grid-cols-1 gap-1 text-sm" aria-label="Cricket club proposal sections">
                 <a class="rounded-lg px-3 py-2 bg-pitch-50 text-pitch-800 hover:bg-pitch-100" href="#why">1. Why establish?</a>
@@ -244,6 +273,86 @@
         </main>
 
         <aside id="consultation" class="xl:sticky xl:top-24 h-fit scroll-mt-24">
+            <section class="card overflow-hidden mb-5">
+                <div class="card-header">
+                    <p class="micro-label text-emerald-700">Public counts</p>
+                    <h2 class="text-xl font-extrabold text-stone-900">Votes so far</h2>
+                    <p class="text-sm text-stone-500 mt-1">Only counts are shown here. Member names and questions are visible to staff only.</p>
+                </div>
+                <div class="card-body space-y-5">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="rounded-xl border border-pitch-100 bg-pitch-50 p-3">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-pitch-700">Responses</p>
+                            <p class="text-2xl font-extrabold text-pitch-900">{{ summary.total_responses }}</p>
+                        </div>
+                        <div class="rounded-xl border border-purple-100 bg-purple-50 p-3">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-purple-700">Questions</p>
+                            <p class="text-2xl font-extrabold text-purple-900">{{ summary.total_questions }}</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-sm font-bold text-stone-800">Club decision</h3>
+                        <div class="mt-2 grid grid-cols-2 gap-2">
+                            {% for row in summary.proceed_counts %}
+                            <div class="rounded-xl border {% if row.value == 'yes' %}border-emerald-100 bg-emerald-50 text-emerald-900{% else %}border-red-100 bg-red-50 text-red-900{% endif %} p-3">
+                                <p class="text-xs font-semibold uppercase tracking-wide">{{ row.value|title }}</p>
+                                <p class="text-2xl font-extrabold">{{ row.count }}</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-sm font-bold text-stone-800">Membership preference</h3>
+                        <div class="mt-2 space-y-2">
+                            {% for row in summary.membership_counts %}
+                            <div class="flex items-center justify-between gap-3 rounded-xl border border-stone-100 bg-stone-50 p-3 text-sm">
+                                <span class="text-stone-700">{{ row.label }}</span>
+                                <span class="badge badge-pitch">{{ row.count }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-sm font-bold text-stone-800">Time contribution</h3>
+                        <div class="mt-2 space-y-2">
+                            {% for row in summary.time_counts %}
+                            <div class="flex items-center justify-between gap-3 rounded-xl border border-amber-100 bg-amber-50/70 p-3 text-sm">
+                                <span class="text-stone-700">{{ row.label }}</span>
+                                <span class="badge badge-amber">{{ row.count }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-sm font-bold text-stone-800">Role interest</h3>
+                        <div class="mt-2 max-h-72 overflow-y-auto space-y-2 pr-1">
+                            {% for row in summary.role_counts %}
+                            <div class="flex items-center justify-between gap-3 rounded-xl border border-stone-100 bg-white p-3 text-sm">
+                                <span class="text-stone-700">{{ row.label }}</span>
+                                <span class="badge badge-purple">{{ row.count }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-sm font-bold text-stone-800">Question count by section</h3>
+                        <div class="mt-2 max-h-60 overflow-y-auto space-y-2 pr-1">
+                            {% for row in summary.section_question_counts %}
+                            <div class="flex items-center justify-between gap-3 rounded-xl border border-purple-100 bg-purple-50/70 p-3 text-sm">
+                                <span class="text-stone-700">{{ row.label }}</span>
+                                <span class="badge badge-purple">{{ row.count }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <section class="card overflow-hidden">
                 <div class="card-header">
                     <p class="micro-label text-pitch-600">Member vote</p>
