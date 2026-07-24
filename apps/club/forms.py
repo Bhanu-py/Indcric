@@ -3,6 +3,22 @@ from django import forms
 from .models import ClubConsultationResponse
 
 
+SECTION_QUESTION_FIELDS = [
+    ("question_why", "1. Why establish a formal club?"),
+    ("question_vzw", "2. VZW structure"),
+    ("question_board", "3. Board and organizing team"),
+    ("question_address", "4. Official registered address"),
+    ("question_statutes", "5. Statutes and internal rules"),
+    ("question_membership", "6. Membership registration"),
+    ("question_payment", "7. Membership-payment options"),
+    ("question_insurance", "8. Member insurance"),
+    ("question_mutuality", "9. Mutuality reimbursement"),
+    ("question_facilities", "10. Sports facilities and possible support"),
+    ("question_finance", "11. Financial administration"),
+    ("question_responsibilities", "12. Main responsibilities"),
+]
+
+
 class ClubConsultationForm(forms.ModelForm):
     proceed_choice = forms.ChoiceField(
         choices=ClubConsultationResponse.PROCEED_CHOICES,
@@ -18,21 +34,11 @@ class ClubConsultationForm(forms.ModelForm):
         }),
         label="Which membership-payment system would you prefer?",
     )
-    volunteering_choice = forms.ChoiceField(
-        choices=ClubConsultationResponse.VOLUNTEER_CHOICES,
-        widget=forms.RadioSelect(attrs={
-            "class": "h-4 w-4 border-stone-300 text-pitch-600 focus:ring-pitch-500",
-            "x-model": "volunteering",
-        }),
-        label="Would you be willing to join the organizing team?",
-    )
     responsibilities = forms.MultipleChoiceField(
         choices=ClubConsultationResponse.RESPONSIBILITY_CHOICES,
         required=False,
-        widget=forms.CheckboxSelectMultiple(attrs={
-            "class": "h-4 w-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500",
-        }),
-        label="Which responsibilities would you be willing to take on?",
+        widget=forms.CheckboxSelectMultiple,
+        label="Which roles or responsibilities are you willing to help with?",
     )
     time_commitment = forms.ChoiceField(
         choices=ClubConsultationResponse.TIME_CHOICES,
@@ -40,13 +46,13 @@ class ClubConsultationForm(forms.ModelForm):
         widget=forms.RadioSelect(attrs={
             "class": "h-4 w-4 border-stone-300 text-pitch-600 focus:ring-pitch-500",
         }),
-        label="How much time would you generally be able to contribute?",
+        label="If you selected any role, how much time could you generally contribute?",
     )
     consent = forms.BooleanField(
         required=True,
         label=(
-            "I understand that the information I provide will be used only to assess "
-            "interest in establishing the cricket club and to contact me regarding the organizing team."
+            "I understand that my response will be linked to my member account and used only "
+            "to assess interest in establishing the cricket club and organizing responsibilities."
         ),
         error_messages={"required": "Confirm the consultation data-use statement."},
     )
@@ -54,13 +60,8 @@ class ClubConsultationForm(forms.ModelForm):
     class Meta:
         model = ClubConsultationResponse
         fields = [
-            "name",
-            "email",
-            "phone",
-            "connection",
             "proceed_choice",
             "membership_preference",
-            "volunteering_choice",
             "responsibilities",
             "other_responsibility",
             "time_commitment",
@@ -68,25 +69,6 @@ class ClubConsultationForm(forms.ModelForm):
             "consent",
         ]
         widgets = {
-            "name": forms.TextInput(attrs={
-                "class": "form-input",
-                "autocomplete": "name",
-                "placeholder": "Your full name",
-            }),
-            "email": forms.EmailInput(attrs={
-                "class": "form-input",
-                "autocomplete": "email",
-                "placeholder": "you@example.com",
-            }),
-            "phone": forms.TextInput(attrs={
-                "class": "form-input",
-                "autocomplete": "tel",
-                "placeholder": "Optional",
-            }),
-            "connection": forms.TextInput(attrs={
-                "class": "form-input",
-                "placeholder": "Player, parent, volunteer, supporter...",
-            }),
             "other_responsibility": forms.TextInput(attrs={
                 "class": "form-input",
                 "placeholder": "Please describe",
@@ -94,69 +76,73 @@ class ClubConsultationForm(forms.ModelForm):
             "comments": forms.Textarea(attrs={
                 "class": "form-input min-h-[120px]",
                 "rows": 5,
-                "placeholder": "Optional comments or questions",
+                "placeholder": "Optional general comments or questions",
             }),
         }
         labels = {
-            "name": "Name",
-            "email": "Email address",
-            "phone": "Telephone number",
-            "connection": "Current connection to the cricket group",
-            "other_responsibility": "Other responsibility",
-            "comments": "Additional comments or questions",
+            "other_responsibility": "Other role or responsibility",
+            "comments": "General comments or questions",
         }
 
     def __init__(self, *args, user=None, **kwargs):
         self.user = user
         super().__init__(*args, **kwargs)
-        if (
-            user
-            and getattr(user, "is_authenticated", False)
-            and not self.is_bound
-            and not getattr(self.instance, "pk", None)
-        ):
-            self.fields["name"].initial = user.get_full_name() or user.username
-            self.fields["email"].initial = user.email
-            if getattr(user, "phone", ""):
-                self.fields["phone"].initial = user.phone
-
-    def clean_email(self):
-        return (self.cleaned_data.get("email") or "").strip().lower()
+        section_questions = getattr(self.instance, "section_questions", None) or {}
+        for field_name, label in SECTION_QUESTION_FIELDS:
+            self.fields[field_name] = forms.CharField(
+                required=False,
+                label=f"Question about {label}",
+                initial=section_questions.get(field_name, ""),
+                widget=forms.Textarea(attrs={
+                    "class": "form-input min-h-[92px]",
+                    "rows": 3,
+                    "placeholder": "Type your question about this section...",
+                    "form": "club-consultation-form",
+                }),
+            )
 
     def clean_responsibilities(self):
         return list(self.cleaned_data.get("responsibilities") or [])
 
     def clean(self):
         cleaned = super().clean()
-        volunteering_choice = cleaned.get("volunteering_choice")
         responsibilities = cleaned.get("responsibilities") or []
         other_responsibility = (cleaned.get("other_responsibility") or "").strip()
-
-        if volunteering_choice == ClubConsultationResponse.VOLUNTEER_NO:
-            cleaned["responsibilities"] = []
-            cleaned["other_responsibility"] = ""
-            cleaned["time_commitment"] = ""
-            return cleaned
-
-        if volunteering_choice in {
-            ClubConsultationResponse.VOLUNTEER_YES,
-            ClubConsultationResponse.VOLUNTEER_MAYBE,
-        }:
-            if not responsibilities:
-                self.add_error("responsibilities", "Choose at least one responsibility.")
-            if not cleaned.get("time_commitment"):
-                self.add_error("time_commitment", "Choose how much time you can contribute.")
-
         if (
             ClubConsultationResponse.RESPONSIBILITY_OTHER in responsibilities
             and not other_responsibility
         ):
-            self.add_error("other_responsibility", "Describe the other responsibility.")
-
+            self.add_error("other_responsibility", "Describe the other role or responsibility.")
+        if ClubConsultationResponse.RESPONSIBILITY_OTHER not in responsibilities:
+            cleaned["other_responsibility"] = ""
         return cleaned
 
+    def save(self, commit=True):
+        response = super().save(commit=False)
+        response.volunteering_choice = (
+            ClubConsultationResponse.VOLUNTEER_YES
+            if self.cleaned_data.get("responsibilities")
+            else ClubConsultationResponse.VOLUNTEER_NO
+        )
+        response.section_questions = self.cleaned_section_questions()
+        if commit:
+            response.save()
+        return response
+
+    def cleaned_section_questions(self):
+        questions = {}
+        for field_name, label in SECTION_QUESTION_FIELDS:
+            value = (self.cleaned_data.get(field_name) or "").strip()
+            if value:
+                questions[field_name] = value
+        return questions
+
     def responsibility_rows(self):
-        selected = set(self.data.getlist("responsibilities") if self.is_bound else self.initial.get("responsibilities", []))
+        selected = set(
+            self.data.getlist("responsibilities")
+            if self.is_bound
+            else self.initial.get("responsibilities", getattr(self.instance, "responsibilities", []) or [])
+        )
         return [
             {"value": value, "label": label, "checked": value in selected}
             for value, label in ClubConsultationResponse.RESPONSIBILITY_CHOICES

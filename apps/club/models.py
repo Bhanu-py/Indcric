@@ -10,7 +10,6 @@ class ClubConsultationResponse(models.Model):
     PROCEED_CHOICES = [
         (PROCEED_YES, "Yes, I agree that we should start the club."),
         (PROCEED_NO, "No, I do not think we should start the club at this time."),
-        (PROCEED_MORE_INFO, "I need more information before deciding."),
     ]
 
     MEMBERSHIP_ANNUAL = "annual"
@@ -32,7 +31,6 @@ class ClubConsultationResponse(models.Model):
     VOLUNTEER_CHOICES = [
         (VOLUNTEER_YES, "Yes"),
         (VOLUNTEER_NO, "No"),
-        (VOLUNTEER_MAYBE, "Maybe, depending on the role and time required"),
     ]
 
     TIME_WEEKLY = "weekly"
@@ -86,8 +84,8 @@ class ClubConsultationResponse(models.Model):
         blank=True,
         related_name="club_consultation_responses",
     )
-    name = models.CharField(max_length=120)
-    email = models.EmailField(db_index=True)
+    name = models.CharField(max_length=120, blank=True)
+    email = models.EmailField(db_index=True, blank=True)
     phone = models.CharField(max_length=40, blank=True)
     connection = models.CharField(max_length=160, blank=True)
     proceed_choice = models.CharField(max_length=20, choices=PROCEED_CHOICES)
@@ -96,6 +94,7 @@ class ClubConsultationResponse(models.Model):
     responsibilities = models.JSONField(default=list, blank=True)
     other_responsibility = models.CharField(max_length=160, blank=True)
     time_commitment = models.CharField(max_length=20, choices=TIME_CHOICES, blank=True)
+    section_questions = models.JSONField(default=dict, blank=True)
     comments = models.TextField(blank=True)
     consent = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -112,16 +111,6 @@ class ClubConsultationResponse(models.Model):
     def clean(self):
         super().clean()
         responsibilities = self.responsibilities or []
-        if self.volunteering_choice == self.VOLUNTEER_NO:
-            self.responsibilities = []
-            self.other_responsibility = ""
-            self.time_commitment = ""
-            return
-        if self.volunteering_choice in {self.VOLUNTEER_YES, self.VOLUNTEER_MAYBE}:
-            if not responsibilities:
-                raise ValidationError({"responsibilities": "Choose at least one responsibility."})
-            if not self.time_commitment:
-                raise ValidationError({"time_commitment": "Choose how much time you can contribute."})
         if self.RESPONSIBILITY_OTHER in responsibilities and not self.other_responsibility.strip():
             raise ValidationError({"other_responsibility": "Describe the other responsibility."})
 
