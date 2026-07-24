@@ -19,9 +19,10 @@ def cricket_club_view(request):
     if request.method == "POST" and not request.user.is_authenticated:
         return redirect_to_login(request.get_full_path())
 
+    summary = consultation_summary()
     response = _existing_response_for(request)
     if request.method == "POST":
-        form = ClubConsultationForm(request.POST, user=request.user, instance=response)
+        form = ClubConsultationForm(request.POST, user=request.user, instance=response, summary=summary)
         if form.is_valid():
             consultation_response = form.save(commit=False)
             consultation_response.user = request.user
@@ -33,13 +34,13 @@ def cricket_club_view(request):
             messages.success(request, SUCCESS_MESSAGE)
             return redirect("club:cricket-club")
     else:
-        form = ClubConsultationForm(user=request.user, instance=response)
+        form = ClubConsultationForm(user=request.user, instance=response, summary=summary)
 
     return render(request, "club/cricket_club.html", {
         "form": form,
         "submitted": request.session.pop("club_consultation_submitted", False),
         "success_message": SUCCESS_MESSAGE,
-        "summary": consultation_summary(),
+        "summary": summary,
     })
 
 
@@ -101,8 +102,14 @@ def consultation_summary(responses=None):
         "total_responses": len(responses),
         "proceed_counts": _choice_counts(ClubConsultationResponse.PROCEED_CHOICES, proceed_values),
         "membership_counts": _choice_counts(ClubConsultationResponse.MEMBERSHIP_CHOICES, membership_values),
+        "role_choice_counts": _choice_counts(ClubConsultationResponse.RESPONSIBILITY_CHOICES, role_values),
         "organizational_role_results": _organizational_role_results(role_values),
+        "startup_choice_counts": _choice_counts(ClubConsultationResponse.STARTUP_TASK_CHOICES, startup_values),
         "startup_task_results": _startup_task_results(startup_values, startup_primary_values),
+        "startup_primary_counts": _choice_counts(
+            _startup_primary_summary_choices(),
+            Counter(response.startup_primary_responsibility for response in responses if response.startup_primary_responsibility),
+        ),
         "section_question_counts": _choice_counts(SECTION_QUESTION_FIELDS, section_question_values),
         "total_role_votes": sum(role_values.values()),
         "total_startup_task_votes": sum(startup_values.values()),
@@ -179,3 +186,10 @@ def _startup_task_results(startup_values, startup_primary_values):
             "primary_available": startup_primary_values.get(value, 0) > 0,
         })
     return rows
+
+
+def _startup_primary_summary_choices():
+    return [
+        choice for choice in ClubConsultationResponse.STARTUP_PRIMARY_CHOICES
+        if choice[0] != ClubConsultationResponse.STARTUP_PRIMARY_MORE_INFO
+    ]

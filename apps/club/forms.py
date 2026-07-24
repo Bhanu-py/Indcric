@@ -93,6 +93,7 @@ class ClubConsultationForm(forms.ModelForm):
 
     def __init__(self, *args, user=None, **kwargs):
         self.user = user
+        self.summary = kwargs.pop("summary", None) or {}
         super().__init__(*args, **kwargs)
         section_questions = getattr(self.instance, "section_questions", None) or {}
         for field_name, label in SECTION_QUESTION_FIELDS:
@@ -138,23 +139,83 @@ class ClubConsultationForm(forms.ModelForm):
         return questions
 
     def responsibility_rows(self):
-        selected = set(
-            self.data.getlist("responsibilities")
-            if self.is_bound
-            else self.initial.get("responsibilities", getattr(self.instance, "responsibilities", []) or [])
+        return self._multiple_choice_rows(
+            "responsibilities",
+            ClubConsultationResponse.RESPONSIBILITY_CHOICES,
+            "role_choice_counts",
+            "interested",
         )
-        return [
-            {"value": value, "label": label, "checked": value in selected}
-            for value, label in ClubConsultationResponse.RESPONSIBILITY_CHOICES
-        ]
 
     def startup_task_rows(self):
-        selected = set(
-            self.data.getlist("startup_tasks")
-            if self.is_bound
-            else self.initial.get("startup_tasks", getattr(self.instance, "startup_tasks", []) or [])
+        return self._multiple_choice_rows(
+            "startup_tasks",
+            ClubConsultationResponse.STARTUP_TASK_CHOICES,
+            "startup_choice_counts",
+            "interested",
         )
+
+    def proceed_rows(self):
+        return self._single_choice_rows(
+            "proceed_choice",
+            ClubConsultationResponse.PROCEED_CHOICES,
+            "proceed_counts",
+            "voted",
+        )
+
+    def membership_rows(self):
+        return self._single_choice_rows(
+            "membership_preference",
+            ClubConsultationResponse.MEMBERSHIP_CHOICES,
+            "membership_counts",
+            "voted",
+        )
+
+    def startup_primary_rows(self):
+        return self._single_choice_rows(
+            "startup_primary_responsibility",
+            STARTUP_PRIMARY_FORM_CHOICES,
+            "startup_primary_counts",
+            "selected",
+        )
+
+    def _multiple_choice_rows(self, field_name, choices, summary_key, status_label):
+        selected = set(
+            self.data.getlist(field_name)
+            if self.is_bound
+            else self.initial.get(field_name, getattr(self.instance, field_name, []) or [])
+        )
+        counts = self._summary_counts(summary_key)
         return [
-            {"value": value, "label": label, "checked": value in selected}
-            for value, label in ClubConsultationResponse.STARTUP_TASK_CHOICES
+            {
+                "value": value,
+                "label": label,
+                "checked": value in selected,
+                "count": counts.get(value, 0),
+                "status_label": status_label,
+            }
+            for value, label in choices
         ]
+
+    def _single_choice_rows(self, field_name, choices, summary_key, status_label):
+        selected = (
+            self.data.get(field_name)
+            if self.is_bound
+            else self.initial.get(field_name, getattr(self.instance, field_name, "") or "")
+        )
+        counts = self._summary_counts(summary_key)
+        return [
+            {
+                "value": value,
+                "label": label,
+                "checked": value == selected,
+                "count": counts.get(value, 0),
+                "status_label": status_label,
+            }
+            for value, label in choices
+        ]
+
+    def _summary_counts(self, summary_key):
+        return {
+            row["value"]: row.get("count", row.get("interested", 0))
+            for row in self.summary.get(summary_key, [])
+        }

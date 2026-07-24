@@ -75,8 +75,8 @@ class ClubConsultationTests(TestCase):
         self.assertContains(response, "I am ready to do any help as requested")
         self.assertContains(response, "data-mobile-accordion")
         self.assertLess(
+            response.content.decode().index("data-mobile-accordion"),
             response.content.decode().index("Submit your response"),
-            response.content.decode().index("Votes so far"),
         )
         self.assertNotContains(response, "Would you be willing to take primary responsibility for this role?")
         self.assertNotContains(response, "I am not sure yet")
@@ -227,14 +227,13 @@ class ClubConsultationTests(TestCase):
             section_questions={},
             consent=True,
         )
-
         response = self.client.get(reverse("club:cricket-club"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Votes so far")
-        self.assertContains(response, "Only counts are shown here")
-        self.assertContains(response, "Question count by section")
-        self.assertContains(response, "Start-up task volunteers")
+        self.assertNotContains(response, "Votes so far")
+        self.assertNotContains(response, "Only counts are shown here")
+        self.assertNotContains(response, "Question count by section")
+        self.assertContains(response, "Volunteers Needed Before the Club Starts")
         self.assertContains(response, "data-mobile-accordion")
         self.assertNotContains(response, "Private Member")
         self.assertNotContains(response, "private@example.com")
@@ -250,6 +249,29 @@ class ClubConsultationTests(TestCase):
         )
         self.assertEqual(statutes_row["interested"], 1)
         self.assertTrue(statutes_row["primary_available"])
+
+    def test_authenticated_vote_options_show_counts_inline(self):
+        ClubConsultationResponse.objects.create(
+            user=self.user,
+            name="Kural",
+            email="kural@example.com",
+            proceed_choice=ClubConsultationResponse.PROCEED_YES,
+            membership_preference=ClubConsultationResponse.MEMBERSHIP_ANNUAL,
+            volunteering_choice=ClubConsultationResponse.VOLUNTEER_YES,
+            responsibilities=[ClubConsultationResponse.ROLE_WEBSITE],
+            startup_tasks=[ClubConsultationResponse.STARTUP_STATUTES],
+            startup_primary_responsibility=ClubConsultationResponse.STARTUP_PRIMARY_SHARED,
+            section_questions={},
+            consent=True,
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("club:cricket-club"))
+
+        self.assertContains(response, "1 voted")
+        self.assertContains(response, "1 interested")
+        self.assertContains(response, "1 selected")
+        self.assertNotContains(response, "Votes so far")
 
     def test_staff_admin_summary_shows_member_votes_and_questions(self):
         staff = User.objects.create_user(username="staff", password="x", is_staff=True)
