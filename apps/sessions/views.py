@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.contrib import messages
 from django.db import models, transaction
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.urls import reverse
 from django.utils import timezone
 from decimal import Decimal
@@ -138,8 +138,10 @@ def home(request):
         Session.objects.filter(
             date__gte=today, is_cancelled=False).order_by('date', 'time')
     )
+    # Previous = past sessions, plus any cancelled session (shown with a
+    # Cancelled chip) so cancelled ones don't just vanish from the dashboard.
     previous_sessions = list(
-        Session.objects.filter(date__lt=today, is_cancelled=False).order_by(
+        Session.objects.filter(Q(date__lt=today) | Q(is_cancelled=True)).order_by(
             '-date', '-time')[:10]
     )
 
