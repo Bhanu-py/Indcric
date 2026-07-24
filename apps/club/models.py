@@ -91,7 +91,6 @@ class ClubConsultationResponse(models.Model):
         (STARTUP_BUDGET, "Help prepare the initial budget and membership-fee proposal"),
         (STARTUP_FORMS, "Help prepare registration forms and official documents"),
         (STARTUP_ADMIN, "Help with general administration during the formation process"),
-        (STARTUP_OCCASIONAL, "I can help occasionally when needed"),
     ]
     STARTUP_RESULT_CHOICES = [
         (STARTUP_FEDERATION, "Sports federation and insurance"),

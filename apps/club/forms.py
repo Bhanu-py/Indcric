@@ -2,12 +2,6 @@ from django import forms
 
 from .models import ClubConsultationResponse
 
-
-STARTUP_PRIMARY_FORM_CHOICES = [
-    choice for choice in ClubConsultationResponse.STARTUP_PRIMARY_CHOICES
-    if choice[0] != ClubConsultationResponse.STARTUP_PRIMARY_MORE_INFO
-]
-
 SECTION_QUESTION_FIELDS = [
     ("question_why", "1. Why establish a formal club?"),
     ("question_vzw", "2. VZW structure"),
@@ -50,15 +44,7 @@ class ClubConsultationForm(forms.ModelForm):
         choices=ClubConsultationResponse.STARTUP_TASK_CHOICES,
         required=False,
         widget=forms.CheckboxSelectMultiple,
-        label="Which start-up tasks would you be willing to help with?",
-    )
-    startup_primary_responsibility = forms.ChoiceField(
-        choices=STARTUP_PRIMARY_FORM_CHOICES,
-        required=False,
-        widget=forms.RadioSelect(attrs={
-            "class": "h-4 w-4 border-stone-300 text-pitch-600 focus:ring-pitch-500",
-        }),
-        label="Would you be willing to take primary responsibility for one of these tasks?",
+        label="Volunteers Needed Before the Club Starts",
     )
     consent = forms.BooleanField(
         required=True,
@@ -76,7 +62,6 @@ class ClubConsultationForm(forms.ModelForm):
             "membership_preference",
             "responsibilities",
             "startup_tasks",
-            "startup_primary_responsibility",
             "comments",
             "consent",
         ]
@@ -125,6 +110,7 @@ class ClubConsultationForm(forms.ModelForm):
         response.other_responsibility = ""
         response.role_primary_responsibility = ""
         response.startup_other_task = ""
+        response.startup_primary_responsibility = ""
         response.section_questions = self.cleaned_section_questions()
         if commit:
             response.save()
@@ -168,14 +154,6 @@ class ClubConsultationForm(forms.ModelForm):
             ClubConsultationResponse.MEMBERSHIP_CHOICES,
             "membership_counts",
             "voted",
-        )
-
-    def startup_primary_rows(self):
-        return self._single_choice_rows(
-            "startup_primary_responsibility",
-            STARTUP_PRIMARY_FORM_CHOICES,
-            "startup_primary_counts",
-            "selected",
         )
 
     def _multiple_choice_rows(self, field_name, choices, summary_key, status_label):

@@ -84,7 +84,7 @@
         <section class="card overflow-hidden">
             <div class="card-header">
                 <h2 class="text-sm font-bold text-stone-800">Start-up task volunteers</h2>
-                <p class="text-xs text-stone-500 mt-1">Primary availability is marked when a member selected the task and chose Yes or shared responsibility.</p>
+                <p class="text-xs text-stone-500 mt-1">Shows how many members selected each start-up task.</p>
             </div>
             <div class="card-body space-y-2 max-h-96 overflow-y-auto">
                 {% for row in summary.startup_task_results %}
@@ -95,13 +95,6 @@
                     </div>
                     <div class="mt-2 flex flex-wrap gap-2 text-xs text-stone-500">
                         <span>Interested volunteers: {{ row.interested }}</span>
-                        <span>Primary volunteer available:
-                            {% if row.primary_available %}
-                            <span class="badge badge-green">Yes</span>
-                            {% else %}
-                            <span class="badge badge-red">No</span>
-                            {% endif %}
-                        </span>
                     </div>
                 </div>
                 {% endfor %}
@@ -170,7 +163,6 @@
                         <th class="px-4 py-3 text-left">Membership</th>
                         <th class="px-4 py-3 text-left">Roles</th>
                         <th class="px-4 py-3 text-left">Start-up tasks</th>
-                        <th class="px-4 py-3 text-left">Task primary</th>
                         <th class="px-4 py-3 text-left">Comments</th>
                         <th class="px-4 py-3 text-left">Updated</th>
                     </tr>
@@ -198,13 +190,12 @@
                             <span class="text-stone-400">No task selected</span>
                             {% endfor %}
                         </td>
-                        <td class="px-4 py-3">{{ response.get_startup_primary_responsibility_display|default:"-" }}</td>
                         <td class="px-4 py-3 text-stone-600">{{ response.comments|default:"-" }}</td>
                         <td class="px-4 py-3 text-stone-500">{{ response.updated_at|date:"d M Y, H:i" }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="px-4 py-6 text-center text-stone-500">No responses yet.</td>
+                        <td colspan="7" class="px-4 py-6 text-center text-stone-500">No responses yet.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

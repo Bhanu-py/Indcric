@@ -75,7 +75,6 @@ def consultation_summary(responses=None):
     membership_values = Counter(response.membership_preference for response in responses)
     role_values = Counter()
     startup_values = Counter()
-    startup_primary_values = Counter()
     section_question_values = Counter()
     active_role_values = {value for value, label in ClubConsultationResponse.RESPONSIBILITY_CHOICES}
     active_startup_values = {value for value, label in ClubConsultationResponse.STARTUP_TASK_CHOICES}
@@ -89,11 +88,6 @@ def consultation_summary(responses=None):
             if value in active_startup_values
         ]
         startup_values.update(startup_tasks)
-        if response.startup_primary_responsibility in {
-            ClubConsultationResponse.STARTUP_PRIMARY_YES,
-            ClubConsultationResponse.STARTUP_PRIMARY_SHARED,
-        }:
-            startup_primary_values.update(startup_tasks)
         for field_name, question in (response.section_questions or {}).items():
             if question:
                 section_question_values[field_name] += 1
@@ -105,11 +99,7 @@ def consultation_summary(responses=None):
         "role_choice_counts": _choice_counts(ClubConsultationResponse.RESPONSIBILITY_CHOICES, role_values),
         "organizational_role_results": _organizational_role_results(role_values),
         "startup_choice_counts": _choice_counts(ClubConsultationResponse.STARTUP_TASK_CHOICES, startup_values),
-        "startup_task_results": _startup_task_results(startup_values, startup_primary_values),
-        "startup_primary_counts": _choice_counts(
-            _startup_primary_summary_choices(),
-            Counter(response.startup_primary_responsibility for response in responses if response.startup_primary_responsibility),
-        ),
+        "startup_task_results": _startup_task_results(startup_values),
         "section_question_counts": _choice_counts(SECTION_QUESTION_FIELDS, section_question_values),
         "total_role_votes": sum(role_values.values()),
         "total_startup_task_votes": sum(startup_values.values()),
@@ -176,20 +166,12 @@ def _organizational_role_results(role_values):
     return rows
 
 
-def _startup_task_results(startup_values, startup_primary_values):
+def _startup_task_results(startup_values):
     rows = []
     for value, label in ClubConsultationResponse.STARTUP_RESULT_CHOICES:
         rows.append({
             "value": value,
             "label": label,
             "interested": startup_values.get(value, 0),
-            "primary_available": startup_primary_values.get(value, 0) > 0,
         })
     return rows
-
-
-def _startup_primary_summary_choices():
-    return [
-        choice for choice in ClubConsultationResponse.STARTUP_PRIMARY_CHOICES
-        if choice[0] != ClubConsultationResponse.STARTUP_PRIMARY_MORE_INFO
-    ]
