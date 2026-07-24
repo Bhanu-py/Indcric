@@ -105,6 +105,7 @@ INSTALLED_APPS = [
     "apps.banking",
     "apps.reports",
     "apps.jerseys",
+    "apps.club",
     "apps.gdpr",
 ]
 SITE_ID = 1

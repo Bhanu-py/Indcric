@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+
+{% block title %}Proposal to Establish a Cricket Club in Ghent{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="grid grid-cols-1 lg:grid-cols-[1.5fr_0.8fr] gap-5 mb-6">
+        <section class="card p-6 sm:p-8 bg-gradient-to-br from-pitch-900 to-pitch-700 text-white overflow-hidden relative">
+            <div class="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/10"></div>
+            <p class="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200 mb-3">Member consultation</p>
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-white leading-tight mb-4">Proposal to Establish a Cricket Club in Ghent</h1>
+            <div class="space-y-3 text-sm sm:text-base text-white/85 max-w-3xl">
+                <p>For some time, we have been discussing the possibility of establishing a formal cricket club in Ghent.</p>
+                <p>Starting an official cricket club could provide better access to sports facilities, insurance coverage for registered members, possible financial support, and a more stable structure for organizing the club.</p>
+                <p>At the same time, a formal club requires administration, financial management, regular reporting, coordination, and several members willing to invest time in managing the organization.</p>
+                <p>Recently, Kural and Prem discussed this possibility with representatives of the Sportdienst of the City of Ghent. This page summarizes the main advantages, requirements, responsibilities, and practical considerations.</p>
+            </div>
+            <div class="mt-6 flex flex-wrap gap-3">
+                <a href="#consultation" class="btn btn-amber btn-lg">Share your opinion</a>
+                <a href="#responsibilities" class="btn btn-secondary btn-lg bg-white/10 border-white/20 text-white hover:bg-white/15">View responsibilities</a>
+            </div>
+        </section>
+
+        <aside class="card p-5">
+            <div class="section-eyebrow mb-4">
+                <span class="section-eyebrow-bar"></span>
+                <span class="eyebrow">Purpose</span>
+            </div>
+            <h2 class="text-xl font-extrabold text-stone-900">What we need to decide</h2>
+            <p class="text-sm text-stone-600 mt-2">We can proceed only if there is enough support and enough people willing to help with the organization.</p>
+            <ul class="mt-4 space-y-2 text-sm text-stone-700">
+                <li class="flex gap-2"><span class="text-emerald-600 font-bold">✓</span><span>Whether members support creating a formal club.</span></li>
+                <li class="flex gap-2"><span class="text-emerald-600 font-bold">✓</span><span>Whether at least three suitable board members are available.</span></li>
+                <li class="flex gap-2"><span class="text-emerald-600 font-bold">✓</span><span>Which membership-payment model members prefer.</span></li>
+                <li class="flex gap-2"><span class="text-emerald-600 font-bold">✓</span><span>How practical responsibilities can be divided.</span></li>
+            </ul>
+        </aside>
+    </div>
+
+    {% if submitted %}
+    <div id="consultation-success" class="card p-4 mb-6 border-emerald-200 bg-emerald-50" role="status">
+        <p class="font-semibold text-emerald-900">{{ success_message }}</p>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <main class="lg:col-span-2 space-y-5">
+            <section class="card p-5">
+                <h2>1. Why establish a formal club?</h2>
+                <p class="text-sm text-stone-600 mt-2">A formal club structure may allow the group to work under a recognized organization and manage cricket activities more transparently.</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                    <div class="rounded-xl bg-pitch-50 border border-pitch-100 p-3 text-sm text-stone-700">Operate under an official name and open a club bank account.</div>
+                    <div class="rounded-xl bg-pitch-50 border border-pitch-100 p-3 text-sm text-stone-700">Collect and manage membership fees transparently.</div>
+                    <div class="rounded-xl bg-pitch-50 border border-pitch-100 p-3 text-sm text-stone-700">Register members formally and arrange insurance.</div>
+                    <div class="rounded-xl bg-pitch-50 border border-pitch-100 p-3 text-sm text-stone-700">Join an appropriate federation and apply for City of Ghent recognition.</div>
+                    <div class="rounded-xl bg-pitch-50 border border-pitch-100 p-3 text-sm text-stone-700">Access possible reduced facility rates, subsidies, or support.</div>
+                    <div class="rounded-xl bg-pitch-50 border border-pitch-100 p-3 text-sm text-stone-700">Create a stable organizational structure.</div>
+                </div>
+                <p class="text-xs text-stone-500 mt-4">These benefits depend on the rules, approvals, and conditions of the relevant authorities.</p>
+            </section>
+
+            <section class="card p-5">
+                <h2>2. VZW structure</h2>
+                <p class="text-sm text-stone-600 mt-2">The proposed club would be established as a Belgian non-profit association, or VZW. A VZW gives the club a formal legal structure, but it also brings obligations.</p>
+                <ul class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-stone-700">
+                    <li>• Formal statutes and founding decision</li>
+                    <li>• Board and official registered address</li>
+                    <li>• Proper financial administration</li>
+                    <li>• Annual reporting and filing deadlines</li>
+                    <li>• Compliance with applicable VZW obligations</li>
+                    <li>• Tax and reporting duties depending on circumstances</li>
+                </ul>
+            </section>
+
+            <section class="card p-5">
+                <h2>3. Board and organizing team</h2>
+                <p class="text-sm text-stone-600 mt-2">At least three committed people are expected to be needed for the initial board or leadership structure, subject to the final statutes and legal advice.</p>
+                <p class="text-sm text-stone-600 mt-3">Responsibilities should be divided across several people. The club should not depend on only one or two organizers.</p>
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <span class="badge badge-pitch">Chairperson</span>
+                    <span class="badge badge-stone">Secretary</span>
+                    <span class="badge badge-amber">Treasurer</span>
+                    <span class="badge badge-green">Membership</span>
+                    <span class="badge badge-sky">Insurance</span>
+                    <span class="badge badge-purple">Facilities</span>
+                    <span class="badge badge-stone">Website</span>
+                    <span class="badge badge-pitch">Subsidies</span>
+                </div>
+            </section>
+
+            <section class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div class="card p-5">
+                    <h2>4. Official registered address</h2>
+                    <p class="text-sm text-stone-600 mt-2">The VZW needs an official registered address in Belgium. The person providing it should have a stable address, be actively involved, and understand that official correspondence may be sent there.</p>
+                    <p class="text-xs text-stone-500 mt-3">Home ownership, Belgian citizenship, or permanent residence should not be presented as automatic legal requirements.</p>
+                </div>
+                <div class="card p-5">
+                    <h2>5. Statutes and internal rules</h2>
+                    <p class="text-sm text-stone-600 mt-2">The statutes should cover the club name and purpose, membership conditions, fees, member rights, board appointment/removal, voting, meetings, finances, amendments, and dissolution.</p>
+                    <p class="text-xs text-stone-500 mt-3">Additional internal rules can cover practical club administration.</p>
+                </div>
+            </section>
+
+            <section class="card p-5">
+                <h2>6. Membership registration</h2>
+                <p class="text-sm text-stone-600 mt-2">A person becomes an official member only after completing registration, providing required information, paying the applicable fee, and where relevant being registered with the federation.</p>
+                <p class="text-sm text-stone-600 mt-3">Formal registration is needed for insurance, membership administration, voting rights, federation registration, financial planning, and official club records.</p>
+            </section>
+
+            <section class="card p-5">
+                <h2>7. Membership-payment options</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+                    <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                        <h3 class="text-emerald-900">Annual membership</h3>
+                        <p class="text-sm text-emerald-800 mt-2">Recommended because it reduces administration, gives stable income, supports budgeting, and simplifies insurance/federation registration.</p>
+                    </div>
+                    <div class="rounded-xl border border-sky-200 bg-sky-50 p-4">
+                        <h3 class="text-sky-900">Monthly membership</h3>
+                        <p class="text-sm text-sky-800 mt-2">More flexible for members, but it requires more payment monitoring and administration.</p>
+                    </div>
+                    <div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                        <h3 class="text-amber-900">Per game or session</h3>
+                        <p class="text-sm text-amber-800 mt-2">May suit occasional participants, but it creates significantly more administration and makes annual planning harder.</p>
+                    </div>
+                </div>
+                <p class="text-xs text-stone-500 mt-4">No final membership amount is set. It can be determined only after calculating insurance, federation, venue, equipment, banking, website, and administrative costs.</p>
+            </section>
+
+            <section class="card p-5">
+                <h2>8. Member insurance</h2>
+                <p class="text-sm text-stone-600 mt-2">Registered members may be covered through the club’s federation or sports-insurance policy. Cricket Vlaanderen currently describes collective civil-liability and sports-accident coverage for properly registered and licensed members of affiliated clubs, including relevant training sessions, matches, and travel, subject to the policy conditions.</p>
+                <ul class="mt-4 space-y-2 text-sm text-stone-700">
+                    <li>• Coverage applies only when registration and payment conditions are completed.</li>
+                    <li>• Exact coverage depends on the federation and insurance policy.</li>
+                    <li>• The club must confirm the final premium and accident-reporting procedure.</li>
+                    <li>• The insurer decides whether a claim is covered.</li>
+                </ul>
+            </section>
+
+            <section class="card p-5 border-emerald-100 bg-emerald-50/60">
+                <h2>9. Possible reimbursement through your health-insurance fund</h2>
+                <p class="text-sm text-emerald-900 mt-2">Some Belgian health-insurance funds provide their members with a partial annual reimbursement of sports-club membership fees.</p>
+                <p class="text-sm text-emerald-900 mt-3">After paying the club membership fee, an eligible member may ask the club to complete or sign the reimbursement form from their mutuality, or provide a membership certificate with the required information.</p>
+                <ul class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-emerald-900">
+                    <li>• Member name and club name</li>
+                    <li>• Sport practised and season period</li>
+                    <li>• Amount paid and payment date</li>
+                    <li>• Club contact details and authorized signature/stamp</li>
+                </ul>
+                <p class="text-xs text-emerald-800 mt-4">The member submits the document to their own mutuality. Amounts and eligibility vary, so reimbursement is not guaranteed by the club.</p>
+                <a class="btn btn-primary btn-md mt-4" href="mailto:indiancricket.ghent@gmail.com?subject=Membership%20reimbursement%20certificate%20request">Request a membership reimbursement certificate</a>
+            </section>
+
+            <section class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div class="card p-5">
+                    <h2>10. Sports facilities and possible support</h2>
+                    <p class="text-sm text-stone-600 mt-2">Formal recognition may provide access to reduced tariffs or possible subsidies. Exact rental reductions depend on the facility and applicable regulations.</p>
+                    <p class="text-xs text-stone-500 mt-3">The previously discussed reduction of up to approximately 80% must be confirmed. Reimbursement for alternative facilities is not automatic and may require proof and prior authorization.</p>
+                </div>
+                <div class="card p-5">
+                    <h2>11. Financial administration</h2>
+                    <p class="text-sm text-stone-600 mt-2">The club would need a VZW bank account, accurate income and expense records, invoices, receipts, a membership-payment register, annual budget, annual accounts or financial report, member approval where required, and timely filings.</p>
+                    <p class="text-xs text-stone-500 mt-3">Missed deadlines can lead to penalties or administrative consequences.</p>
+                </div>
+            </section>
+
+            <section id="responsibilities" class="card p-5">
+                <h2>12. Main responsibilities</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 mt-4">
+                    <div class="rounded-xl border border-stone-100 p-4"><h3>Governance</h3><p class="text-sm text-stone-600 mt-2">Board meetings, member meetings, minutes, statutes, legal deadlines, and communication with authorities.</p></div>
+                    <div class="rounded-xl border border-stone-100 p-4"><h3>Finance</h3><p class="text-sm text-stone-600 mt-2">Budget, bank account, records, invoices, reporting, tax-related filing, and subsidy applications.</p></div>
+                    <div class="rounded-xl border border-stone-100 p-4"><h3>Membership</h3><p class="text-sm text-stone-600 mt-2">Registration, records, fee collection, federation registration, renewals, and certificates.</p></div>
+                    <div class="rounded-xl border border-stone-100 p-4"><h3>Insurance</h3><p class="text-sm text-stone-600 mt-2">Insurance registration, records, accident forms, and communication with the federation or insurer.</p></div>
+                    <div class="rounded-xl border border-stone-100 p-4"><h3>Facility booking</h3><p class="text-sm text-stone-600 mt-2">Suitable halls and grounds, reservations, deadlines, payments, and provider communication.</p></div>
+                    <div class="rounded-xl border border-stone-100 p-4"><h3>Website and communication</h3><p class="text-sm text-stone-600 mt-2">Official information, forms, member communication, privacy, and data-management checks.</p></div>
+                    <div class="rounded-xl border border-stone-100 p-4"><h3>Equipment</h3><p class="text-sm text-stone-600 mt-2">Purchasing, inventory, storage, maintenance, and transport.</p></div>
+                </div>
+            </section>
+        </main>
+
+        <aside class="lg:sticky lg:top-24 h-fit">
+            <section id="consultation" class="card overflow-hidden">
+                <div class="card-header">
+                    <p class="micro-label text-pitch-600">Consultation form</p>
+                    <h2 class="text-xl font-extrabold text-stone-900">Share your opinion</h2>
+                    <p class="text-sm text-stone-500 mt-1">Your response helps us check whether there is enough support and volunteer capacity.</p>
+                </div>
+                <form method="post" class="card-body space-y-5" novalidate
+                      x-data="{ volunteering: '{{ form.volunteering_choice.value|default:'' }}', otherSelected: false }"
+                      x-init="otherSelected = Array.from($el.querySelectorAll('input[name=responsibilities]:checked')).some(input => input.value === 'other')"
+                      @change="otherSelected = Array.from($el.querySelectorAll('input[name=responsibilities]:checked')).some(input => input.value === 'other')">
+                    {% csrf_token %}
+
+                    {% if form.errors %}
+                    <div class="rounded-xl border border-red-200 bg-red-50 p-3" role="alert">
+                        <p class="text-sm font-semibold text-red-800">Please correct the highlighted fields.</p>
+                    </div>
+                    {% endif %}
+
+                    <div class="grid grid-cols-1 gap-4">
+                        <div>
+                            <label class="form-label" for="{{ form.name.id_for_label }}">{{ form.name.label }} <span class="text-red-500">*</span></label>
+                            {{ form.name }}
+                            {% include "club/partials/_field_errors.html" with field=form.name %}
+                        </div>
+                        <div>
+                            <label class="form-label" for="{{ form.email.id_for_label }}">{{ form.email.label }} <span class="text-red-500">*</span></label>
+                            {{ form.email }}
+                            {% include "club/partials/_field_errors.html" with field=form.email %}
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="form-label" for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
+                                {{ form.phone }}
+                                {% include "club/partials/_field_errors.html" with field=form.phone %}
+                            </div>
+                            <div>
+                                <label class="form-label" for="{{ form.connection.id_for_label }}">{{ form.connection.label }}</label>
+                                {{ form.connection }}
+                                {% include "club/partials/_field_errors.html" with field=form.connection %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <fieldset>
+                        <legend class="form-label">{{ form.proceed_choice.label }} <span class="text-red-500">*</span></legend>
+                        <div class="space-y-2">
+                            {% for choice in form.proceed_choice %}
+                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
+                                {{ choice.tag }}
+                                <span>{{ choice.choice_label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% include "club/partials/_field_errors.html" with field=form.proceed_choice %}
+                    </fieldset>
+
+                    <fieldset>
+                        <legend class="form-label">{{ form.membership_preference.label }} <span class="text-red-500">*</span></legend>
+                        <p class="text-xs text-stone-500 mb-2">Annual membership is currently recommended because it reduces administration and supports stable budgeting.</p>
+                        <div class="space-y-2">
+                            {% for choice in form.membership_preference %}
+                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
+                                {{ choice.tag }}
+                                <span>{{ choice.choice_label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% include "club/partials/_field_errors.html" with field=form.membership_preference %}
+                    </fieldset>
+
+                    <fieldset>
+                        <legend class="form-label">{{ form.volunteering_choice.label }} <span class="text-red-500">*</span></legend>
+                        <div class="space-y-2">
+                            {% for choice in form.volunteering_choice %}
+                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
+                                {{ choice.tag }}
+                                <span>{{ choice.choice_label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% include "club/partials/_field_errors.html" with field=form.volunteering_choice %}
+                    </fieldset>
+
+                    <div x-show="volunteering === 'yes' || volunteering === 'maybe'" aria-live="polite" class="space-y-5">
+                        <fieldset>
+                            <legend class="form-label">{{ form.responsibilities.label }}</legend>
+                            <div class="grid grid-cols-1 gap-2">
+                                {% for row in form.responsibility_rows %}
+                                <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
+                                    <input type="checkbox" name="responsibilities" value="{{ row.value }}" class="h-4 w-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500" {% if row.checked %}checked{% endif %}>
+                                    <span>{{ row.label }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                            {% include "club/partials/_field_errors.html" with field=form.responsibilities %}
+                        </fieldset>
+
+                        <div x-show="otherSelected">
+                            <label class="form-label" for="{{ form.other_responsibility.id_for_label }}">{{ form.other_responsibility.label }}</label>
+                            {{ form.other_responsibility }}
+                            {% include "club/partials/_field_errors.html" with field=form.other_responsibility %}
+                        </div>
+
+                        <fieldset>
+                            <legend class="form-label">{{ form.time_commitment.label }}</legend>
+                            <div class="space-y-2">
+                                {% for choice in form.time_commitment %}
+                                <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
+                                    {{ choice.tag }}
+                                    <span>{{ choice.choice_label }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                            {% include "club/partials/_field_errors.html" with field=form.time_commitment %}
+                        </fieldset>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="{{ form.comments.id_for_label }}">{{ form.comments.label }}</label>
+                        {{ form.comments }}
+                        {% include "club/partials/_field_errors.html" with field=form.comments %}
+                    </div>
+
+                    <div class="rounded-xl bg-stone-50 border border-stone-200 p-3">
+                        <label class="flex gap-3 text-sm text-stone-700">
+                            <input type="checkbox" name="{{ form.consent.html_name }}" id="{{ form.consent.id_for_label }}" class="mt-1 h-4 w-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500" {% if form.consent.value %}checked{% endif %} required>
+                            <span>{{ form.consent.label }} <span class="text-red-500">*</span></span>
+                        </label>
+                        <p class="text-xs text-stone-500 mt-2">We collect only the information needed to review this consultation. Read the <a href="{% url 'gdpr:privacy_policy' %}" class="text-pitch-700 font-semibold hover:underline" target="_blank" rel="noopener">privacy policy</a>.</p>
+                        {% include "club/partials/_field_errors.html" with field=form.consent %}
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-full">Submit consultation response</button>
+                </form>
+            </section>
+        </aside>
+    </div>
+</div>
+{% endblock %}
