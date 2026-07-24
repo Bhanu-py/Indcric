@@ -31,41 +31,95 @@ class ClubConsultationResponse(models.Model):
         (VOLUNTEER_NO, "No"),
     ]
 
-    TIME_WEEKLY = "weekly"
-    TIME_MONTHLY = "monthly"
-    TIME_SPECIFIC = "specific_task"
-    TIME_OCCASIONAL = "occasional"
-    TIME_CHOICES = [
-        (TIME_WEEKLY, "A few hours each week"),
-        (TIME_MONTHLY, "A few hours each month"),
-        (TIME_SPECIFIC, "Only when a specific task is assigned"),
-        (TIME_OCCASIONAL, "Only occasionally"),
+    RESPONSIBILITY_OTHER = "other"
+    ROLE_DIRECTOR_ADMIN = "director_admin"
+    ROLE_DIRECTOR_FINANCE = "director_finance"
+    ROLE_DIRECTOR_MEMBERSHIP = "director_membership"
+    ROLE_FACILITIES = "facilities"
+    ROLE_WEBSITE = "website"
+    ROLE_SUPPORT = "role_support"
+    ROLE_MORE_INFO = "role_more_info"
+    RESPONSIBILITY_CHOICES = [
+        (ROLE_DIRECTOR_ADMIN, "Director – General Administration"),
+        (ROLE_DIRECTOR_FINANCE, "Director – Finance and Treasurer"),
+        (ROLE_DIRECTOR_MEMBERSHIP, "Director – Membership and External Relations"),
+        (ROLE_FACILITIES, "Facilities and Booking Coordinator"),
+        (ROLE_WEBSITE, "Website and Communication Coordinator"),
+        (ROLE_SUPPORT, "I can support one of these roles"),
+        (ROLE_MORE_INFO, "I need more information"),
+        (RESPONSIBILITY_OTHER, "Other"),
+    ]
+    ORGANIZATIONAL_ROLE_VALUES = [
+        ROLE_DIRECTOR_ADMIN,
+        ROLE_DIRECTOR_FINANCE,
+        ROLE_DIRECTOR_MEMBERSHIP,
+        ROLE_FACILITIES,
+        ROLE_WEBSITE,
+    ]
+    DIRECTOR_ROLE_VALUES = [
+        ROLE_DIRECTOR_ADMIN,
+        ROLE_DIRECTOR_FINANCE,
+        ROLE_DIRECTOR_MEMBERSHIP,
     ]
 
-    RESPONSIBILITY_OTHER = "other"
-    RESPONSIBILITY_CHOICES = [
-        ("director", "Serve as a director or board member"),
-        ("registered_address", "Provide an official registered address"),
-        ("statutes", "Help prepare the statutes and internal rules"),
-        ("chairperson", "Serve as chairperson or general coordinator"),
-        ("treasurer", "Serve as treasurer and take care of financial records"),
-        ("membership_registration", "Manage membership registration"),
-        ("membership_payments", "Monitor membership payments"),
-        ("membership_certificates", "Prepare membership certificates for mutuality reimbursement"),
-        ("insurance_registration", "Coordinate insurance registration"),
-        ("accident_documents", "Assist with accident-reporting documents"),
-        ("facility_booking", "Book sports halls and cricket grounds"),
-        ("city_communication", "Communicate with the City of Ghent"),
-        ("federation_communication", "Communicate with Cricket Vlaanderen or another federation"),
-        ("subsidies", "Apply for subsidies or reimbursements"),
-        ("equipment", "Manage cricket equipment"),
-        ("website", "Maintain the club website"),
-        ("forms", "Manage registration and consultation forms"),
-        ("emails", "Manage member emails and announcements"),
-        ("privacy", "Assist with privacy and data protection"),
-        ("volunteer_coordination", "Coordinate volunteers"),
-        ("occasional_help", "Help occasionally without taking a permanent role"),
-        (RESPONSIBILITY_OTHER, "Other"),
+    ROLE_PRIMARY_YES = "yes"
+    ROLE_PRIMARY_MAYBE = "maybe"
+    ROLE_PRIMARY_SUPPORT = "support_only"
+    ROLE_PRIMARY_CHOICES = [
+        (ROLE_PRIMARY_YES, "Yes"),
+        (ROLE_PRIMARY_MAYBE, "Maybe"),
+        (ROLE_PRIMARY_SUPPORT, "No, I can only provide support"),
+    ]
+
+    STARTUP_OTHER = "other"
+    STARTUP_FEDERATION = "federation_insurance"
+    STARTUP_STAD_GENT = "stad_gent"
+    STARTUP_MEMBERS = "potential_members"
+    STARTUP_STATUTES = "statutes_bylaws"
+    STARTUP_VZW = "vzw_research"
+    STARTUP_DIRECTORS = "directors_address"
+    STARTUP_BUDGET = "initial_budget"
+    STARTUP_FOUNDING = "founding_meeting"
+    STARTUP_FORMS = "registration_documents"
+    STARTUP_ADMIN = "formation_admin"
+    STARTUP_OCCASIONAL = "occasional_help"
+    STARTUP_MORE_INFO = "startup_more_info"
+    STARTUP_TASK_CHOICES = [
+        (STARTUP_FEDERATION, "Contact the sports federation and collect registration and insurance information"),
+        (STARTUP_STAD_GENT, "Communicate with Stad Gent about recognition, facilities, and possible support"),
+        (STARTUP_MEMBERS, "Collect the details of people interested in becoming members"),
+        (STARTUP_STATUTES, "Help draft the club statutes or bylaws"),
+        (STARTUP_VZW, "Research the VZW registration requirements"),
+        (STARTUP_DIRECTORS, "Help identify three directors and a registered address"),
+        (STARTUP_BUDGET, "Help prepare the initial budget and membership-fee proposal"),
+        (STARTUP_FOUNDING, "Help organize the founding meeting and voting"),
+        (STARTUP_FORMS, "Help prepare registration forms and official documents"),
+        (STARTUP_ADMIN, "Help with general administration during the formation process"),
+        (STARTUP_OCCASIONAL, "I can help occasionally when needed"),
+        (STARTUP_MORE_INFO, "I need more information"),
+        (STARTUP_OTHER, "Other"),
+    ]
+    STARTUP_RESULT_CHOICES = [
+        (STARTUP_FEDERATION, "Sports federation and insurance"),
+        (STARTUP_STAD_GENT, "Stad Gent communication"),
+        (STARTUP_MEMBERS, "Potential member registration"),
+        (STARTUP_STATUTES, "Statutes or bylaws"),
+        (STARTUP_VZW, "VZW registration research"),
+        (STARTUP_DIRECTORS, "Directors and registered address"),
+        (STARTUP_BUDGET, "Initial budget and membership fee"),
+        (STARTUP_FOUNDING, "Founding meeting and voting"),
+        (STARTUP_FORMS, "Registration forms and documents"),
+        (STARTUP_ADMIN, "General formation support"),
+    ]
+    STARTUP_PRIMARY_YES = "yes"
+    STARTUP_PRIMARY_SHARED = "shared"
+    STARTUP_PRIMARY_OCCASIONAL = "occasional"
+    STARTUP_PRIMARY_MORE_INFO = "more_info"
+    STARTUP_PRIMARY_CHOICES = [
+        (STARTUP_PRIMARY_YES, "Yes"),
+        (STARTUP_PRIMARY_SHARED, "I can share responsibility with another person"),
+        (STARTUP_PRIMARY_OCCASIONAL, "I can only provide occasional help"),
+        (STARTUP_PRIMARY_MORE_INFO, "I need more information"),
     ]
 
     user = models.ForeignKey(
@@ -84,6 +138,20 @@ class ClubConsultationResponse(models.Model):
     volunteering_choice = models.CharField(max_length=20, choices=VOLUNTEER_CHOICES)
     responsibilities = models.JSONField(default=list, blank=True)
     other_responsibility = models.CharField(max_length=160, blank=True)
+    role_primary_responsibility = models.CharField(max_length=20, choices=ROLE_PRIMARY_CHOICES, blank=True)
+    startup_tasks = models.JSONField(default=list, blank=True)
+    startup_other_task = models.CharField(max_length=180, blank=True)
+    startup_primary_responsibility = models.CharField(max_length=20, choices=STARTUP_PRIMARY_CHOICES, blank=True)
+    TIME_WEEKLY = "weekly"
+    TIME_MONTHLY = "monthly"
+    TIME_SPECIFIC = "specific_task"
+    TIME_OCCASIONAL = "occasional"
+    TIME_CHOICES = [
+        (TIME_WEEKLY, "A few hours each week"),
+        (TIME_MONTHLY, "A few hours each month"),
+        (TIME_SPECIFIC, "Only when a specific task is assigned"),
+        (TIME_OCCASIONAL, "Only occasionally"),
+    ]
     time_commitment = models.CharField(max_length=20, choices=TIME_CHOICES, blank=True)
     section_questions = models.JSONField(default=dict, blank=True)
     comments = models.TextField(blank=True)
@@ -104,6 +172,9 @@ class ClubConsultationResponse(models.Model):
         responsibilities = self.responsibilities or []
         if self.RESPONSIBILITY_OTHER in responsibilities and not self.other_responsibility.strip():
             raise ValidationError({"other_responsibility": "Describe the other responsibility."})
+        startup_tasks = self.startup_tasks or []
+        if self.STARTUP_OTHER in startup_tasks and not self.startup_other_task.strip():
+            raise ValidationError({"startup_other_task": "Describe the other start-up task."})
 
     @property
     def selected_responsibility_labels(self):
@@ -111,4 +182,12 @@ class ClubConsultationResponse(models.Model):
         selected = [labels.get(value, value) for value in self.responsibilities or []]
         if self.other_responsibility:
             selected.append(self.other_responsibility)
+        return selected
+
+    @property
+    def selected_startup_task_labels(self):
+        labels = dict(self.STARTUP_TASK_CHOICES)
+        selected = [labels.get(value, value) for value in self.startup_tasks or []]
+        if self.startup_other_task:
+            selected.append(self.startup_other_task)
         return selected

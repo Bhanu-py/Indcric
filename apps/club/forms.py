@@ -15,7 +15,8 @@ SECTION_QUESTION_FIELDS = [
     ("question_mutuality", "9. Mutuality reimbursement"),
     ("question_facilities", "10. Sports facilities and possible support"),
     ("question_finance", "11. Financial administration"),
-    ("question_responsibilities", "12. Main responsibilities"),
+    ("question_responsibilities", "12. Interest in organizational roles"),
+    ("question_startup_tasks", "13. Volunteers needed before the club starts"),
 ]
 
 
@@ -38,15 +39,29 @@ class ClubConsultationForm(forms.ModelForm):
         choices=ClubConsultationResponse.RESPONSIBILITY_CHOICES,
         required=False,
         widget=forms.CheckboxSelectMultiple,
-        label="Which roles or responsibilities are you willing to help with?",
+        label="Which organizational role would you be willing to take on?",
     )
-    time_commitment = forms.ChoiceField(
-        choices=ClubConsultationResponse.TIME_CHOICES,
+    role_primary_responsibility = forms.ChoiceField(
+        choices=ClubConsultationResponse.ROLE_PRIMARY_CHOICES,
         required=False,
         widget=forms.RadioSelect(attrs={
             "class": "h-4 w-4 border-stone-300 text-pitch-600 focus:ring-pitch-500",
         }),
-        label="If you selected any role, how much time could you generally contribute?",
+        label="Would you be willing to take primary responsibility for this role?",
+    )
+    startup_tasks = forms.MultipleChoiceField(
+        choices=ClubConsultationResponse.STARTUP_TASK_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Which start-up tasks would you be willing to help with?",
+    )
+    startup_primary_responsibility = forms.ChoiceField(
+        choices=ClubConsultationResponse.STARTUP_PRIMARY_CHOICES,
+        required=False,
+        widget=forms.RadioSelect(attrs={
+            "class": "h-4 w-4 border-stone-300 text-pitch-600 focus:ring-pitch-500",
+        }),
+        label="Would you be willing to take primary responsibility for one of these tasks?",
     )
     consent = forms.BooleanField(
         required=True,
@@ -64,12 +79,19 @@ class ClubConsultationForm(forms.ModelForm):
             "membership_preference",
             "responsibilities",
             "other_responsibility",
-            "time_commitment",
+            "role_primary_responsibility",
+            "startup_tasks",
+            "startup_other_task",
+            "startup_primary_responsibility",
             "comments",
             "consent",
         ]
         widgets = {
             "other_responsibility": forms.TextInput(attrs={
+                "class": "form-input",
+                "placeholder": "Please describe",
+            }),
+            "startup_other_task": forms.TextInput(attrs={
                 "class": "form-input",
                 "placeholder": "Please describe",
             }),
@@ -80,7 +102,8 @@ class ClubConsultationForm(forms.ModelForm):
             }),
         }
         labels = {
-            "other_responsibility": "Other role or responsibility",
+            "other_responsibility": "Other organizational role",
+            "startup_other_task": "Other start-up task",
             "comments": "General comments or questions",
         }
 
@@ -104,10 +127,15 @@ class ClubConsultationForm(forms.ModelForm):
     def clean_responsibilities(self):
         return list(self.cleaned_data.get("responsibilities") or [])
 
+    def clean_startup_tasks(self):
+        return list(self.cleaned_data.get("startup_tasks") or [])
+
     def clean(self):
         cleaned = super().clean()
         responsibilities = cleaned.get("responsibilities") or []
         other_responsibility = (cleaned.get("other_responsibility") or "").strip()
+        startup_tasks = cleaned.get("startup_tasks") or []
+        startup_other_task = (cleaned.get("startup_other_task") or "").strip()
         if (
             ClubConsultationResponse.RESPONSIBILITY_OTHER in responsibilities
             and not other_responsibility
@@ -115,13 +143,20 @@ class ClubConsultationForm(forms.ModelForm):
             self.add_error("other_responsibility", "Describe the other role or responsibility.")
         if ClubConsultationResponse.RESPONSIBILITY_OTHER not in responsibilities:
             cleaned["other_responsibility"] = ""
+        if (
+            ClubConsultationResponse.STARTUP_OTHER in startup_tasks
+            and not startup_other_task
+        ):
+            self.add_error("startup_other_task", "Describe the other start-up task.")
+        if ClubConsultationResponse.STARTUP_OTHER not in startup_tasks:
+            cleaned["startup_other_task"] = ""
         return cleaned
 
     def save(self, commit=True):
         response = super().save(commit=False)
         response.volunteering_choice = (
             ClubConsultationResponse.VOLUNTEER_YES
-            if self.cleaned_data.get("responsibilities")
+            if self.cleaned_data.get("responsibilities") or self.cleaned_data.get("startup_tasks")
             else ClubConsultationResponse.VOLUNTEER_NO
         )
         response.section_questions = self.cleaned_section_questions()
@@ -146,4 +181,15 @@ class ClubConsultationForm(forms.ModelForm):
         return [
             {"value": value, "label": label, "checked": value in selected}
             for value, label in ClubConsultationResponse.RESPONSIBILITY_CHOICES
+        ]
+
+    def startup_task_rows(self):
+        selected = set(
+            self.data.getlist("startup_tasks")
+            if self.is_bound
+            else self.initial.get("startup_tasks", getattr(self.instance, "startup_tasks", []) or [])
+        )
+        return [
+            {"value": value, "label": label, "checked": value in selected}
+            for value, label in ClubConsultationResponse.STARTUP_TASK_CHOICES
         ]

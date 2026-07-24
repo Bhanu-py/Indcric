@@ -21,9 +21,18 @@ class ClubConsultationTests(TestCase):
         payload = {
             "proceed_choice": ClubConsultationResponse.PROCEED_YES,
             "membership_preference": ClubConsultationResponse.MEMBERSHIP_ANNUAL,
-            "responsibilities": ["website", "membership_registration"],
-            "time_commitment": ClubConsultationResponse.TIME_MONTHLY,
+            "responsibilities": [
+                ClubConsultationResponse.ROLE_DIRECTOR_ADMIN,
+                ClubConsultationResponse.ROLE_WEBSITE,
+            ],
+            "role_primary_responsibility": ClubConsultationResponse.ROLE_PRIMARY_YES,
+            "startup_tasks": [
+                ClubConsultationResponse.STARTUP_FEDERATION,
+                ClubConsultationResponse.STARTUP_FORMS,
+            ],
+            "startup_primary_responsibility": ClubConsultationResponse.STARTUP_PRIMARY_SHARED,
             "question_vzw": "Who prepares the statutes?",
+            "question_startup_tasks": "Who can contact the federation?",
             "comments": "Good idea.",
             "consent": "on",
         }
@@ -38,6 +47,9 @@ class ClubConsultationTests(TestCase):
         self.assertContains(response, "Page navigation")
         self.assertContains(response, "Sign in to vote")
         self.assertContains(response, "Ask a question about this section")
+        self.assertContains(response, "Interest in Organizational Roles")
+        self.assertContains(response, "Volunteers Needed Before the Club Starts")
+        self.assertContains(response, "Director – General Administration")
         self.assertNotContains(response, "Request a membership reimbursement certificate")
         self.assertNotContains(response, "I need more information before deciding.")
         self.assertNotContains(response, "Maybe, depending on the role and time required")
@@ -54,7 +66,9 @@ class ClubConsultationTests(TestCase):
 
         self.assertContains(response, "Submitting as Kural")
         self.assertContains(response, "No separate name, email, or phone entry is needed.")
-        self.assertContains(response, "Serve as treasurer and take care of financial records")
+        self.assertContains(response, "Director – Finance and Treasurer")
+        self.assertContains(response, "Which organizational role would you be willing to take on?")
+        self.assertContains(response, "Which start-up tasks would you be willing to help with?")
         self.assertNotContains(response, "I am not sure yet")
         self.assertNotContains(response, "Serve as secretary")
         self.assertNotContains(response, "Maintain financial records")
@@ -74,21 +88,49 @@ class ClubConsultationTests(TestCase):
         self.assertEqual(consultation.user, self.user)
         self.assertEqual(consultation.name, "Kural")
         self.assertEqual(consultation.email, "kural@example.com")
-        self.assertEqual(consultation.responsibilities, ["website", "membership_registration"])
+        self.assertEqual(consultation.responsibilities, [
+            ClubConsultationResponse.ROLE_DIRECTOR_ADMIN,
+            ClubConsultationResponse.ROLE_WEBSITE,
+        ])
+        self.assertEqual(
+            consultation.role_primary_responsibility,
+            ClubConsultationResponse.ROLE_PRIMARY_YES,
+        )
+        self.assertEqual(consultation.startup_tasks, [
+            ClubConsultationResponse.STARTUP_FEDERATION,
+            ClubConsultationResponse.STARTUP_FORMS,
+        ])
+        self.assertEqual(
+            consultation.startup_primary_responsibility,
+            ClubConsultationResponse.STARTUP_PRIMARY_SHARED,
+        )
         self.assertEqual(consultation.volunteering_choice, ClubConsultationResponse.VOLUNTEER_YES)
-        self.assertEqual(consultation.section_questions, {"question_vzw": "Who prepares the statutes?"})
+        self.assertEqual(consultation.section_questions, {
+            "question_vzw": "Who prepares the statutes?",
+            "question_startup_tasks": "Who can contact the federation?",
+        })
 
     def test_role_voting_is_optional(self):
         self.client.force_login(self.user)
 
         response = self.client.post(
             reverse("club:cricket-club"),
-            self.valid_payload(responsibilities=[], time_commitment="", question_vzw=""),
+            self.valid_payload(
+                responsibilities=[],
+                role_primary_responsibility="",
+                startup_tasks=[],
+                startup_primary_responsibility="",
+                question_vzw="",
+                question_startup_tasks="",
+            ),
         )
 
         self.assertEqual(response.status_code, 302)
         consultation = ClubConsultationResponse.objects.get()
         self.assertEqual(consultation.responsibilities, [])
+        self.assertEqual(consultation.role_primary_responsibility, "")
+        self.assertEqual(consultation.startup_tasks, [])
+        self.assertEqual(consultation.startup_primary_responsibility, "")
         self.assertEqual(consultation.time_commitment, "")
         self.assertEqual(consultation.volunteering_choice, ClubConsultationResponse.VOLUNTEER_NO)
 
@@ -104,6 +146,21 @@ class ClubConsultationTests(TestCase):
         self.assertContains(response, "Describe the other role or responsibility.")
         self.assertEqual(ClubConsultationResponse.objects.count(), 0)
 
+    def test_other_startup_task_requires_description(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("club:cricket-club"),
+            self.valid_payload(
+                startup_tasks=[ClubConsultationResponse.STARTUP_OTHER],
+                startup_other_task="",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Describe the other start-up task.")
+        self.assertEqual(ClubConsultationResponse.objects.count(), 0)
+
     def test_authenticated_member_updates_existing_response(self):
         self.client.force_login(self.user)
 
@@ -112,9 +169,13 @@ class ClubConsultationTests(TestCase):
             reverse("club:cricket-club"),
             self.valid_payload(
                 proceed_choice=ClubConsultationResponse.PROCEED_NO,
-                responsibilities=["treasurer"],
+                responsibilities=[ClubConsultationResponse.ROLE_DIRECTOR_FINANCE],
+                role_primary_responsibility=ClubConsultationResponse.ROLE_PRIMARY_MAYBE,
+                startup_tasks=[ClubConsultationResponse.STARTUP_BUDGET],
+                startup_primary_responsibility=ClubConsultationResponse.STARTUP_PRIMARY_YES,
                 question_vzw="",
                 question_finance="Who files the accounts?",
+                question_startup_tasks="",
             ),
         )
 
@@ -123,7 +184,16 @@ class ClubConsultationTests(TestCase):
         self.assertEqual(ClubConsultationResponse.objects.count(), 1)
         consultation = ClubConsultationResponse.objects.get()
         self.assertEqual(consultation.proceed_choice, ClubConsultationResponse.PROCEED_NO)
-        self.assertEqual(consultation.responsibilities, ["treasurer"])
+        self.assertEqual(consultation.responsibilities, [ClubConsultationResponse.ROLE_DIRECTOR_FINANCE])
+        self.assertEqual(
+            consultation.role_primary_responsibility,
+            ClubConsultationResponse.ROLE_PRIMARY_MAYBE,
+        )
+        self.assertEqual(consultation.startup_tasks, [ClubConsultationResponse.STARTUP_BUDGET])
+        self.assertEqual(
+            consultation.startup_primary_responsibility,
+            ClubConsultationResponse.STARTUP_PRIMARY_YES,
+        )
         self.assertEqual(consultation.section_questions, {"question_finance": "Who files the accounts?"})
 
     def test_public_page_shows_counts_without_names_or_question_text(self):
@@ -140,8 +210,13 @@ class ClubConsultationTests(TestCase):
             proceed_choice=ClubConsultationResponse.PROCEED_YES,
             membership_preference=ClubConsultationResponse.MEMBERSHIP_ANNUAL,
             volunteering_choice=ClubConsultationResponse.VOLUNTEER_YES,
-            responsibilities=["website", "treasurer"],
-            time_commitment=ClubConsultationResponse.TIME_MONTHLY,
+            responsibilities=[
+                ClubConsultationResponse.ROLE_WEBSITE,
+                ClubConsultationResponse.ROLE_DIRECTOR_FINANCE,
+            ],
+            role_primary_responsibility=ClubConsultationResponse.ROLE_PRIMARY_YES,
+            startup_tasks=[ClubConsultationResponse.STARTUP_STATUTES],
+            startup_primary_responsibility=ClubConsultationResponse.STARTUP_PRIMARY_SHARED,
             section_questions={"question_vzw": "Who prepares the statutes?"},
             consent=True,
         )
@@ -163,6 +238,7 @@ class ClubConsultationTests(TestCase):
         self.assertContains(response, "Votes so far")
         self.assertContains(response, "Only counts are shown here")
         self.assertContains(response, "Question count by section")
+        self.assertContains(response, "Start-up task volunteers")
         self.assertContains(response, "mobile-section-dropdown")
         self.assertNotContains(response, "Private Member")
         self.assertNotContains(response, "private@example.com")
@@ -171,6 +247,13 @@ class ClubConsultationTests(TestCase):
         self.assertEqual(summary["total_responses"], 2)
         self.assertEqual(summary["total_questions"], 1)
         self.assertEqual(summary["total_role_votes"], 2)
+        self.assertEqual(summary["total_startup_task_votes"], 1)
+        statutes_row = next(
+            row for row in summary["startup_task_results"]
+            if row["value"] == ClubConsultationResponse.STARTUP_STATUTES
+        )
+        self.assertEqual(statutes_row["interested"], 1)
+        self.assertTrue(statutes_row["primary_available"])
 
     def test_staff_admin_summary_shows_member_votes_and_questions(self):
         staff = User.objects.create_user(username="staff", password="x", is_staff=True)
@@ -181,9 +264,14 @@ class ClubConsultationTests(TestCase):
             proceed_choice=ClubConsultationResponse.PROCEED_YES,
             membership_preference=ClubConsultationResponse.MEMBERSHIP_ANNUAL,
             volunteering_choice=ClubConsultationResponse.VOLUNTEER_YES,
-            responsibilities=["website"],
-            time_commitment=ClubConsultationResponse.TIME_MONTHLY,
-            section_questions={"question_vzw": "Who prepares the statutes?"},
+            responsibilities=[ClubConsultationResponse.ROLE_WEBSITE],
+            role_primary_responsibility=ClubConsultationResponse.ROLE_PRIMARY_SUPPORT,
+            startup_tasks=[ClubConsultationResponse.STARTUP_STATUTES],
+            startup_primary_responsibility=ClubConsultationResponse.STARTUP_PRIMARY_YES,
+            section_questions={
+                "question_vzw": "Who prepares the statutes?",
+                "question_startup_tasks": "Who organizes the founding meeting?",
+            },
             comments="Good idea.",
             consent=True,
         )
@@ -195,9 +283,14 @@ class ClubConsultationTests(TestCase):
         self.assertContains(response, "Cricket club consultation admin")
         self.assertContains(response, "Club decision count")
         self.assertContains(response, "Question count by section")
+        self.assertContains(response, "Interest in Organizational Roles")
+        self.assertContains(response, "Start-up task volunteers")
+        self.assertContains(response, "Role primary")
+        self.assertContains(response, "Task primary")
         self.assertContains(response, "Kural")
         self.assertContains(response, "kural@example.com")
         self.assertContains(response, "Who prepares the statutes?")
+        self.assertContains(response, "Who organizes the founding meeting?")
 
     def test_non_staff_cannot_open_consultation_admin_summary(self):
         self.client.force_login(self.user)
