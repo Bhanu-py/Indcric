@@ -46,14 +46,6 @@ class ClubConsultationForm(forms.ModelForm):
         widget=forms.CheckboxSelectMultiple,
         label="Which organizational role would you be willing to take on?",
     )
-    role_primary_responsibility = forms.ChoiceField(
-        choices=ClubConsultationResponse.ROLE_PRIMARY_CHOICES,
-        required=False,
-        widget=forms.RadioSelect(attrs={
-            "class": "h-4 w-4 border-stone-300 text-pitch-600 focus:ring-pitch-500",
-        }),
-        label="Would you be willing to take primary responsibility for this role?",
-    )
     startup_tasks = forms.MultipleChoiceField(
         choices=ClubConsultationResponse.STARTUP_TASK_CHOICES,
         required=False,
@@ -83,7 +75,6 @@ class ClubConsultationForm(forms.ModelForm):
             "proceed_choice",
             "membership_preference",
             "responsibilities",
-            "role_primary_responsibility",
             "startup_tasks",
             "startup_primary_responsibility",
             "comments",
@@ -131,6 +122,7 @@ class ClubConsultationForm(forms.ModelForm):
             else ClubConsultationResponse.VOLUNTEER_NO
         )
         response.other_responsibility = ""
+        response.role_primary_responsibility = ""
         response.startup_other_task = ""
         response.section_questions = self.cleaned_section_questions()
         if commit:

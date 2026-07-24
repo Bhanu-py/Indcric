@@ -225,7 +225,130 @@
         </main>
 
         <aside id="consultation" class="xl:sticky xl:top-24 h-fit scroll-mt-24 order-1 xl:order-none flex flex-col gap-5">
-            <section class="card overflow-hidden order-2">
+            <section class="card overflow-hidden">
+                <div class="card-header">
+                    <p class="micro-label text-pitch-600">Member vote</p>
+                    <h2 class="text-xl font-extrabold text-stone-900">Submit your response</h2>
+                    <p class="text-sm text-stone-500 mt-1">Members vote from their registered account. No separate name, email, or phone entry is needed.</p>
+                </div>
+
+                {% if request.user.is_authenticated %}
+                <form id="club-consultation-form" method="post" class="card-body space-y-5" novalidate>
+                    {% csrf_token %}
+
+                    <div class="rounded-xl border border-pitch-100 bg-pitch-50 p-3">
+                        <p class="text-sm font-semibold text-pitch-900">Submitting as {{ request.user.get_full_name|default:request.user.username }}</p>
+                        <p class="text-xs text-pitch-700 mt-1">Your response is linked to your member profile.</p>
+                    </div>
+
+                    {% if form.errors %}
+                    <div class="rounded-xl border border-red-200 bg-red-50 p-3" role="alert">
+                        <p class="text-sm font-semibold text-red-800">Please correct the highlighted fields.</p>
+                    </div>
+                    {% endif %}
+
+                    <fieldset>
+                        <legend class="form-label">{{ form.proceed_choice.label }} <span class="text-red-500">*</span></legend>
+                        <div class="space-y-2">
+                            {% for choice in form.proceed_choice %}
+                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
+                                {{ choice.tag }}
+                                <span>{{ choice.choice_label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% include "club/partials/_field_errors.html" with field=form.proceed_choice %}
+                    </fieldset>
+
+                    <fieldset>
+                        <legend class="form-label">{{ form.membership_preference.label }} <span class="text-red-500">*</span></legend>
+                        <p class="text-xs text-stone-500 mb-2">Annual membership is currently recommended because it reduces administration and supports stable budgeting.</p>
+                        <div class="space-y-2">
+                            {% for choice in form.membership_preference %}
+                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
+                                {{ choice.tag }}
+                                <span>{{ choice.choice_label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% include "club/partials/_field_errors.html" with field=form.membership_preference %}
+                    </fieldset>
+
+                    <div class="rounded-xl border border-purple-100 bg-purple-50/60 p-3">
+                        <h3 class="text-sm font-bold text-purple-900">Interest in Organizational Roles</h3>
+                        <p class="text-xs text-purple-800 mt-1">Select the roles you can take on, or choose the general help option.</p>
+                    </div>
+
+                    <fieldset>
+                        <legend class="form-label">{{ form.responsibilities.label }}</legend>
+                        <div class="grid grid-cols-1 gap-2">
+                            {% for row in form.responsibility_rows %}
+                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
+                                <input type="checkbox" name="responsibilities" value="{{ row.value }}" class="h-4 w-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500" {% if row.checked %}checked{% endif %}>
+                                <span>{{ row.label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% include "club/partials/_field_errors.html" with field=form.responsibilities %}
+                    </fieldset>
+
+                    <div class="rounded-xl border border-amber-100 bg-amber-50/70 p-3">
+                        <h3 class="text-sm font-bold text-amber-900">Volunteers Needed Before the Club Starts</h3>
+                        <p class="text-xs text-amber-800 mt-1">Select all start-up tasks you may be willing to help with.</p>
+                    </div>
+
+                    <fieldset>
+                        <legend class="form-label">{{ form.startup_tasks.label }}</legend>
+                        <div class="grid grid-cols-1 gap-2">
+                            {% for row in form.startup_task_rows %}
+                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
+                                <input type="checkbox" name="startup_tasks" value="{{ row.value }}" class="h-4 w-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500" {% if row.checked %}checked{% endif %}>
+                                <span>{{ row.label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% include "club/partials/_field_errors.html" with field=form.startup_tasks %}
+                    </fieldset>
+
+                    <fieldset>
+                        <legend class="form-label">{{ form.startup_primary_responsibility.label }}</legend>
+                        <div class="space-y-2">
+                            {% for choice in form.startup_primary_responsibility %}
+                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
+                                {{ choice.tag }}
+                                <span>{{ choice.choice_label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% include "club/partials/_field_errors.html" with field=form.startup_primary_responsibility %}
+                    </fieldset>
+
+                    <div>
+                        <label class="form-label" for="{{ form.comments.id_for_label }}">{{ form.comments.label }}</label>
+                        {{ form.comments }}
+                        {% include "club/partials/_field_errors.html" with field=form.comments %}
+                    </div>
+
+                    <div class="rounded-xl bg-stone-50 border border-stone-200 p-3">
+                        <label class="flex gap-3 text-sm text-stone-700">
+                            <input type="checkbox" name="{{ form.consent.html_name }}" id="{{ form.consent.id_for_label }}" class="mt-1 h-4 w-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500" {% if form.consent.value %}checked{% endif %} required>
+                            <span>{{ form.consent.label }} <span class="text-red-500">*</span></span>
+                        </label>
+                        <p class="text-xs text-stone-500 mt-2">Read the <a href="{% url 'gdpr:privacy_policy' %}" class="text-pitch-700 font-semibold hover:underline" target="_blank" rel="noopener">privacy policy</a>.</p>
+                        {% include "club/partials/_field_errors.html" with field=form.consent %}
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-full">Submit vote</button>
+                </form>
+                {% else %}
+                <div class="card-body">
+                    <p class="text-sm text-stone-600">Please sign in with your member account to submit a vote or add questions.</p>
+                    <a href="{% url 'account_login' %}?next={{ request.path }}" class="btn btn-primary btn-md mt-4 w-full">Sign in to vote</a>
+                </div>
+                {% endif %}
+            </section>
+
+            <section class="card overflow-hidden">
                 <div class="card-header">
                     <p class="micro-label text-emerald-700">Public counts</p>
                     <h2 class="text-xl font-extrabold text-stone-900">Votes so far</h2>
@@ -324,142 +447,6 @@
                         </div>
                     </div>
                 </div>
-            </section>
-
-            <section class="card overflow-hidden order-1">
-                <div class="card-header">
-                    <p class="micro-label text-pitch-600">Member vote</p>
-                    <h2 class="text-xl font-extrabold text-stone-900">Submit your response</h2>
-                    <p class="text-sm text-stone-500 mt-1">Members vote from their registered account. No separate name, email, or phone entry is needed.</p>
-                </div>
-
-                {% if request.user.is_authenticated %}
-                <form id="club-consultation-form" method="post" class="card-body space-y-5" novalidate>
-                    {% csrf_token %}
-
-                    <div class="rounded-xl border border-pitch-100 bg-pitch-50 p-3">
-                        <p class="text-sm font-semibold text-pitch-900">Submitting as {{ request.user.get_full_name|default:request.user.username }}</p>
-                        <p class="text-xs text-pitch-700 mt-1">Your response is linked to your member profile.</p>
-                    </div>
-
-                    {% if form.errors %}
-                    <div class="rounded-xl border border-red-200 bg-red-50 p-3" role="alert">
-                        <p class="text-sm font-semibold text-red-800">Please correct the highlighted fields.</p>
-                    </div>
-                    {% endif %}
-
-                    <fieldset>
-                        <legend class="form-label">{{ form.proceed_choice.label }} <span class="text-red-500">*</span></legend>
-                        <div class="space-y-2">
-                            {% for choice in form.proceed_choice %}
-                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
-                                {{ choice.tag }}
-                                <span>{{ choice.choice_label }}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                        {% include "club/partials/_field_errors.html" with field=form.proceed_choice %}
-                    </fieldset>
-
-                    <fieldset>
-                        <legend class="form-label">{{ form.membership_preference.label }} <span class="text-red-500">*</span></legend>
-                        <p class="text-xs text-stone-500 mb-2">Annual membership is currently recommended because it reduces administration and supports stable budgeting.</p>
-                        <div class="space-y-2">
-                            {% for choice in form.membership_preference %}
-                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
-                                {{ choice.tag }}
-                                <span>{{ choice.choice_label }}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                        {% include "club/partials/_field_errors.html" with field=form.membership_preference %}
-                    </fieldset>
-
-                    <div class="rounded-xl border border-purple-100 bg-purple-50/60 p-3">
-                        <h3 class="text-sm font-bold text-purple-900">Interest in Organizational Roles</h3>
-                        <p class="text-xs text-purple-800 mt-1">Select the roles you can take on, or choose the general help option.</p>
-                    </div>
-
-                    <fieldset>
-                        <legend class="form-label">{{ form.responsibilities.label }}</legend>
-                        <div class="grid grid-cols-1 gap-2">
-                            {% for row in form.responsibility_rows %}
-                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
-                                <input type="checkbox" name="responsibilities" value="{{ row.value }}" class="h-4 w-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500" {% if row.checked %}checked{% endif %}>
-                                <span>{{ row.label }}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                        {% include "club/partials/_field_errors.html" with field=form.responsibilities %}
-                    </fieldset>
-
-                    <fieldset>
-                        <legend class="form-label">{{ form.role_primary_responsibility.label }}</legend>
-                        <div class="space-y-2">
-                            {% for choice in form.role_primary_responsibility %}
-                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
-                                {{ choice.tag }}
-                                <span>{{ choice.choice_label }}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                        {% include "club/partials/_field_errors.html" with field=form.role_primary_responsibility %}
-                    </fieldset>
-
-                    <div class="rounded-xl border border-amber-100 bg-amber-50/70 p-3">
-                        <h3 class="text-sm font-bold text-amber-900">Volunteers Needed Before the Club Starts</h3>
-                        <p class="text-xs text-amber-800 mt-1">Select all start-up tasks you may be willing to help with.</p>
-                    </div>
-
-                    <fieldset>
-                        <legend class="form-label">{{ form.startup_tasks.label }}</legend>
-                        <div class="grid grid-cols-1 gap-2">
-                            {% for row in form.startup_task_rows %}
-                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
-                                <input type="checkbox" name="startup_tasks" value="{{ row.value }}" class="h-4 w-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500" {% if row.checked %}checked{% endif %}>
-                                <span>{{ row.label }}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                        {% include "club/partials/_field_errors.html" with field=form.startup_tasks %}
-                    </fieldset>
-
-                    <fieldset>
-                        <legend class="form-label">{{ form.startup_primary_responsibility.label }}</legend>
-                        <div class="space-y-2">
-                            {% for choice in form.startup_primary_responsibility %}
-                            <label class="flex gap-3 rounded-xl border border-stone-200 p-3 text-sm text-stone-700 hover:bg-stone-50">
-                                {{ choice.tag }}
-                                <span>{{ choice.choice_label }}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                        {% include "club/partials/_field_errors.html" with field=form.startup_primary_responsibility %}
-                    </fieldset>
-
-                    <div>
-                        <label class="form-label" for="{{ form.comments.id_for_label }}">{{ form.comments.label }}</label>
-                        {{ form.comments }}
-                        {% include "club/partials/_field_errors.html" with field=form.comments %}
-                    </div>
-
-                    <div class="rounded-xl bg-stone-50 border border-stone-200 p-3">
-                        <label class="flex gap-3 text-sm text-stone-700">
-                            <input type="checkbox" name="{{ form.consent.html_name }}" id="{{ form.consent.id_for_label }}" class="mt-1 h-4 w-4 rounded border-stone-300 text-pitch-600 focus:ring-pitch-500" {% if form.consent.value %}checked{% endif %} required>
-                            <span>{{ form.consent.label }} <span class="text-red-500">*</span></span>
-                        </label>
-                        <p class="text-xs text-stone-500 mt-2">Read the <a href="{% url 'gdpr:privacy_policy' %}" class="text-pitch-700 font-semibold hover:underline" target="_blank" rel="noopener">privacy policy</a>.</p>
-                        {% include "club/partials/_field_errors.html" with field=form.consent %}
-                    </div>
-
-                    <button type="submit" class="btn btn-primary btn-lg w-full">Submit vote</button>
-                </form>
-                {% else %}
-                <div class="card-body">
-                    <p class="text-sm text-stone-600">Please sign in with your member account to submit a vote or add questions.</p>
-                    <a href="{% url 'account_login' %}?next={{ request.path }}" class="btn btn-primary btn-md mt-4 w-full">Sign in to vote</a>
-                </div>
-                {% endif %}
             </section>
         </aside>
     </div>
